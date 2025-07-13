@@ -83,18 +83,64 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exit, tip,
     };
 
     const output = await replicate.run("openai/gpt-4o-mini", { input });
-    const result = output.join('').trim();
-    console.log('Opener API Response:', result);
     
-    const openerData = JSON.parse(result);
+    // Fix: Better handling of Replicate response
+    let result;
+    if (Array.isArray(output)) {
+      result = output.join('').trim();
+    } else if (typeof output === 'string') {
+      result = output.trim();
+    } else {
+      result = String(output).trim();
+    }
+    
+    console.log('Raw Replicate Response:', result);
+    
+    // Fix: Clean up the response before parsing
+    // Remove any markdown formatting or extra characters
+    let cleanResult = result;
+    
+    // Remove markdown code blocks if present
+    cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Find JSON object in the response
+    const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanResult = jsonMatch[0];
+    }
+    
+    console.log('Cleaned Response:', cleanResult);
+    
+    // Parse the JSON
+    const openerData = JSON.parse(cleanResult);
+    
+    // Validate the response has required fields
+    if (!openerData.opener || !openerData.followUps || !openerData.exit || !openerData.tip || !openerData.confidenceBoost) {
+      throw new Error('Invalid response format from AI');
+    }
+    
     res.json(openerData);
     
   } catch (error) {
     console.error('Error generating opener:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate opener', 
-      details: error.message 
-    });
+    console.error('Error details:', error.message);
+    
+    // Return a fallback response instead of failing
+    const fallbackOpener = {
+      opener: `Hi! I noticed you're in this ${req.body.setting || 'social'} setting. How's your day going?`,
+      followUps: [
+        "What brings you here today?",
+        "Do you come here often?",
+        "How are you finding this place?"
+      ],
+      exit: "It was great talking with you! Have a wonderful day!",
+      tip: `In ${req.body.setting || 'social'} settings, keep the conversation light and friendly.`,
+      confidenceBoost: "You're doing great by taking the initiative to connect with others!"
+    };
+    
+    // Log the error but return fallback instead of 500
+    console.log('Returning fallback opener due to error');
+    res.json(fallbackOpener);
   }
 });
 
