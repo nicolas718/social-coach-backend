@@ -6,116 +6,111 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize Replicate
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint
 app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
 });
 
-// Generate quick suggestions endpoint
 app.post('/generate-suggestions', async (req, res) => {
   try {
     const { purpose, setting } = req.body;
+    console.log('Received suggestions request:', { purpose, setting });
     
-    const prompt = `Generate 4 specific location/context suggestions for:
+    const prompt = `Generate 4 creative, specific location suggestions for someone with ${purpose} intentions in ${setting} environments.
+
 Purpose: ${purpose}
 Setting: ${setting}
 
-Requirements:
-- Each suggestion should be 3-5 words
-- Specific locations/contexts that match the purpose and setting
-- Diverse but realistic scenarios
-- Return as JSON array of strings only, no other text
+Create NOVEL, interesting suggestions that people wouldn't immediately think of but make perfect sense for this combination. Avoid obvious/generic locations.
 
-Example: ["At a co-working space", "In a library", "At a quiet cafe", "During lunch break"]`;
+Examples of SMART suggestions:
+- Romantic + Active: "Rock climbing gym", "Morning hiking trail", "Beach volleyball pickup", "Outdoor fitness bootcamp"
+- Professional + Quiet: "University research library", "Co-working cafe corner", "Business hotel lobby", "Museum member lounge"  
+- Casual + Social: "Trivia night", "Food truck festival", "Dog park gathering", "Community art class"
+- Romantic + Everyday: "Farmer's market", "Laundromat", "Bookstore poetry section", "Coffee roastery tour"
+
+Make each suggestion:
+- 3-5 words maximum
+- Specific and actionable
+- Novel but realistic
+- Perfect for the purpose + setting combo
+
+Return ONLY a JSON array of 4 location strings.`;
 
     const input = {
       prompt: prompt,
-      system_prompt: "You are a helpful assistant that generates location suggestions. Return only valid JSON.",
-      max_tokens: 100
+      system_prompt: "You generate creative, contextually perfect location suggestions. Return only valid JSON array.",
+      max_tokens: 150
     };
 
     const output = await replicate.run("openai/gpt-4o-mini", { input });
     const result = output.join('').trim();
+    console.log('Suggestions API Response:', result);
     
-    // Parse the JSON response
     const suggestions = JSON.parse(result);
-    
     res.json({ suggestions });
+    
   } catch (error) {
     console.error('Error generating suggestions:', error);
-    
-    // Fallback suggestions
-    const fallbackSuggestions = {
-      suggestions: [
-        `At a ${setting} place`,
-        `During ${purpose} time`,
-        `In a busy area`,
-        `At a local spot`
-      ]
-    };
-    
-    res.json(fallbackSuggestions);
+    res.status(500).json({ 
+      error: 'Failed to generate suggestions', 
+      details: error.message 
+    });
   }
 });
 
-// Generate opener endpoint  
 app.post('/generate-opener', async (req, res) => {
   try {
     const { purpose, setting, context } = req.body;
+    console.log('Received opener request:', { purpose, setting, context });
     
-    const prompt = `Generate a conversation opener for:
-Purpose: ${purpose}
-Setting: ${setting}
-Context: ${context}
+    // Handle optional context
+    const contextText = context && context.trim() ? context : `a ${setting} environment`;
+    
+    const prompt = `Create a conversation opener specifically for:
 
-Requirements:
-- Natural, respectful conversation starter
-- 3 relevant follow-up questions
-- Polite exit strategy
-- Practical delivery tip
-- Brief confidence boost message
+**Situation:**
+- Purpose: ${purpose}
+- Setting: ${setting}  
+- Context: ${contextText}
 
-Respond only in JSON format with fields: opener, followUps (array of 3 strings), exit, tip, confidenceBoost.`;
+Generate a complete conversation guide that perfectly matches this exact scenario:
+
+1. **Opener**: Natural conversation starter for someone with ${purpose} intentions in this specific situation
+2. **Follow-ups**: 3 questions that flow naturally and match the purpose/setting/context
+3. **Exit**: Polite way to end the conversation that respects the environment and situation
+4. **Tip**: Specific behavioral advice for this exact combination of purpose + setting + context
+5. **Confidence Boost**: Encouraging message tailored to this specific social scenario
+
+Everything must be contextually perfect for ${purpose} intentions in ${setting} setting at/during "${contextText}".
+
+Return ONLY JSON with fields: opener, followUps (array of 3 strings), exit, tip, confidenceBoost`;
 
     const input = {
       prompt: prompt,
-      system_prompt: "You are a social confidence coach. Return only valid JSON with the exact fields requested.",
-      max_tokens: 400
+      system_prompt: "You create contextually perfect conversation guidance. Return only valid JSON.",
+      max_tokens: 500
     };
 
     const output = await replicate.run("openai/gpt-4o-mini", { input });
     const result = output.join('').trim();
+    console.log('Opener API Response:', result);
     
-    // Parse the JSON response
     const openerData = JSON.parse(result);
-    
     res.json(openerData);
+    
   } catch (error) {
     console.error('Error generating opener:', error);
-    
-    // Fallback opener
-    const fallbackOpener = {
-      opener: `Here's a conversation starter for ${purpose} in a ${setting} setting: ${context}`,
-      followUps: [
-        "How's your day going?",
-        "Do you come here often?", 
-        "What brings you here today?"
-      ],
-      exit: "Well, it was nice meeting you. Have a great day!",
-      tip: "Make eye contact, smile naturally, and be genuinely curious about their response.",
-      confidenceBoost: "Take a breath. You've got this! People appreciate genuine conversation."
-    };
-    
-    res.json(fallbackOpener);
+    res.status(500).json({ 
+      error: 'Failed to generate opener', 
+      details: error.message 
+    });
   }
 });
 
