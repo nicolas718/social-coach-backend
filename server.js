@@ -70,11 +70,11 @@ Context: ${contextText}
 Generate:
 1. Opener: Natural conversation starter for ${purpose} intentions in this situation
 2. Follow-ups: 3 questions that match the purpose/setting/context
-3. Exit: Polite way to end the conversation
+3. ExitStrategy: Polite way to end the conversation
 4. Tip: Specific advice for this exact scenario
 5. Confidence Boost: Encouraging message for this situation
 
-Return ONLY JSON with fields: opener, followUps (array of 3 strings), exit, tip, confidenceBoost`;
+Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
 
     const input = {
       prompt: prompt,
@@ -84,7 +84,7 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exit, tip,
 
     const output = await replicate.run("openai/gpt-4o-mini", { input });
     
-    // Fix: Better handling of Replicate response
+    // Better handling of Replicate response
     let result;
     if (Array.isArray(output)) {
       result = output.join('').trim();
@@ -96,8 +96,7 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exit, tip,
     
     console.log('Raw Replicate Response:', result);
     
-    // Fix: Clean up the response before parsing
-    // Remove any markdown formatting or extra characters
+    // Clean up the response before parsing
     let cleanResult = result;
     
     // Remove markdown code blocks if present
@@ -115,7 +114,7 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exit, tip,
     const openerData = JSON.parse(cleanResult);
     
     // Validate the response has required fields
-    if (!openerData.opener || !openerData.followUps || !openerData.exit || !openerData.tip || !openerData.confidenceBoost) {
+    if (!openerData.opener || !openerData.followUps || !openerData.exitStrategy || !openerData.tip || !openerData.confidenceBoost) {
       throw new Error('Invalid response format from AI');
     }
     
@@ -124,23 +123,10 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exit, tip,
   } catch (error) {
     console.error('Error generating opener:', error);
     console.error('Error details:', error.message);
-    
-    // Return a fallback response instead of failing
-    const fallbackOpener = {
-      opener: `Hi! I noticed you're in this ${req.body.setting || 'social'} setting. How's your day going?`,
-      followUps: [
-        "What brings you here today?",
-        "Do you come here often?",
-        "How are you finding this place?"
-      ],
-      exit: "It was great talking with you! Have a wonderful day!",
-      tip: `In ${req.body.setting || 'social'} settings, keep the conversation light and friendly.`,
-      confidenceBoost: "You're doing great by taking the initiative to connect with others!"
-    };
-    
-    // Log the error but return fallback instead of 500
-    console.log('Returning fallback opener due to error');
-    res.json(fallbackOpener);
+    res.status(500).json({ 
+      error: 'Failed to generate opener', 
+      details: error.message 
+    });
   }
 });
 
