@@ -125,6 +125,77 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
   }
 });
 
+app.post('/generate-daily-challenge', async (req, res) => {
+  try {
+    const { level = "beginner" } = req.body; // Default to beginner if not specified
+    console.log('Received daily challenge request:', { level });
+    
+    const prompt = `Generate a daily social challenge for someone with ${level} social confidence level.
+
+Create a challenge that:
+- Is achievable for someone at ${level} level
+- Builds social skills gradually
+- Is specific and actionable
+- Can be completed in one day
+
+Generate:
+1. Challenge: The main task to complete (keep it concise, 1-2 sentences)
+2. Description: More detailed explanation of what to do (2-3 sentences)
+3. Tips: Practical advice for completing this challenge successfully
+4. WhyThisMatters: Explanation of the benefits and reasoning behind this challenge
+5. Badge: Difficulty level indicator (Foundation, Growth, or Advanced)
+
+Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badge`;
+
+    const message = await anthropic.messages.create({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 500,
+      system: "You create progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions. Return only valid JSON.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    });
+
+    const result = message.content[0].text.trim();
+    console.log('Raw Claude Daily Challenge Response:', result);
+    
+    // Clean up the response before parsing
+    let cleanResult = result;
+    
+    // Remove markdown code blocks if present
+    cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Find JSON object in the response
+    const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+    if (jsonResult) {
+      cleanResult = jsonMatch[0];
+    }
+    
+    console.log('Cleaned Daily Challenge Response:', cleanResult);
+    
+    // Parse the JSON
+    const challengeData = JSON.parse(cleanResult);
+    
+    // Validate the response has required fields
+    if (!challengeData.challenge || !challengeData.description || !challengeData.tips || !challengeData.whyThisMatters || !challengeData.badge) {
+      throw new Error('Invalid response format from AI');
+    }
+    
+    res.json(challengeData);
+    
+  } catch (error) {
+    console.error('Error generating daily challenge:', error);
+    console.error('Error details:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate daily challenge', 
+      details: error.message 
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
