@@ -1,13 +1,13 @@
 const express = require('express');
 const cors = require('cors');
-const Replicate = require('replicate');
+const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 app.use(cors());
@@ -76,25 +76,20 @@ Generate:
 
 Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
 
-    const input = {
-      prompt: prompt,
-      system_prompt: "You create contextually perfect conversation guidance. Return only valid JSON.",
-      max_tokens: 400
-    };
+    const message = await anthropic.messages.create({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 400,
+      system: "You create contextually perfect conversation guidance. Return only valid JSON.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    });
 
-    const output = await replicate.run("openai/gpt-4o-mini", { input });
-    
-    // Better handling of Replicate response
-    let result;
-    if (Array.isArray(output)) {
-      result = output.join('').trim();
-    } else if (typeof output === 'string') {
-      result = output.trim();
-    } else {
-      result = String(output).trim();
-    }
-    
-    console.log('Raw Replicate Response:', result);
+    const result = message.content[0].text.trim();
+    console.log('Raw Claude Response:', result);
     
     // Clean up the response before parsing
     let cleanResult = result;
