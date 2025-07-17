@@ -1,8 +1,3 @@
-## Fixed server.js
-
-Here's your server.js with the bug fixed (line 173):
-
-```javascript
 const express = require('express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
@@ -204,8 +199,3 @@ Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badg
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-```
-
-**The only change:** Line 173 changed from `if (jsonResult) {` to `if (jsonMatch) {`
-
-Deploy this to Railway and your daily challenge API should work perfectly!
