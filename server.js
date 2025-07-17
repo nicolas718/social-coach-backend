@@ -29,6 +29,30 @@ const suggestionRotations = {
   "casual-everyday": ["Neighborhood walk", "Local market", "Bus stop", "Shopping center"]
 };
 
+// Breathwork affirmations pool
+const breathworkAffirmations = [
+  "You are worthy of love and respect—including from yourself",
+  "Your authentic self is enough for any interaction",
+  "Social situations are opportunities, not tests", 
+  "You belong in every room you enter",
+  "Your nervous energy is just excitement in disguise",
+  "People are drawn to genuine confidence",
+  "You have something valuable to offer every conversation",
+  "Your presence matters and makes a difference",
+  "Authentic connections come naturally to you",
+  "You are calm, confident, and completely yourself",
+  "Every interaction is a chance to practice being real",
+  "Your vulnerability is your greatest strength",
+  "You create safe spaces wherever you go",
+  "Other people want to connect with you too",
+  "Your uniqueness is exactly what the world needs",
+  "Social confidence grows with every genuine moment",
+  "You are exactly where you need to be right now",
+  "Your story matters and deserves to be heard",
+  "Authentic conversations flow naturally through you",
+  "You radiate calm confidence and genuine warmth"
+];
+
 app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
 });
@@ -170,7 +194,7 @@ Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badg
     
     // Find JSON object in the response
     const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {  // ✅ FIXED: was jsonResult, now jsonMatch
+    if (jsonMatch) {
       cleanResult = jsonMatch[0];
     }
     
@@ -191,6 +215,104 @@ Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badg
     console.error('Error details:', error.message);
     res.status(500).json({ 
       error: 'Failed to generate daily challenge', 
+      details: error.message 
+    });
+  }
+});
+
+// AI Coach Chat Endpoint
+app.post('/api/ai-coach/chat', async (req, res) => {
+  try {
+    const { message, context = {} } = req.body;
+    console.log('Received AI coach chat request:', { message, context });
+    
+    if (!message || !message.trim()) {
+      return res.status(400).json({ 
+        error: 'Message is required', 
+        details: 'Please provide a message to chat with the AI coach' 
+      });
+    }
+
+    // Build context string for the prompt
+    let contextInfo = "";
+    if (context.userStreak) {
+      contextInfo += `User has a ${context.userStreak}-day streak. `;
+    }
+    if (context.recentChallenges) {
+      contextInfo += `Completed ${context.recentChallenges} challenges recently. `;
+    }
+    if (context.successRate) {
+      contextInfo += `Success rate: ${context.successRate}%. `;
+    }
+
+    const prompt = `You are a supportive social confidence coach. A user says: "${message}"
+
+${contextInfo ? `Context: ${contextInfo}` : ''}
+
+Provide a supportive coaching response that:
+- Is 2-4 sentences maximum for chat-friendly conversation
+- Asks a follow-up question to continue the conversation
+- References their progress when available (streak/challenges/success rate)
+- Provides actionable next steps
+- Uses a warm, encouraging but realistic tone
+- Sounds like a conversational mentor, not clinical
+
+Return ONLY a plain text response, no JSON formatting.`;
+
+    const aiMessage = await anthropic.messages.create({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 150,
+      system: "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    });
+
+    const response = aiMessage.content[0].text.trim();
+    console.log('AI Coach Response:', response);
+    
+    // Generate messageId and timestamp
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const timestamp = new Date().toISOString();
+    
+    res.json({
+      response: response,
+      messageId: messageId,
+      timestamp: timestamp
+    });
+    
+  } catch (error) {
+    console.error('Error in AI coach chat:', error);
+    console.error('Error details:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to get AI coach response', 
+      details: error.message 
+    });
+  }
+});
+
+// Breathwork Affirmations Endpoint
+app.get('/api/breathwork/affirmations', async (req, res) => {
+  try {
+    console.log('Received breathwork affirmations request');
+    
+    // Shuffle the affirmations array and return 10-15 random ones
+    const shuffled = [...breathworkAffirmations].sort(() => 0.5 - Math.random());
+    const selectedAffirmations = shuffled.slice(0, 12); // Return 12 affirmations
+    
+    console.log('Returning affirmations:', selectedAffirmations.length);
+    
+    res.json({
+      affirmations: selectedAffirmations
+    });
+    
+  } catch (error) {
+    console.error('Error getting breathwork affirmations:', error);
+    res.status(500).json({ 
+      error: 'Failed to get affirmations', 
       details: error.message 
     });
   }
