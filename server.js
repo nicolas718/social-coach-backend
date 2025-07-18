@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
@@ -12,6 +14,59 @@ const anthropic = new Anthropic({
 
 app.use(cors());
 app.use(express.json());
+
+// Initialize SQLite Database
+const dbPath = path.join(__dirname, 'social_coach_data.sqlite');
+const db = new sqlite3.Database(dbPath);
+
+// Create tables if they don't exist
+db.serialize(() => {
+  // Users table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      device_id TEXT PRIMARY KEY,
+      current_streak INTEGER DEFAULT 0,
+      all_time_best_streak INTEGER DEFAULT 0,
+      last_completion_date TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Daily challenges table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS daily_challenges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id TEXT,
+      challenge_completed BOOLEAN DEFAULT TRUE,
+      challenge_rating INTEGER,
+      challenge_confidence_level TEXT,
+      challenge_notes TEXT,
+      challenge_date TEXT,
+      challenge_type TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (device_id) REFERENCES users (device_id)
+    )
+  `);
+
+  // Openers table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS openers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id TEXT,
+      opener_text TEXT,
+      opener_setting TEXT,
+      opener_purpose TEXT,
+      opener_was_used BOOLEAN,
+      opener_was_successful BOOLEAN,
+      opener_rating INTEGER,
+      opener_confidence_level TEXT,
+      opener_notes TEXT,
+      opener_date TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (device_id) REFERENCES users (device_id)
+    )
+  `);
+});
 
 // Hardcoded suggestion rotations for each purpose + setting combination
 const suggestionRotations = {
@@ -53,8 +108,245 @@ const breathworkAffirmations = [
   "You radiate calm confidence and genuine warmth"
 ];
 
+// Helper function to ensure user exists
+const ensureUserExists = (deviceId, callback) => {
+  db.get("SELECT device_id FROM users WHERE device_id = ?", [deviceId], (err, row) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+    
+    if (!row) {
+      // Create new user
+      db.run("INSERT INTO users (device_id) VALUES (?)", [deviceId], (err) => {
+        callback(err);
+      });
+    } else {
+      callback(null);
+    }
+  });
+};
+
+// Helper function to calculate and update streak
+const updateUserStreak = (deviceId, challengeDate) => {
+  db.get("SELECT current_streak, all_time_best_streak, last_completion_date FROM users WHERE device_id = ?", 
+    [deviceId], (err, user) => {
+    if (err) {
+      console.error('Error getting user for streak update:', err);
+      return;
+    }
+
+    let newStreak = 1;
+    let newBestStreak = user.all_time_best_streak || 0;
+    
+    if (user.last_completion_date) {
+      const lastDate = new Date(user.last_completion_date);
+      const currentDate = new Date(challengeDate);
+      const daysDiff = Math.floor((currentDate - lastDate) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff === 1) {
+        // Consecutive day
+        newStreak = (user.current_streak || 0) + 1;
+      } else if (daysDiff === 0) {
+        // Same day, keep current streak
+        newStreak = user.current_streak || 1;
+      }
+      // If daysDiff > 1, streak resets to 1 (already set above)
+    }
+    
+    // Update best streak if current is higher
+    if (newStreak > newBestStreak) {
+      newBestStreak = newStreak;
+    }
+    
+    db.run(
+      "UPDATE users SET current_streak = ?, all_time_best_streak = ?, last_completion_date = ? WHERE device_id = ?",
+      [newStreak, newBestStreak, challengeDate, deviceId],
+      (err) => {
+        if (err) {
+          console.error('Error updating streak:', err);
+        } else {
+          console.log(`Updated streak for ${deviceId}: ${newStreak} (best: ${newBestStreak})`);
+        }
+      }
+    );
+  });
+};
+
 app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
+});
+
+// NEW: Save Daily Challenge Data
+app.post('/api/data/challenge', (req, res) => {
+  try {
+    const {
+      deviceId,
+      challengeCompleted = true,
+      challengeRating,
+      challengeConfidenceLevel,
+      challengeNotes,
+      challengeDate,
+      challengeType
+    } = req.body;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    ensureUserExists(deviceId, (err) => {
+      if (err) {
+        console.error('Error ensuring user exists:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      // Insert challenge data
+      db.run(
+        `INSERT INTO daily_challenges 
+         (device_id, challenge_completed, challenge_rating, challenge_confidence_level, 
+          challenge_notes, challenge_date, challenge_type) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [deviceId, challengeCompleted, challengeRating, challengeConfidenceLevel, 
+         challengeNotes, challengeDate, challengeType],
+        function(err) {
+          if (err) {
+            console.error('Error saving challenge:', err);
+            return res.status(500).json({ error: 'Failed to save challenge data' });
+          }
+
+          // Update streak
+          updateUserStreak(deviceId, challengeDate);
+
+          res.json({ 
+            success: true, 
+            challengeId: this.lastID,
+            message: 'Challenge data saved successfully' 
+          });
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error in challenge endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// NEW: Save Opener Data
+app.post('/api/data/opener', (req, res) => {
+  try {
+    const {
+      deviceId,
+      openerText,
+      openerSetting,
+      openerPurpose,
+      openerWasUsed,
+      openerWasSuccessful,
+      openerRating,
+      openerConfidenceLevel,
+      openerNotes,
+      openerDate
+    } = req.body;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    ensureUserExists(deviceId, (err) => {
+      if (err) {
+        console.error('Error ensuring user exists:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      // Insert opener data
+      db.run(
+        `INSERT INTO openers 
+         (device_id, opener_text, opener_setting, opener_purpose, opener_was_used, 
+          opener_was_successful, opener_rating, opener_confidence_level, opener_notes, opener_date) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [deviceId, openerText, openerSetting, openerPurpose, openerWasUsed, 
+         openerWasSuccessful, openerRating, openerConfidenceLevel, openerNotes, openerDate],
+        function(err) {
+          if (err) {
+            console.error('Error saving opener:', err);
+            return res.status(500).json({ error: 'Failed to save opener data' });
+          }
+
+          res.json({ 
+            success: true, 
+            openerId: this.lastID,
+            message: 'Opener data saved successfully' 
+          });
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error in opener endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// NEW: Get User Analytics
+app.get('/api/data/analytics/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    // Get user info
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        console.error('Error getting user:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get challenge count
+      db.get("SELECT COUNT(*) as count FROM daily_challenges WHERE device_id = ?", 
+        [deviceId], (err, challengeCount) => {
+        if (err) {
+          console.error('Error getting challenge count:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Get opener stats
+        db.all(`
+          SELECT 
+            COUNT(*) as total_openers,
+            SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_openers,
+            AVG(opener_rating) as avg_rating
+          FROM openers 
+          WHERE device_id = ? AND opener_was_used = 1
+        `, [deviceId], (err, openerStats) => {
+          if (err) {
+            console.error('Error getting opener stats:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          const stats = openerStats[0];
+          const successRate = stats.total_openers > 0 ? 
+            Math.round((stats.successful_openers / stats.total_openers) * 100) : 0;
+
+          res.json({
+            currentStreak: user.current_streak || 0,
+            allTimeBestStreak: user.all_time_best_streak || 0,
+            totalChallenges: challengeCount.count || 0,
+            totalOpeners: stats.total_openers || 0,
+            successfulOpeners: stats.successful_openers || 0,
+            successRate: successRate,
+            averageRating: Math.round((stats.avg_rating || 0) * 10) / 10
+          });
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in analytics endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.post('/generate-suggestions', async (req, res) => {
@@ -269,7 +561,7 @@ Return ONLY a plain text response, no JSON formatting.`;
           content: prompt
         }
       ]
-    });
+    );
 
     const response = aiMessage.content[0].text.trim();
     console.log('AI Coach Response:', response);
