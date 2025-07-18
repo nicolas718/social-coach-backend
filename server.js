@@ -177,7 +177,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
 });
 
-// NEW: Save Daily Challenge Data
+// Save Daily Challenge Data
 app.post('/api/data/challenge', (req, res) => {
   try {
     const {
@@ -231,7 +231,7 @@ app.post('/api/data/challenge', (req, res) => {
   }
 });
 
-// NEW: Save Opener Data
+// Save Opener Data
 app.post('/api/data/opener', (req, res) => {
   try {
     const {
@@ -285,7 +285,7 @@ app.post('/api/data/opener', (req, res) => {
   }
 });
 
-// NEW: Get User Analytics
+// Get User Analytics
 app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
@@ -443,7 +443,7 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
 
 app.post('/generate-daily-challenge', async (req, res) => {
   try {
-    const { level = "beginner" } = req.body; // Default to beginner if not specified
+    const { level = "beginner" } = req.body;
     console.log('Received daily challenge request:', { level });
     
     const prompt = `Generate a daily social challenge for someone with ${level} social confidence level.
@@ -512,7 +512,6 @@ Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badg
   }
 });
 
-// AI Coach Chat Endpoint
 app.post('/api/ai-coach/chat', async (req, res) => {
   try {
     const { message, context = {} } = req.body;
@@ -561,7 +560,7 @@ Return ONLY a plain text response, no JSON formatting.`;
           content: prompt
         }
       ]
-    );
+    });
 
     const response = aiMessage.content[0].text.trim();
     console.log('AI Coach Response:', response);
@@ -586,14 +585,13 @@ Return ONLY a plain text response, no JSON formatting.`;
   }
 });
 
-// Breathwork Affirmations Endpoint
 app.get('/api/breathwork/affirmations', async (req, res) => {
   try {
     console.log('Received breathwork affirmations request');
     
     // Shuffle the affirmations array and return 10-15 random ones
     const shuffled = [...breathworkAffirmations].sort(() => 0.5 - Math.random());
-    const selectedAffirmations = shuffled.slice(0, 12); // Return 12 affirmations
+    const selectedAffirmations = shuffled.slice(0, 12);
     
     console.log('Returning affirmations:', selectedAffirmations.length);
     
