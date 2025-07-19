@@ -66,6 +66,21 @@ db.serialize(() => {
       FOREIGN KEY (device_id) REFERENCES users (device_id)
     )
   `);
+
+  // Development modules table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS development_modules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id TEXT,
+      development_module_id TEXT,
+      development_screen_reached INTEGER,
+      development_is_completed BOOLEAN DEFAULT FALSE,
+      development_progress_percentage INTEGER,
+      development_date TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (device_id) REFERENCES users (device_id)
+    )
+  `);
 });
 
 // Hardcoded suggestion rotations for each purpose + setting combination
@@ -285,6 +300,109 @@ app.post('/api/data/opener', (req, res) => {
   }
 });
 
+// Save Development Module Data
+app.post('/api/data/development', (req, res) => {
+  try {
+    const {
+      deviceId,
+      developmentModuleId,
+      developmentScreenReached,
+      developmentIsCompleted,
+      developmentProgressPercentage,
+      developmentDate
+    } = req.body;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    ensureUserExists(deviceId, (err) => {
+      if (err) {
+        console.error('Error ensuring user exists:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      // Check if module progress already exists for this user and module
+      db.get(
+        "SELECT * FROM development_modules WHERE device_id = ? AND development_module_id = ?",
+        [deviceId, developmentModuleId],
+        (err, existingRecord) => {
+          if (err) {
+            console.error('Error checking existing module progress:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          if (existingRecord) {
+            // Update existing record if new progress is higher or module is completed
+            const shouldUpdate = 
+              developmentScreenReached > existingRecord.development_screen_reached ||
+              (developmentIsCompleted && !existingRecord.development_is_completed);
+
+            if (shouldUpdate) {
+              db.run(
+                `UPDATE development_modules 
+                 SET development_screen_reached = ?, development_is_completed = ?, 
+                     development_progress_percentage = ?, development_date = ?
+                 WHERE device_id = ? AND development_module_id = ?`,
+                [developmentScreenReached, developmentIsCompleted, 
+                 developmentProgressPercentage, developmentDate, deviceId, developmentModuleId],
+                function(err) {
+                  if (err) {
+                    console.error('Error updating development module:', err);
+                    return res.status(500).json({ error: 'Failed to update development module data' });
+                  }
+
+                  console.log(`Updated development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
+
+                  res.json({ 
+                    success: true, 
+                    moduleId: existingRecord.id,
+                    message: 'Development module data updated successfully' 
+                  });
+                }
+              );
+            } else {
+              // No update needed
+              res.json({ 
+                success: true, 
+                moduleId: existingRecord.id,
+                message: 'Development module data already up to date' 
+              });
+            }
+          } else {
+            // Insert new record
+            db.run(
+              `INSERT INTO development_modules 
+               (device_id, development_module_id, development_screen_reached, 
+                development_is_completed, development_progress_percentage, development_date) 
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [deviceId, developmentModuleId, developmentScreenReached, 
+               developmentIsCompleted, developmentProgressPercentage, developmentDate],
+              function(err) {
+                if (err) {
+                  console.error('Error saving development module:', err);
+                  return res.status(500).json({ error: 'Failed to save development module data' });
+                }
+
+                console.log(`Saved development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
+
+                res.json({ 
+                  success: true, 
+                  moduleId: this.lastID,
+                  message: 'Development module data saved successfully' 
+                });
+              }
+            );
+          }
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error in development endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get User Analytics
 app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
@@ -327,18 +445,38 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             return res.status(500).json({ error: 'Database error' });
           }
 
-          const stats = openerStats[0];
-          const successRate = stats.total_openers > 0 ? 
-            Math.round((stats.successful_openers / stats.total_openers) * 100) : 0;
+          // Get development module stats
+          db.all(`
+            SELECT 
+              COUNT(*) as total_modules_started,
+              SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) as completed_modules,
+              AVG(development_progress_percentage) as avg_progress
+            FROM development_modules 
+            WHERE device_id = ?
+          `, [deviceId], (err, developmentStats) => {
+            if (err) {
+              console.error('Error getting development stats:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
 
-          res.json({
-            currentStreak: user.current_streak || 0,
-            allTimeBestStreak: user.all_time_best_streak || 0,
-            totalChallenges: challengeCount.count || 0,
-            totalOpeners: stats.total_openers || 0,
-            successfulOpeners: stats.successful_openers || 0,
-            successRate: successRate,
-            averageRating: Math.round((stats.avg_rating || 0) * 10) / 10
+            const openerStatsData = openerStats[0];
+            const developmentStatsData = developmentStats[0];
+            
+            const successRate = openerStatsData.total_openers > 0 ? 
+              Math.round((openerStatsData.successful_openers / openerStatsData.total_openers) * 100) : 0;
+
+            res.json({
+              currentStreak: user.current_streak || 0,
+              allTimeBestStreak: user.all_time_best_streak || 0,
+              totalChallenges: challengeCount.count || 0,
+              totalOpeners: openerStatsData.total_openers || 0,
+              successfulOpeners: openerStatsData.successful_openers || 0,
+              successRate: successRate,
+              averageRating: Math.round((openerStatsData.avg_rating || 0) * 10) / 10,
+              totalModulesStarted: developmentStatsData.total_modules_started || 0,
+              completedModules: developmentStatsData.completed_modules || 0,
+              averageModuleProgress: Math.round((developmentStatsData.avg_progress || 0) * 10) / 10
+            });
           });
         });
       });
