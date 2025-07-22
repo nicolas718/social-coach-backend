@@ -32,12 +32,13 @@ db.serialize(() => {
     )
   `);
 
-  // Daily challenges table
+  // Daily challenges table - UPDATED WITH SUCCESS FIELD
   db.run(`
     CREATE TABLE IF NOT EXISTS daily_challenges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       device_id TEXT,
       challenge_completed BOOLEAN DEFAULT TRUE,
+      challenge_was_successful BOOLEAN,
       challenge_rating INTEGER,
       challenge_confidence_level TEXT,
       challenge_notes TEXT,
@@ -47,6 +48,15 @@ db.serialize(() => {
       FOREIGN KEY (device_id) REFERENCES users (device_id)
     )
   `);
+
+  // Add the missing column to existing tables
+  db.run(`
+    ALTER TABLE daily_challenges ADD COLUMN challenge_was_successful BOOLEAN;
+  `, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding challenge_was_successful column:', err);
+    }
+  });
 
   // Openers table
   db.run(`
@@ -192,12 +202,13 @@ app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
 });
 
-// Save Daily Challenge Data
+// Save Daily Challenge Data - UPDATED WITH SUCCESS FIELD
 app.post('/api/data/challenge', (req, res) => {
   try {
     const {
       deviceId,
       challengeCompleted = true,
+      challengeWasSuccessful,  // NEW FIELD
       challengeRating,
       challengeConfidenceLevel,
       challengeNotes,
@@ -209,20 +220,25 @@ app.post('/api/data/challenge', (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
+    console.log('Challenge data received:', { 
+      deviceId, challengeCompleted, challengeWasSuccessful, 
+      challengeRating, challengeConfidenceLevel, challengeType 
+    });
+
     ensureUserExists(deviceId, (err) => {
       if (err) {
         console.error('Error ensuring user exists:', err);
         return res.status(500).json({ error: 'Database error' });
       }
 
-      // Insert challenge data
+      // Insert challenge data with success field
       db.run(
         `INSERT INTO daily_challenges 
-         (device_id, challenge_completed, challenge_rating, challenge_confidence_level, 
-          challenge_notes, challenge_date, challenge_type) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [deviceId, challengeCompleted, challengeRating, challengeConfidenceLevel, 
-         challengeNotes, challengeDate, challengeType],
+         (device_id, challenge_completed, challenge_was_successful, challenge_rating, 
+          challenge_confidence_level, challenge_notes, challenge_date, challenge_type) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [deviceId, challengeCompleted, challengeWasSuccessful, challengeRating, 
+         challengeConfidenceLevel, challengeNotes, challengeDate, challengeType],
         function(err) {
           if (err) {
             console.error('Error saving challenge:', err);
@@ -231,6 +247,8 @@ app.post('/api/data/challenge', (req, res) => {
 
           // Update streak
           updateUserStreak(deviceId, challengeDate);
+
+          console.log(`Challenge saved successfully for ${deviceId}: Success=${challengeWasSuccessful}`);
 
           res.json({ 
             success: true, 
@@ -403,7 +421,7 @@ app.post('/api/data/development', (req, res) => {
   }
 });
 
-// Get User Analytics
+// Get User Analytics - UPDATED WITH SUCCESS RATES
 app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
@@ -423,11 +441,16 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      // Get challenge count
-      db.get("SELECT COUNT(*) as count FROM daily_challenges WHERE device_id = ?", 
-        [deviceId], (err, challengeCount) => {
+      // Get challenge stats with success tracking
+      db.all(`
+        SELECT 
+          COUNT(*) as total_challenges,
+          SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) as successful_challenges
+        FROM daily_challenges 
+        WHERE device_id = ?
+      `, [deviceId], (err, challengeStats) => {
         if (err) {
-          console.error('Error getting challenge count:', err);
+          console.error('Error getting challenge stats:', err);
           return res.status(500).json({ error: 'Database error' });
         }
 
@@ -459,19 +482,39 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               return res.status(500).json({ error: 'Database error' });
             }
 
+            const challengeStatsData = challengeStats[0];
             const openerStatsData = openerStats[0];
             const developmentStatsData = developmentStats[0];
             
-            const successRate = openerStatsData.total_openers > 0 ? 
-              Math.round((openerStatsData.successful_openers / openerStatsData.total_openers) * 100) : 0;
+            // Calculate overall success rate (challenges + openers combined)
+            const totalSuccessfulActions = (challengeStatsData.successful_challenges || 0) + (openerStatsData.successful_openers || 0);
+            const totalActions = (challengeStatsData.total_challenges || 0) + (openerStatsData.total_openers || 0);
+            const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
+
+            // Calculate social confidence percentage (based on 90-day target)
+            const currentStreak = user.current_streak || 0;
+            const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
 
             res.json({
-              currentStreak: user.current_streak || 0,
+              // User streak info
+              currentStreak: currentStreak,
               allTimeBestStreak: user.all_time_best_streak || 0,
-              totalChallenges: challengeCount.count || 0,
+              
+              // Challenge data
+              totalChallenges: challengeStatsData.total_challenges || 0,
+              successfulChallenges: challengeStatsData.successful_challenges || 0,
+              
+              // Opener data
               totalOpeners: openerStatsData.total_openers || 0,
               successfulOpeners: openerStatsData.successful_openers || 0,
-              successRate: successRate,
+              
+              // Combined success rate (THIS IS THE KEY METRIC)
+              overallSuccessRate: overallSuccessRate,
+              
+              // Social confidence calculation
+              socialConfidencePercentage: socialConfidencePercentage,
+              
+              // Development data
               averageRating: Math.round((openerStatsData.avg_rating || 0) * 10) / 10,
               totalModulesStarted: developmentStatsData.total_modules_started || 0,
               completedModules: developmentStatsData.completed_modules || 0,
