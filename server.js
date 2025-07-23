@@ -32,7 +32,7 @@ db.serialize(() => {
     )
   `);
 
-  // Daily challenges table - UPDATED WITH SUCCESS FIELD
+  // Daily challenges table - UPDATED WITH SUCCESS FIELD AND INTEGER CONFIDENCE
   db.run(`
     CREATE TABLE IF NOT EXISTS daily_challenges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,7 +40,7 @@ db.serialize(() => {
       challenge_completed BOOLEAN DEFAULT TRUE,
       challenge_was_successful BOOLEAN,
       challenge_rating INTEGER,
-      challenge_confidence_level TEXT,
+      challenge_confidence_level INTEGER,
       challenge_notes TEXT,
       challenge_date TEXT,
       challenge_type TEXT,
@@ -58,7 +58,40 @@ db.serialize(() => {
     }
   });
 
-  // Openers table
+  // Migrate existing confidence level data from TEXT to INTEGER (4-level system)
+  db.run(`
+    UPDATE daily_challenges 
+    SET challenge_confidence_level = 
+      CASE 
+        WHEN challenge_confidence_level = 'Nervous' THEN 2
+        WHEN challenge_confidence_level = 'Okay' THEN 3
+        WHEN challenge_confidence_level = 'Confident' THEN 4
+        ELSE challenge_confidence_level
+      END
+    WHERE typeof(challenge_confidence_level) = 'text';
+  `, (err) => {
+    if (err) {
+      console.error('Error migrating challenge confidence levels:', err);
+    }
+  });
+
+  db.run(`
+    UPDATE openers 
+    SET opener_confidence_level = 
+      CASE 
+        WHEN opener_confidence_level = 'Nervous' THEN 2
+        WHEN opener_confidence_level = 'Okay' THEN 3  
+        WHEN opener_confidence_level = 'Confident' THEN 4
+        ELSE opener_confidence_level
+      END
+    WHERE typeof(opener_confidence_level) = 'text';
+  `, (err) => {
+    if (err) {
+      console.error('Error migrating opener confidence levels:', err);
+    }
+  });
+
+  // Openers table - UPDATED WITH INTEGER CONFIDENCE
   db.run(`
     CREATE TABLE IF NOT EXISTS openers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +102,7 @@ db.serialize(() => {
       opener_was_used BOOLEAN,
       opener_was_successful BOOLEAN,
       opener_rating INTEGER,
-      opener_confidence_level TEXT,
+      opener_confidence_level INTEGER,
       opener_notes TEXT,
       opener_date TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -225,6 +258,13 @@ app.post('/api/data/challenge', (req, res) => {
       challengeRating, challengeConfidenceLevel, challengeType 
     });
 
+    // Validate confidence level is within 4-level range (1-4)
+    if (challengeConfidenceLevel !== null && challengeConfidenceLevel !== undefined) {
+      if (challengeConfidenceLevel < 1 || challengeConfidenceLevel > 4) {
+        return res.status(400).json({ error: 'Invalid confidence level. Must be 1-4 (1=Anxious, 2=Nervous, 3=Comfortable, 4=Confident)' });
+      }
+    }
+
     ensureUserExists(deviceId, (err) => {
       if (err) {
         console.error('Error ensuring user exists:', err);
@@ -285,8 +325,15 @@ app.post('/api/data/opener', (req, res) => {
 
     console.log('Opener data received:', { 
       deviceId, openerWasUsed, openerWasSuccessful, 
-      openerSetting, openerPurpose 
+      openerSetting, openerPurpose, openerConfidenceLevel 
     });
+
+    // Validate confidence level is within 4-level range (1-4)
+    if (openerConfidenceLevel !== null && openerConfidenceLevel !== undefined) {
+      if (openerConfidenceLevel < 1 || openerConfidenceLevel > 4) {
+        return res.status(400).json({ error: 'Invalid confidence level. Must be 1-4 (1=Anxious, 2=Nervous, 3=Comfortable, 4=Confident)' });
+      }
+    }
 
     ensureUserExists(deviceId, (err) => {
       if (err) {
