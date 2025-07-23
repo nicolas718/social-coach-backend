@@ -152,8 +152,8 @@ const ensureUserExists = (deviceId, callback) => {
   });
 };
 
-// Helper function to calculate and update streak
-const updateUserStreak = (deviceId, challengeDate) => {
+// Helper function to calculate and update streak - UPDATED TO HANDLE BOTH CHALLENGES AND OPENERS
+const updateUserStreak = (deviceId, actionDate) => {
   db.get("SELECT current_streak, all_time_best_streak, last_completion_date FROM users WHERE device_id = ?", 
     [deviceId], (err, user) => {
     if (err) {
@@ -166,14 +166,14 @@ const updateUserStreak = (deviceId, challengeDate) => {
     
     if (user.last_completion_date) {
       const lastDate = new Date(user.last_completion_date);
-      const currentDate = new Date(challengeDate);
+      const currentDate = new Date(actionDate);
       const daysDiff = Math.floor((currentDate - lastDate) / (1000 * 60 * 60 * 24));
       
       if (daysDiff === 1) {
-        // Consecutive day
+        // Consecutive day - streak continues
         newStreak = (user.current_streak || 0) + 1;
       } else if (daysDiff === 0) {
-        // Same day, keep current streak
+        // Same day - keep current streak, don't increment for same-day actions
         newStreak = user.current_streak || 1;
       }
       // If daysDiff > 1, streak resets to 1 (already set above)
@@ -186,7 +186,7 @@ const updateUserStreak = (deviceId, challengeDate) => {
     
     db.run(
       "UPDATE users SET current_streak = ?, all_time_best_streak = ?, last_completion_date = ? WHERE device_id = ?",
-      [newStreak, newBestStreak, challengeDate, deviceId],
+      [newStreak, newBestStreak, actionDate, deviceId],
       (err) => {
         if (err) {
           console.error('Error updating streak:', err);
@@ -202,13 +202,13 @@ app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
 });
 
-// Save Daily Challenge Data - UPDATED WITH SUCCESS FIELD
+// Save Daily Challenge Data - CHALLENGES ALWAYS UPDATE STREAK
 app.post('/api/data/challenge', (req, res) => {
   try {
     const {
       deviceId,
       challengeCompleted = true,
-      challengeWasSuccessful,  // NEW FIELD
+      challengeWasSuccessful,
       challengeRating,
       challengeConfidenceLevel,
       challengeNotes,
@@ -245,10 +245,9 @@ app.post('/api/data/challenge', (req, res) => {
             return res.status(500).json({ error: 'Failed to save challenge data' });
           }
 
-          // Update streak
+          // ALWAYS update streak for completed challenges (regardless of success)
           updateUserStreak(deviceId, challengeDate);
-
-          console.log(`Challenge saved successfully for ${deviceId}: Success=${challengeWasSuccessful}`);
+          console.log(`Challenge completed - streak updated for ${deviceId}: Success=${challengeWasSuccessful}`);
 
           res.json({ 
             success: true, 
@@ -264,7 +263,7 @@ app.post('/api/data/challenge', (req, res) => {
   }
 });
 
-// Save Opener Data
+// Save Opener Data - UPDATED WITH CONDITIONAL STREAK LOGIC
 app.post('/api/data/opener', (req, res) => {
   try {
     const {
@@ -272,8 +271,8 @@ app.post('/api/data/opener', (req, res) => {
       openerText,
       openerSetting,
       openerPurpose,
-      openerWasUsed,
-      openerWasSuccessful,
+      openerWasUsed,          // "Did you use this opener?" - KEY FIELD FOR STREAK
+      openerWasSuccessful,    // "Was it a successful conversation?" - DOESN'T AFFECT STREAK
       openerRating,
       openerConfidenceLevel,
       openerNotes,
@@ -284,13 +283,18 @@ app.post('/api/data/opener', (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
+    console.log('Opener data received:', { 
+      deviceId, openerWasUsed, openerWasSuccessful, 
+      openerSetting, openerPurpose 
+    });
+
     ensureUserExists(deviceId, (err) => {
       if (err) {
         console.error('Error ensuring user exists:', err);
         return res.status(500).json({ error: 'Database error' });
       }
 
-      // Insert opener data
+      // ALWAYS insert opener data (save everything regardless of usage)
       db.run(
         `INSERT INTO openers 
          (device_id, opener_text, opener_setting, opener_purpose, opener_was_used, 
@@ -302,6 +306,14 @@ app.post('/api/data/opener', (req, res) => {
           if (err) {
             console.error('Error saving opener:', err);
             return res.status(500).json({ error: 'Failed to save opener data' });
+          }
+
+          // CONDITIONAL STREAK UPDATE: Only if opener was actually used
+          if (openerWasUsed === true) {
+            updateUserStreak(deviceId, openerDate);
+            console.log(`Opener was USED - streak updated for ${deviceId}: Success=${openerWasSuccessful}`);
+          } else {
+            console.log(`Opener was NOT USED - no streak update for ${deviceId}: Data saved but no streak credit`);
           }
 
           res.json({ 
@@ -454,7 +466,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           return res.status(500).json({ error: 'Database error' });
         }
 
-        // Get opener stats
+        // Get opener stats (only count used openers for success rate)
         db.all(`
           SELECT 
             COUNT(*) as total_openers,
@@ -486,7 +498,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             const openerStatsData = openerStats[0];
             const developmentStatsData = developmentStats[0];
             
-            // Calculate overall success rate (challenges + openers combined)
+            // Calculate overall success rate (challenges + used openers combined)
             const totalSuccessfulActions = (challengeStatsData.successful_challenges || 0) + (openerStatsData.successful_openers || 0);
             const totalActions = (challengeStatsData.total_challenges || 0) + (openerStatsData.total_openers || 0);
             const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
@@ -504,11 +516,11 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               totalChallenges: challengeStatsData.total_challenges || 0,
               successfulChallenges: challengeStatsData.successful_challenges || 0,
               
-              // Opener data
+              // Opener data (only used openers)
               totalOpeners: openerStatsData.total_openers || 0,
               successfulOpeners: openerStatsData.successful_openers || 0,
               
-              // Combined success rate (THIS IS THE KEY METRIC)
+              // Combined success rate (challenges + used openers)
               overallSuccessRate: overallSuccessRate,
               
               // Social confidence calculation
@@ -528,6 +540,90 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
     console.error('Error in analytics endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// DEBUG ENDPOINT - Check streak-contributing actions
+app.get('/api/debug/streak/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  // Get all streak-contributing actions
+  db.all(`
+    SELECT 'challenge' as type, challenge_date as date, challenge_completed as contributed, 
+           challenge_was_successful as was_successful, 'N/A' as was_used
+    FROM daily_challenges 
+    WHERE device_id = ? AND challenge_completed = 1
+    
+    UNION ALL
+    
+    SELECT 'opener' as type, opener_date as date, opener_was_used as contributed,
+           opener_was_successful as was_successful, opener_was_used as was_used
+    FROM openers 
+    WHERE device_id = ? AND opener_was_used = 1
+    
+    ORDER BY date DESC
+  `, [deviceId, deviceId], (err, actions) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      res.json({
+        user: user,
+        streak_contributing_actions: actions,
+        explanation: {
+          challenges: "All completed challenges count toward streak (regardless of success)",
+          openers: "Only USED openers count toward streak (regardless of conversation success)", 
+          unused_openers: "Unused openers are saved but don't contribute to streak"
+        }
+      });
+    });
+  });
+});
+
+// RAW DATA DEBUG ENDPOINT - See all collected form data
+app.get('/api/debug/raw-data/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  // Get all challenge data with form responses
+  db.all(`
+    SELECT id, challenge_was_successful, challenge_rating, challenge_confidence_level, 
+           challenge_notes, challenge_date, challenge_type, created_at
+    FROM daily_challenges 
+    WHERE device_id = ?
+    ORDER BY created_at DESC
+  `, [deviceId], (err, challenges) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    // Get all opener data with form responses
+    db.all(`
+      SELECT id, opener_was_used, opener_was_successful, opener_rating, 
+             opener_confidence_level, opener_notes, opener_date, opener_setting, 
+             opener_purpose, created_at
+      FROM openers 
+      WHERE device_id = ?
+      ORDER BY created_at DESC
+    `, [deviceId], (err, openers) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      res.json({
+        deviceId: deviceId,
+        challenges: challenges,
+        openers: openers,
+        summary: {
+          total_challenges: challenges.length,
+          total_openers: openers.length
+        }
+      });
+    });
+  });
 });
 
 app.post('/generate-suggestions', async (req, res) => {
@@ -741,7 +837,7 @@ Return ONLY a plain text response, no JSON formatting.`;
           content: prompt
         }
       ]
-    });
+    );
 
     const response = aiMessage.content[0].text.trim();
     console.log('AI Coach Response:', response);
