@@ -837,7 +837,7 @@ Return ONLY a plain text response, no JSON formatting.`;
           content: prompt
         }
       ]
-    );
+    });
 
     const response = aiMessage.content[0].text.trim();
     console.log('AI Coach Response:', response);
