@@ -480,7 +480,7 @@ app.post('/api/data/development', (req, res) => {
   }
 });
 
-// Get User Analytics - UPDATED WITH SUCCESS RATES
+// Get User Analytics - ENHANCED WITH ALL CALCULATIONS FOR FRONTEND
 app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
@@ -500,87 +500,202 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      // Get challenge stats with success tracking
-      db.all(`
-        SELECT 
-          COUNT(*) as total_challenges,
-          SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) as successful_challenges
-        FROM daily_challenges 
-        WHERE device_id = ?
-      `, [deviceId], (err, challengeStats) => {
-        if (err) {
-          console.error('Error getting challenge stats:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-
-        // Get opener stats (only count used openers for success rate)
-        db.all(`
-          SELECT 
-            COUNT(*) as total_openers,
-            SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_openers,
-            AVG(opener_rating) as avg_rating
-          FROM openers 
-          WHERE device_id = ? AND opener_was_used = 1
-        `, [deviceId], (err, openerStats) => {
-          if (err) {
-            console.error('Error getting opener stats:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-
-          // Get development module stats
+      // Get all the data needed for calculations
+      Promise.all([
+        // Get challenge data with confidence levels
+        new Promise((resolve, reject) => {
           db.all(`
             SELECT 
-              COUNT(*) as total_modules_started,
+              COUNT(*) as total_challenges,
+              SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) as successful_challenges,
+              AVG(challenge_confidence_level) as avg_challenge_confidence,
+              AVG(challenge_rating) as avg_challenge_rating
+            FROM daily_challenges 
+            WHERE device_id = ?
+          `, [deviceId], (err, result) => {
+            if (err) reject(err);
+            else resolve(result[0]);
+          });
+        }),
+
+        // Get opener data
+        new Promise((resolve, reject) => {
+          db.all(`
+            SELECT 
+              COUNT(CASE WHEN opener_was_used = 1 THEN 1 END) as total_used_openers,
+              SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_openers,
+              AVG(CASE WHEN opener_was_used = 1 THEN opener_confidence_level END) as avg_opener_confidence,
+              AVG(CASE WHEN opener_was_used = 1 THEN opener_rating END) as avg_opener_rating
+            FROM openers 
+            WHERE device_id = ?
+          `, [deviceId], (err, result) => {
+            if (err) reject(err);
+            else resolve(result[0]);
+          });
+        }),
+
+        // Get development module data
+        new Promise((resolve, reject) => {
+          db.all(`
+            SELECT 
+              COUNT(DISTINCT development_module_id) as total_modules_started,
               SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) as completed_modules,
               AVG(development_progress_percentage) as avg_progress
             FROM development_modules 
             WHERE device_id = ?
-          `, [deviceId], (err, developmentStats) => {
-            if (err) {
-              console.error('Error getting development stats:', err);
-              return res.status(500).json({ error: 'Database error' });
-            }
+          `, [deviceId], (err, result) => {
+            if (err) reject(err);
+            else resolve(result[0]);
+          });
+        }),
 
-            const challengeStatsData = challengeStats[0];
-            const openerStatsData = openerStats[0];
-            const developmentStatsData = developmentStats[0];
-            
-            // Calculate overall success rate (challenges + used openers combined)
-            const totalSuccessfulActions = (challengeStatsData.successful_challenges || 0) + (openerStatsData.successful_openers || 0);
-            const totalActions = (challengeStatsData.total_challenges || 0) + (openerStatsData.total_openers || 0);
-            const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
+        // Get weekly activity data (last 7 days, Monday to Sunday)
+        new Promise((resolve, reject) => {
+          const today = new Date();
+          const dayOfWeek = today.getDay();
+          const monday = new Date(today);
+          monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+          monday.setHours(0, 0, 0, 0);
 
-            // Calculate social confidence percentage (based on 90-day target)
-            const currentStreak = user.current_streak || 0;
-            const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
+          const weekDates = [];
+          for (let i = 0; i < 7; i++) {
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + i);
+            weekDates.push(date.toISOString().split('T')[0]);
+          }
 
-            res.json({
-              // User streak info
-              currentStreak: currentStreak,
-              allTimeBestStreak: user.all_time_best_streak || 0,
-              
-              // Challenge data
-              totalChallenges: challengeStatsData.total_challenges || 0,
-              successfulChallenges: challengeStatsData.successful_challenges || 0,
-              
-              // Opener data (only used openers)
-              totalOpeners: openerStatsData.total_openers || 0,
-              successfulOpeners: openerStatsData.successful_openers || 0,
-              
-              // Combined success rate (challenges + used openers)
-              overallSuccessRate: overallSuccessRate,
-              
-              // Social confidence calculation
-              socialConfidencePercentage: socialConfidencePercentage,
-              
-              // Development data
-              averageRating: Math.round((openerStatsData.avg_rating || 0) * 10) / 10,
-              totalModulesStarted: developmentStatsData.total_modules_started || 0,
-              completedModules: developmentStatsData.completed_modules || 0,
-              averageModuleProgress: Math.round((developmentStatsData.avg_progress || 0) * 10) / 10
+          // Get activity for each day of the week
+          const weeklyPromises = weekDates.map(date => {
+            return new Promise((resolveDay, rejectDay) => {
+              db.get(`
+                SELECT 
+                  (SELECT COUNT(*) FROM daily_challenges WHERE device_id = ? AND date(challenge_date) = date(?)) +
+                  (SELECT COUNT(*) FROM openers WHERE device_id = ? AND opener_was_used = 1 AND date(opener_date) = date(?))
+                  as daily_activity
+              `, [deviceId, date, deviceId, date], (err, result) => {
+                if (err) rejectDay(err);
+                else resolveDay(result.daily_activity || 0);
+              });
             });
           });
+
+          Promise.all(weeklyPromises)
+            .then(weeklyData => resolve(weeklyData))
+            .catch(reject);
+        }),
+
+        // Get confidence trend data (last 30 days)
+        new Promise((resolve, reject) => {
+          db.all(`
+            SELECT 
+              AVG(confidence_level) as avg_confidence,
+              MIN(date) as start_date,
+              MAX(date) as end_date
+            FROM (
+              SELECT challenge_confidence_level as confidence_level, challenge_date as date
+              FROM daily_challenges WHERE device_id = ? AND challenge_date >= date('now', '-30 days')
+              UNION ALL
+              SELECT opener_confidence_level as confidence_level, opener_date as date
+              FROM openers WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-30 days')
+            )
+          `, [deviceId, deviceId], (err, result) => {
+            if (err) reject(err);
+            else resolve(result[0]);
+          });
+        })
+
+      ]).then(([challengeStats, openerStats, developmentStats, weeklyActivity, confidenceTrend]) => {
+        
+        // Calculate base metrics
+        const currentStreak = user.current_streak || 0;
+        const totalActions = (challengeStats.total_challenges || 0) + (openerStats.total_used_openers || 0);
+        const successfulActions = (challengeStats.successful_challenges || 0) + (openerStats.successful_openers || 0);
+        const overallSuccessRate = totalActions > 0 ? Math.round((successfulActions / totalActions) * 100) : 0;
+        
+        // Social confidence percentage (based on multiple factors)
+        // Factors: streak progress (40%), average confidence (30%), success rate (30%)
+        const streakProgress = Math.min(100, Math.round((currentStreak / 30) * 100)); // 30 days = 100%
+        const avgConfidence = ((challengeStats.avg_challenge_confidence || 0) + (openerStats.avg_opener_confidence || 0)) / 2;
+        const confidencePercentage = avgConfidence > 0 ? Math.round((avgConfidence / 4) * 100) : 0; // 4 is max confidence
+        const socialConfidencePercentage = Math.round(
+          (streakProgress * 0.4) + 
+          (confidencePercentage * 0.3) + 
+          (overallSuccessRate * 0.3)
+        );
+
+        // Calculate Personal Benefits (0-100 scale)
+        
+        // 1. Improved Confidence: Based on confidence level trends and streak
+        const improvedConfidence = Math.round(
+          (confidencePercentage * 0.5) + // Current confidence level
+          (streakProgress * 0.3) + // Consistency factor
+          (overallSuccessRate * 0.2) // Success factor
+        );
+
+        // 2. Reduced Social Anxiety: Inverse of anxiety indicators
+        const anxietyReduction = avgConfidence > 0 ? Math.round(((avgConfidence - 1) / 3) * 100) : 0; // Scale 1-4 to 0-100
+        const reducedSocialAnxiety = Math.round(
+          (anxietyReduction * 0.6) + // Main factor: moving away from anxiety levels
+          (totalActions > 0 ? Math.min(100, totalActions * 2) * 0.4 : 0) // Practice factor
+        );
+
+        // 3. Enhanced Communication Skills: Based on opener success and module progress
+        const moduleProgress = developmentStats.avg_progress || 0;
+        const openerSuccessRate = openerStats.total_used_openers > 0 
+          ? Math.round((openerStats.successful_openers / openerStats.total_used_openers) * 100) 
+          : 0;
+        const enhancedCommunicationSkills = Math.round(
+          (openerSuccessRate * 0.4) + // Opener success
+          (moduleProgress * 0.3) + // Learning progress
+          (overallSuccessRate * 0.3) // General success
+        );
+
+        // 4. Increased Social Energy: Based on activity frequency and consistency
+        const avgWeeklyActivity = weeklyActivity.reduce((a, b) => a + b, 0) / 7;
+        const activityScore = Math.min(100, avgWeeklyActivity * 25); // 4 activities/day = 100%
+        const increasedSocialEnergy = Math.round(
+          (activityScore * 0.5) + // Activity level
+          (streakProgress * 0.3) + // Consistency
+          (confidencePercentage * 0.2) // Confidence contribution
+        );
+
+        // 5. Better Relationship Building: Based on successful interactions and progress
+        const avgRating = ((challengeStats.avg_challenge_rating || 0) + (openerStats.avg_opener_rating || 0)) / 2;
+        const ratingScore = avgRating > 0 ? Math.round((avgRating / 5) * 100) : 0;
+        const betterRelationshipBuilding = Math.round(
+          (successfulActions > 0 ? Math.min(100, successfulActions * 3) * 0.4 : 0) + // Success count
+          (ratingScore * 0.3) + // Quality of interactions
+          (moduleProgress * 0.3) // Learning application
+        );
+
+        // Return the complete analytics data
+        res.json({
+          // Core metrics (already in your backend)
+          currentStreak: currentStreak,
+          allTimeBestStreak: user.all_time_best_streak || 0,
+          totalChallenges: challengeStats.total_challenges || 0,
+          successfulChallenges: challengeStats.successful_challenges || 0,
+          totalOpeners: openerStats.total_used_openers || 0,
+          successfulOpeners: openerStats.successful_openers || 0,
+          averageRating: Math.round(((challengeStats.avg_challenge_rating || 0) + (openerStats.avg_opener_rating || 0)) / 2 * 10) / 10,
+          totalModulesStarted: developmentStats.total_modules_started || 0,
+          completedModules: developmentStats.completed_modules || 0,
+          averageModuleProgress: Math.round((developmentStats.avg_progress || 0) * 10) / 10,
+
+          // New fields for frontend analytics screen
+          socialConfidencePercentage: socialConfidencePercentage,
+          weeklyActivity: weeklyActivity,
+          overallSuccessRate: overallSuccessRate,
+          improvedConfidence: improvedConfidence,
+          reducedSocialAnxiety: reducedSocialAnxiety,
+          enhancedCommunicationSkills: enhancedCommunicationSkills,
+          increasedSocialEnergy: increasedSocialEnergy,
+          betterRelationshipBuilding: betterRelationshipBuilding
         });
+
+      }).catch(error => {
+        console.error('Error calculating analytics:', error);
+        res.status(500).json({ error: 'Failed to calculate analytics' });
       });
     });
   } catch (error) {
@@ -612,96 +727,95 @@ app.get('/api/debug/streak/:deviceId', (req, res) => {
     if (err) {
       return res.status(500).json({ error: 'Database error' });
     }
-    
-    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      res.json({
-        user: user,
-        streak_contributing_actions: actions,
-        explanation: {
-          challenges: "All completed challenges count toward streak (regardless of success)",
-          openers: "Only USED openers count toward streak (regardless of conversation success)", 
-          unused_openers: "Unused openers are saved but don't contribute to streak"
-        }
-      });
-    });
-  });
+db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+     if (err) {
+       return res.status(500).json({ error: 'Database error' });
+     }
+     
+     res.json({
+       user: user,
+       streak_contributing_actions: actions,
+       explanation: {
+         challenges: "All completed challenges count toward streak (regardless of success)",
+         openers: "Only USED openers count toward streak (regardless of conversation success)", 
+         unused_openers: "Unused openers are saved but don't contribute to streak"
+       }
+     });
+   });
+ });
 });
 
 // RAW DATA DEBUG ENDPOINT - See all collected form data
 app.get('/api/debug/raw-data/:deviceId', (req, res) => {
-  const { deviceId } = req.params;
-  
-  // Get all challenge data with form responses
-  db.all(`
-    SELECT id, challenge_was_successful, challenge_rating, challenge_confidence_level, 
-           challenge_notes, challenge_date, challenge_type, created_at
-    FROM daily_challenges 
-    WHERE device_id = ?
-    ORDER BY created_at DESC
-  `, [deviceId], (err, challenges) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    // Get all opener data with form responses
-    db.all(`
-      SELECT id, opener_was_used, opener_was_successful, opener_rating, 
-             opener_confidence_level, opener_notes, opener_date, opener_setting, 
-             opener_purpose, created_at
-      FROM openers 
-      WHERE device_id = ?
-      ORDER BY created_at DESC
-    `, [deviceId], (err, openers) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      res.json({
-        deviceId: deviceId,
-        challenges: challenges,
-        openers: openers,
-        summary: {
-          total_challenges: challenges.length,
-          total_openers: openers.length
-        }
-      });
-    });
-  });
+ const { deviceId } = req.params;
+ 
+ // Get all challenge data with form responses
+ db.all(`
+   SELECT id, challenge_was_successful, challenge_rating, challenge_confidence_level, 
+          challenge_notes, challenge_date, challenge_type, created_at
+   FROM daily_challenges 
+   WHERE device_id = ?
+   ORDER BY created_at DESC
+ `, [deviceId], (err, challenges) => {
+   if (err) {
+     return res.status(500).json({ error: 'Database error' });
+   }
+   
+   // Get all opener data with form responses
+   db.all(`
+     SELECT id, opener_was_used, opener_was_successful, opener_rating, 
+            opener_confidence_level, opener_notes, opener_date, opener_setting, 
+            opener_purpose, created_at
+     FROM openers 
+     WHERE device_id = ?
+     ORDER BY created_at DESC
+   `, [deviceId], (err, openers) => {
+     if (err) {
+       return res.status(500).json({ error: 'Database error' });
+     }
+     
+     res.json({
+       deviceId: deviceId,
+       challenges: challenges,
+       openers: openers,
+       summary: {
+         total_challenges: challenges.length,
+         total_openers: openers.length
+       }
+     });
+   });
+ });
 });
 
 app.post('/generate-suggestions', async (req, res) => {
-  try {
-    const { purpose, setting } = req.body;
-    console.log('Received suggestions request:', { purpose, setting });
-    
-    const key = `${purpose}-${setting}`;
-    const suggestions = suggestionRotations[key] || ["General location", "Another spot", "Third place", "Fourth option"];
-    
-    console.log('Returning hardcoded suggestions for:', key, suggestions);
-    res.json({ suggestions });
-    
-  } catch (error) {
-    console.error('Error getting suggestions:', error);
-    res.status(500).json({ 
-      error: 'Failed to get suggestions', 
-      details: error.message 
-    });
-  }
+ try {
+   const { purpose, setting } = req.body;
+   console.log('Received suggestions request:', { purpose, setting });
+   
+   const key = `${purpose}-${setting}`;
+   const suggestions = suggestionRotations[key] || ["General location", "Another spot", "Third place", "Fourth option"];
+   
+   console.log('Returning hardcoded suggestions for:', key, suggestions);
+   res.json({ suggestions });
+   
+ } catch (error) {
+   console.error('Error getting suggestions:', error);
+   res.status(500).json({ 
+     error: 'Failed to get suggestions', 
+     details: error.message 
+   });
+ }
 });
 
 app.post('/generate-opener', async (req, res) => {
-  try {
-    const { purpose, setting, context } = req.body;
-    console.log('Received opener request:', { purpose, setting, context });
-    
-    // Handle optional context
-    const contextText = context && context.trim() ? context : `a ${setting} environment`;
-    
-    const prompt = `Create a conversation opener for:
+ try {
+   const { purpose, setting, context } = req.body;
+   console.log('Received opener request:', { purpose, setting, context });
+   
+   // Handle optional context
+   const contextText = context && context.trim() ? context : `a ${setting} environment`;
+   
+   const prompt = `Create a conversation opener for:
 
 Purpose: ${purpose}
 Setting: ${setting}  
@@ -716,61 +830,61 @@ Generate:
 
 Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 400,
-      system: "You create contextually perfect conversation guidance. Return only valid JSON.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    });
+   const message = await anthropic.messages.create({
+     model: "claude-3-5-haiku-20241022",
+     max_tokens: 400,
+     system: "You create contextually perfect conversation guidance. Return only valid JSON.",
+     messages: [
+       {
+         role: "user",
+         content: prompt
+       }
+     ]
+   });
 
-    const result = message.content[0].text.trim();
-    console.log('Raw Claude Response:', result);
-    
-    // Clean up the response before parsing
-    let cleanResult = result;
-    
-    // Remove markdown code blocks if present
-    cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    
-    // Find JSON object in the response
-    const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      cleanResult = jsonMatch[0];
-    }
-    
-    console.log('Cleaned Response:', cleanResult);
-    
-    // Parse the JSON
-    const openerData = JSON.parse(cleanResult);
-    
-    // Validate the response has required fields
-    if (!openerData.opener || !openerData.followUps || !openerData.exitStrategy || !openerData.tip || !openerData.confidenceBoost) {
-      throw new Error('Invalid response format from AI');
-    }
-    
-    res.json(openerData);
-    
-  } catch (error) {
-    console.error('Error generating opener:', error);
-    console.error('Error details:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to generate opener', 
-      details: error.message 
-    });
-  }
+   const result = message.content[0].text.trim();
+   console.log('Raw Claude Response:', result);
+   
+   // Clean up the response before parsing
+   let cleanResult = result;
+   
+   // Remove markdown code blocks if present
+   cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+   
+   // Find JSON object in the response
+   const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+   if (jsonMatch) {
+     cleanResult = jsonMatch[0];
+   }
+   
+   console.log('Cleaned Response:', cleanResult);
+   
+   // Parse the JSON
+   const openerData = JSON.parse(cleanResult);
+   
+   // Validate the response has required fields
+   if (!openerData.opener || !openerData.followUps || !openerData.exitStrategy || !openerData.tip || !openerData.confidenceBoost) {
+     throw new Error('Invalid response format from AI');
+   }
+   
+   res.json(openerData);
+   
+ } catch (error) {
+   console.error('Error generating opener:', error);
+   console.error('Error details:', error.message);
+   res.status(500).json({ 
+     error: 'Failed to generate opener', 
+     details: error.message 
+   });
+ }
 });
 
 app.post('/generate-daily-challenge', async (req, res) => {
-  try {
-    const { level = "beginner" } = req.body;
-    console.log('Received daily challenge request:', { level });
-    
-    const prompt = `Generate a daily social challenge for someone with ${level} social confidence level.
+ try {
+   const { level = "beginner" } = req.body;
+   console.log('Received daily challenge request:', { level });
+   
+   const prompt = `Generate a daily social challenge for someone with ${level} social confidence level.
 
 Create a challenge that:
 - Is achievable for someone at ${level} level
@@ -787,80 +901,80 @@ Generate:
 
 Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badge`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 500,
-      system: "You create progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions. Return only valid JSON.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    });
+   const message = await anthropic.messages.create({
+     model: "claude-3-5-haiku-20241022",
+     max_tokens: 500,
+     system: "You create progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions. Return only valid JSON.",
+     messages: [
+       {
+         role: "user",
+         content: prompt
+       }
+     ]
+   });
 
-    const result = message.content[0].text.trim();
-    console.log('Raw Claude Daily Challenge Response:', result);
-    
-    // Clean up the response before parsing
-    let cleanResult = result;
-    
-    // Remove markdown code blocks if present
-    cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    
-    // Find JSON object in the response
-    const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      cleanResult = jsonMatch[0];
-    }
-    
-    console.log('Cleaned Daily Challenge Response:', cleanResult);
-    
-    // Parse the JSON
-    const challengeData = JSON.parse(cleanResult);
-    
-    // Validate the response has required fields
-    if (!challengeData.challenge || !challengeData.description || !challengeData.tips || !challengeData.whyThisMatters || !challengeData.badge) {
-      throw new Error('Invalid response format from AI');
-    }
-    
-    res.json(challengeData);
-    
-  } catch (error) {
-    console.error('Error generating daily challenge:', error);
-    console.error('Error details:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to generate daily challenge', 
-      details: error.message 
-    });
-  }
+   const result = message.content[0].text.trim();
+   console.log('Raw Claude Daily Challenge Response:', result);
+   
+   // Clean up the response before parsing
+   let cleanResult = result;
+   
+   // Remove markdown code blocks if present
+   cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+   
+   // Find JSON object in the response
+   const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+   if (jsonMatch) {
+     cleanResult = jsonMatch[0];
+   }
+   
+   console.log('Cleaned Daily Challenge Response:', cleanResult);
+   
+   // Parse the JSON
+   const challengeData = JSON.parse(cleanResult);
+   
+   // Validate the response has required fields
+   if (!challengeData.challenge || !challengeData.description || !challengeData.tips || !challengeData.whyThisMatters || !challengeData.badge) {
+     throw new Error('Invalid response format from AI');
+   }
+   
+   res.json(challengeData);
+   
+ } catch (error) {
+   console.error('Error generating daily challenge:', error);
+   console.error('Error details:', error.message);
+   res.status(500).json({ 
+     error: 'Failed to generate daily challenge', 
+     details: error.message 
+   });
+ }
 });
 
 app.post('/api/ai-coach/chat', async (req, res) => {
-  try {
-    const { message, context = {} } = req.body;
-    console.log('Received AI coach chat request:', { message, context });
-    
-    if (!message || !message.trim()) {
-      return res.status(400).json({ 
-        error: 'Message is required', 
-        details: 'Please provide a message to chat with the AI coach' 
-      });
-    }
+ try {
+   const { message, context = {} } = req.body;
+   console.log('Received AI coach chat request:', { message, context });
+   
+   if (!message || !message.trim()) {
+     return res.status(400).json({ 
+       error: 'Message is required', 
+       details: 'Please provide a message to chat with the AI coach' 
+     });
+   }
 
-    // Build context string for the prompt
-    let contextInfo = "";
-    if (context.userStreak) {
-      contextInfo += `User has a ${context.userStreak}-day streak. `;
-    }
-    if (context.recentChallenges) {
-      contextInfo += `Completed ${context.recentChallenges} challenges recently. `;
-    }
-    if (context.successRate) {
-      contextInfo += `Success rate: ${context.successRate}%. `;
-    }
+   // Build context string for the prompt
+   let contextInfo = "";
+   if (context.userStreak) {
+     contextInfo += `User has a ${context.userStreak}-day streak. `;
+   }
+   if (context.recentChallenges) {
+     contextInfo += `Completed ${context.recentChallenges} challenges recently. `;
+   }
+   if (context.successRate) {
+     contextInfo += `Success rate: ${context.successRate}%. `;
+   }
 
-    const prompt = `You are a supportive social confidence coach. A user says: "${message}"
+   const prompt = `You are a supportive social confidence coach. A user says: "${message}"
 
 ${contextInfo ? `Context: ${contextInfo}` : ''}
 
@@ -874,64 +988,64 @@ Provide a supportive coaching response that:
 
 Return ONLY a plain text response, no JSON formatting.`;
 
-    const aiMessage = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 150,
-      system: "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    });
+   const aiMessage = await anthropic.messages.create({
+     model: "claude-3-5-haiku-20241022",
+     max_tokens: 150,
+     system: "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available.",
+     messages: [
+       {
+         role: "user",
+         content: prompt
+       }
+     ]
+   });
 
-    const response = aiMessage.content[0].text.trim();
-    console.log('AI Coach Response:', response);
-    
-    // Generate messageId and timestamp
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const timestamp = new Date().toISOString();
-    
-    res.json({
-      response: response,
-      messageId: messageId,
-      timestamp: timestamp
-    });
-    
-  } catch (error) {
-    console.error('Error in AI coach chat:', error);
-    console.error('Error details:', error.message);
-    res.status(500).json({ 
-      error: 'Failed to get AI coach response', 
-      details: error.message 
-    });
-  }
+   const response = aiMessage.content[0].text.trim();
+   console.log('AI Coach Response:', response);
+   
+   // Generate messageId and timestamp
+   const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+   const timestamp = new Date().toISOString();
+   
+   res.json({
+     response: response,
+     messageId: messageId,
+     timestamp: timestamp
+   });
+   
+ } catch (error) {
+   console.error('Error in AI coach chat:', error);
+   console.error('Error details:', error.message);
+   res.status(500).json({ 
+     error: 'Failed to get AI coach response', 
+     details: error.message 
+   });
+ }
 });
 
 app.get('/api/breathwork/affirmations', async (req, res) => {
-  try {
-    console.log('Received breathwork affirmations request');
-    
-    // Shuffle the affirmations array and return 10-15 random ones
-    const shuffled = [...breathworkAffirmations].sort(() => 0.5 - Math.random());
-    const selectedAffirmations = shuffled.slice(0, 12);
-    
-    console.log('Returning affirmations:', selectedAffirmations.length);
-    
-    res.json({
-      affirmations: selectedAffirmations
-    });
-    
-  } catch (error) {
-    console.error('Error getting breathwork affirmations:', error);
-    res.status(500).json({ 
-      error: 'Failed to get affirmations', 
-      details: error.message 
-    });
-  }
+ try {
+   console.log('Received breathwork affirmations request');
+   
+   // Shuffle the affirmations array and return 10-15 random ones
+   const shuffled = [...breathworkAffirmations].sort(() => 0.5 - Math.random());
+   const selectedAffirmations = shuffled.slice(0, 12);
+   
+   console.log('Returning affirmations:', selectedAffirmations.length);
+   
+   res.json({
+     affirmations: selectedAffirmations
+   });
+   
+ } catch (error) {
+   console.error('Error getting breathwork affirmations:', error);
+   res.status(500).json({ 
+     error: 'Failed to get affirmations', 
+     details: error.message 
+   });
+ }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+ console.log(`Server running on port ${PORT}`);
 });
