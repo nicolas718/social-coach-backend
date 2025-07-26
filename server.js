@@ -231,6 +231,105 @@ const updateUserStreak = (deviceId, actionDate) => {
   });
 };
 
+// Helper function to calculate Social Zone level with grace period logic
+const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLevelAchieved, allTimeMaxStreak) => {
+  // Base level requirements (days needed to reach each level)
+  const baseLevelRequirements = {
+    'Warming Up': 0,
+    'Breaking Through': 7,
+    'Coming Alive': 21,
+    'Charming': 46,
+    'Socialite': 90
+  };
+
+  // Grace periods for each level
+  const gracePeriods = {
+    'Warming Up': 0,
+    'Breaking Through': 2,
+    'Coming Alive': 3,
+    'Charming': 5,
+    'Socialite': 7
+  };
+
+  // Calculate level based on current streak
+  let currentLevel = 'Warming Up';
+  if (currentStreak >= 90) currentLevel = 'Socialite';
+  else if (currentStreak >= 46) currentLevel = 'Charming';
+  else if (currentStreak >= 21) currentLevel = 'Coming Alive';
+  else if (currentStreak >= 7) currentLevel = 'Breaking Through';
+
+  // If streak is broken (currentStreak = 0), check grace period logic
+  if (currentStreak === 0 && daysWithoutActivity > 0) {
+    // Determine what level they had before the break
+    let previousLevel = 'Warming Up';
+    if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
+    else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
+    else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
+    else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
+
+    // Check if still within grace period
+    const gracePeriod = gracePeriods[previousLevel];
+    if (daysWithoutActivity <= gracePeriod && gracePeriod > 0) {
+      return {
+        level: previousLevel,
+        isInGracePeriod: true,
+        gracePeriodLeft: gracePeriod - daysWithoutActivity
+      };
+    } else if (gracePeriod > 0) {
+      // Grace period expired, drop one level
+      const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+      const previousIndex = levels.indexOf(previousLevel);
+      const droppedLevel = previousIndex > 0 ? levels[previousIndex - 1] : 'Warming Up';
+      return {
+        level: droppedLevel,
+        isInGracePeriod: false,
+        droppedFrom: previousLevel
+      };
+    }
+  }
+
+  // Apply streak recovery boost (25% faster if they've been at this level before)
+  const hasBeenAtHigherLevel = highestLevelAchieved && 
+    Object.keys(baseLevelRequirements).indexOf(highestLevelAchieved) > 
+    Object.keys(baseLevelRequirements).indexOf(currentLevel);
+
+  if (hasBeenAtHigherLevel && currentStreak > 0) {
+    // Check if they qualify for a boosted level
+    const boostedStreak = Math.floor(currentStreak / 0.75); // 25% boost
+    let boostedLevel = currentLevel;
+    if (boostedStreak >= 90) boostedLevel = 'Socialite';
+    else if (boostedStreak >= 46) boostedLevel = 'Charming';
+    else if (boostedStreak >= 21) boostedLevel = 'Coming Alive';
+    else if (boostedStreak >= 7) boostedLevel = 'Breaking Through';
+
+    if (boostedLevel !== currentLevel) {
+      return {
+        level: boostedLevel,
+        isBoosted: true,
+        normalStreak: currentStreak,
+        boostedStreak: boostedStreak
+      };
+    }
+  }
+
+  return {
+    level: currentLevel,
+    isInGracePeriod: false,
+    isBoosted: false
+  };
+};
+
+// Helper function to calculate days without activity
+const calculateDaysWithoutActivity = (lastActivityDate) => {
+  if (!lastActivityDate) return 999; // No activity recorded
+  
+  const lastDate = new Date(lastActivityDate);
+  const today = new Date();
+  const daysDiff = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+  
+  return daysDiff;
+};
+
 app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
 });
@@ -735,6 +834,114 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
     });
   } catch (error) {
     console.error('Error in analytics endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Home Screen Data API Endpoint
+app.get('/api/data/home/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    // Get user info
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        console.error('Error getting user:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get user's highest level ever achieved
+      db.get(`
+        SELECT 
+          CASE 
+            WHEN all_time_best_streak >= 90 THEN 'Socialite'
+            WHEN all_time_best_streak >= 46 THEN 'Charming'
+            WHEN all_time_best_streak >= 21 THEN 'Coming Alive'
+            WHEN all_time_best_streak >= 7 THEN 'Breaking Through'
+            ELSE 'Warming Up'
+          END as highest_level_achieved
+        FROM users WHERE device_id = ?
+      `, [deviceId], (err, levelData) => {
+        if (err) {
+          console.error('Error getting level data:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Get last 7 days of activity (challenges + used openers)
+        db.all(`
+          SELECT DISTINCT date(activity_date) as activity_date
+          FROM (
+            SELECT challenge_date as activity_date
+            FROM daily_challenges 
+            WHERE device_id = ? AND challenge_date >= date('now', '-7 days')
+            
+            UNION
+            
+            SELECT opener_date as activity_date
+            FROM openers 
+            WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-7 days')
+          ) activities
+          ORDER BY activity_date
+        `, [deviceId, deviceId], (err, weeklyActivity) => {
+          if (err) {
+            console.error('Error getting weekly activity:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          // Calculate days without activity
+          const daysWithoutActivity = calculateDaysWithoutActivity(user.last_completion_date);
+          
+          // Calculate Social Zone level with grace period logic
+          const socialZoneData = calculateSocialZoneLevel(
+            user.current_streak || 0,
+            daysWithoutActivity,
+            levelData?.highest_level_achieved,
+            user.all_time_best_streak || 0
+          );
+
+          // Generate weekly activity array (last 7 days, boolean values)
+          const weeklyActivityArray = [];
+          const today = new Date();
+          const activityDates = weeklyActivity.map(row => row.activity_date);
+          
+          for (let i = 6; i >= 0; i--) {
+            const checkDate = new Date(today);
+            checkDate.setDate(today.getDate() - i);
+            const dateString = checkDate.toISOString().split('T')[0];
+            weeklyActivityArray.push(activityDates.includes(dateString));
+          }
+
+          // Check if user has activity today
+          const todayString = today.toISOString().split('T')[0];
+          const hasActivityToday = activityDates.includes(todayString);
+
+          console.log(`Home screen data calculated for ${deviceId}:`, {
+            currentStreak: user.current_streak || 0,
+            socialZoneLevel: socialZoneData.level,
+            weeklyActivity: weeklyActivityArray,
+            hasActivityToday: hasActivityToday
+          });
+
+          // Return clean home screen data (matching frontend structure)
+          res.json({
+            currentStreak: user.current_streak || 0,
+            socialZoneLevel: socialZoneData.level,
+            weeklyActivity: weeklyActivityArray,
+            hasActivityToday: hasActivityToday
+          });
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in home screen endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
