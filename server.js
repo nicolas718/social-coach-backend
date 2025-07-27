@@ -837,9 +837,8 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   // Social confidence percentage (based on 90-day target)
                   const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
                   
-                  // Generate streak-aware weekly activity array (last 7 days)
+                  // Generate streak-aware weekly activity array (last 7 days from most recent activity)
                   const weeklyActivityArray = [];
-                  const today = new Date();
                   
                   // Create a map of dates to activity counts
                   const activityMap = {};
@@ -873,9 +872,14 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                     }
                   }
                   
+                  // Use the most recent activity date as the reference point for 7-day window
+                  const referenceDate = activityDates.length > 0 ? 
+                    new Date(Math.max(...activityDates.map(date => new Date(date).getTime()))) : 
+                    new Date();
+                  
                   for (let i = 6; i >= 0; i--) {
-                    const checkDate = new Date(today);
-                    checkDate.setDate(today.getDate() - i);
+                    const checkDate = new Date(referenceDate);
+                    checkDate.setDate(referenceDate.getDate() - i);
                     const dateString = checkDate.toISOString().split('T')[0];
                     const activityCount = activityMap[dateString] || 0;
                     
@@ -1077,9 +1081,8 @@ app.get('/api/data/home/:deviceId', (req, res) => {
             user.all_time_best_streak || 0
           );
 
-          // Generate streak-aware weekly activity array (last 7 days)
+          // Generate streak-aware weekly activity array (last 7 days from most recent activity)
           const weeklyActivityArray = [];
-          const today = new Date();
           const activityDates = weeklyActivity.map(row => row.activity_date);
           
           console.log('=== WEEKLY ACTIVITY CALCULATION DEBUG ===');
@@ -1107,9 +1110,16 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           
           console.log('Consecutive streak dates calculated:', consecutiveStreakDates);
           
+          // Use the most recent activity date as the reference point for 7-day window
+          const referenceDate = activityDates.length > 0 ? 
+            new Date(Math.max(...activityDates.map(date => new Date(date).getTime()))) : 
+            new Date();
+          
+          console.log('Reference date for 7-day window:', referenceDate.toISOString().split('T')[0]);
+          
           for (let i = 6; i >= 0; i--) {
-            const checkDate = new Date(today);
-            checkDate.setDate(today.getDate() - i);
+            const checkDate = new Date(referenceDate);
+            checkDate.setDate(referenceDate.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
             
             let activityStatus = 'none'; // Default: no activity
