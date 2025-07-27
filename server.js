@@ -1044,19 +1044,19 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           return res.status(500).json({ error: 'Database error' });
         }
 
-        // Get last 7 days of activity (challenges + used openers)
+        // Get last 14 days of activity to ensure we capture full streak range
         db.all(`
           SELECT DISTINCT date(activity_date) as activity_date
           FROM (
             SELECT challenge_date as activity_date
             FROM daily_challenges 
-            WHERE device_id = ? AND challenge_date >= date('now', '-7 days')
+            WHERE device_id = ? AND challenge_date >= date('now', '-14 days')
             
             UNION
             
             SELECT opener_date as activity_date
             FROM openers 
-            WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-7 days')
+            WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-14 days')
           ) activities
           ORDER BY activity_date
         `, [deviceId, deviceId], (err, weeklyActivity) => {
@@ -1178,19 +1178,19 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      // Get last 7 days of activity (challenges + used openers)
+      // Get last 14 days of activity (challenges + used openers)
       db.all(`
         SELECT DISTINCT date(activity_date) as activity_date
         FROM (
           SELECT challenge_date as activity_date
           FROM daily_challenges 
-          WHERE device_id = ? AND challenge_date >= date('now', '-7 days')
+          WHERE device_id = ? AND challenge_date >= date('now', '-14 days')
           
           UNION
           
           SELECT opener_date as activity_date
           FROM openers 
-          WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-7 days')
+          WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-14 days')
         ) activities
         ORDER BY activity_date
       `, [deviceId, deviceId], (err, weeklyActivity) => {
