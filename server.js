@@ -847,13 +847,35 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                     activityMap[row.activity_date] = row.activity_count;
                   });
                   
-                  // Calculate the streak start date (working backwards from last completion)
-                  let streakStartDate = null;
+                  // Get activity dates for streak calculation
+                  const activityDates = Object.keys(activityMap);
                   
-                  if (user.last_completion_date && currentStreak > 0) {
-                    const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
-                    streakStartDate = new Date(lastCompletionDate);
-                    streakStartDate.setDate(lastCompletionDate.getDate() - (currentStreak - 1));
+                  console.log('=== ANALYTICS WEEKLY ACTIVITY DEBUG ===');
+                  console.log('Current streak:', currentStreak);
+                  console.log('Last completion date:', user.last_completion_date);
+                  console.log('Activity dates found:', activityDates);
+                  
+                  // Find the actual consecutive streak from the end
+                  let consecutiveStreakDates = [];
+                  if (activityDates.length > 0 && user.last_completion_date) {
+                    const lastCompletionDateStr = user.last_completion_date.split('T')[0];
+                    
+                    // Start from the last completion date and work backwards to find consecutive days
+                    let currentDate = new Date(lastCompletionDateStr + 'T00:00:00Z');
+                    let streakCount = 0;
+                    
+                    // Build consecutive streak by checking each day backwards
+                    while (streakCount < currentStreak) {
+                      const currentDateStr = currentDate.toISOString().split('T')[0];
+                      if (activityDates.includes(currentDateStr)) {
+                        consecutiveStreakDates.unshift(currentDateStr); // Add to beginning
+                        streakCount++;
+                        currentDate.setDate(currentDate.getDate() - 1); // Go back one day
+                      } else {
+                        // If we find a gap, stop building the streak
+                        break;
+                      }
+                    }
                   }
                   
                   for (let i = 6; i >= 0; i--) {
@@ -864,29 +886,22 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                     
                     let activityStatus = 'none';
                     
-                    if (streakStartDate) {
-                      const streakStartDateString = streakStartDate.toISOString().split('T')[0];
-                      const lastCompletionDateString = user.last_completion_date.split('T')[0];
-                      
-                      if (dateString >= streakStartDateString && dateString <= lastCompletionDateString) {
-                        if (activityCount > 0) {
-                          activityStatus = 'streak';
-                        } else {
-                          activityStatus = 'missed';
-                        }
-                      } else if (dateString > lastCompletionDateString) {
-                        if (activityCount > 0) {
-                          activityStatus = 'activity';
-                        }
-                      }
+                    if (consecutiveStreakDates.includes(dateString)) {
+                      // This date is part of the current consecutive streak
+                      activityStatus = 'streak';
+                    } else if (activityCount > 0) {
+                      // Has activity but not part of current streak
+                      activityStatus = 'activity';
                     } else {
-                      if (activityCount > 0) {
-                        activityStatus = 'activity';
-                      }
+                      // No activity on this date
+                      activityStatus = 'none';
                     }
                     
                     weeklyActivityArray.push(activityStatus);
                   }
+                  
+                  console.log('Analytics final weekly activity array:', weeklyActivityArray);
+                  console.log('=== END ANALYTICS WEEKLY ACTIVITY DEBUG ===\n');
                   
                   // Calculate Personal Benefits (MVP simplified formulas)
                   
@@ -1071,60 +1086,64 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           const today = new Date();
           const activityDates = weeklyActivity.map(row => row.activity_date);
           
-          // Calculate the streak start date (working backwards from last completion)
-          const currentStreak = user.current_streak || 0;
-          let streakStartDate = null;
+          console.log('=== WEEKLY ACTIVITY CALCULATION DEBUG ===');
+          console.log('Current streak:', user.current_streak);
+          console.log('Last completion date:', user.last_completion_date);
+          console.log('Activity dates found:', activityDates);
           
-          if (user.last_completion_date && currentStreak > 0) {
-            const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
-            streakStartDate = new Date(lastCompletionDate);
-            streakStartDate.setDate(lastCompletionDate.getDate() - (currentStreak - 1));
+          // Sort activity dates to find consecutive streak
+          const sortedActivityDates = [...activityDates].sort();
+          console.log('Sorted activity dates:', sortedActivityDates);
+          
+          // Find the actual consecutive streak from the end
+          let consecutiveStreakDates = [];
+          if (sortedActivityDates.length > 0 && user.last_completion_date) {
+            const lastCompletionDateStr = user.last_completion_date.split('T')[0];
+            
+            // Start from the last completion date and work backwards to find consecutive days
+            let currentDate = new Date(lastCompletionDateStr + 'T00:00:00Z');
+            let streakCount = 0;
+            
+            // Build consecutive streak by checking each day backwards
+            while (streakCount < (user.current_streak || 0)) {
+              const currentDateStr = currentDate.toISOString().split('T')[0];
+              if (activityDates.includes(currentDateStr)) {
+                consecutiveStreakDates.unshift(currentDateStr); // Add to beginning
+                streakCount++;
+                currentDate.setDate(currentDate.getDate() - 1); // Go back one day
+              } else {
+                // If we find a gap, stop building the streak
+                break;
+              }
+            }
           }
           
-          console.log('Streak calculation for weekly activity:', {
-            currentStreak,
-            lastCompletionDate: user.last_completion_date,
-            streakStartDate: streakStartDate?.toISOString().split('T')[0],
-            activityDates
-          });
+          console.log('Consecutive streak dates calculated:', consecutiveStreakDates);
           
           for (let i = 6; i >= 0; i--) {
             const checkDate = new Date(today);
             checkDate.setDate(today.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
             
-            let activityStatus = 'none'; // Default: no activity, not part of streak
+            let activityStatus = 'none'; // Default: no activity
             
-            if (streakStartDate) {
-              const streakStartDateString = streakStartDate.toISOString().split('T')[0];
-              const lastCompletionDateString = user.last_completion_date.split('T')[0];
-              
-              // Check if this date is within the streak range
-              if (dateString >= streakStartDateString && dateString <= lastCompletionDateString) {
-                if (activityDates.includes(dateString)) {
-                  activityStatus = 'streak'; // Green: part of current streak
-                } else {
-                  activityStatus = 'missed'; // Red: should have been active but wasn't
-                }
-              } else if (dateString > lastCompletionDateString) {
-                // Days after the streak ended
-                if (activityDates.includes(dateString)) {
-                  // This shouldn't happen if streak logic is correct, but handle it
-                  activityStatus = 'activity';
-                } else {
-                  activityStatus = 'none';
-                }
-              }
-              // Days before streak started remain 'none'
+            if (consecutiveStreakDates.includes(dateString)) {
+              // This date is part of the current consecutive streak
+              activityStatus = 'streak';
+            } else if (activityDates.includes(dateString)) {
+              // Has activity but not part of current streak
+              activityStatus = 'activity';
             } else {
-              // No current streak
-              if (activityDates.includes(dateString)) {
-                activityStatus = 'activity'; // Had activity but not part of a streak
-              }
+              // No activity on this date
+              activityStatus = 'none';
             }
             
+            console.log(`Date ${dateString}: ${activityStatus} (hasActivity: ${activityDates.includes(dateString)}, inStreak: ${consecutiveStreakDates.includes(dateString)})`);
             weeklyActivityArray.push(activityStatus);
           }
+
+          console.log('Final weekly activity array:', weeklyActivityArray);
+          console.log('=== END WEEKLY ACTIVITY DEBUG ===\n');
 
           // Check if user has activity today
           const todayString = today.toISOString().split('T')[0];
