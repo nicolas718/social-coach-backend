@@ -1153,6 +1153,134 @@ app.get('/api/data/home/:deviceId', (req, res) => {
   }
 });
 
+// DEBUG ENDPOINT - Check weekly activity calculation
+app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    // Get user info
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        console.error('Error getting user:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get last 7 days of activity (challenges + used openers)
+      db.all(`
+        SELECT DISTINCT date(activity_date) as activity_date
+        FROM (
+          SELECT challenge_date as activity_date
+          FROM daily_challenges 
+          WHERE device_id = ? AND challenge_date >= date('now', '-7 days')
+          
+          UNION
+          
+          SELECT opener_date as activity_date
+          FROM openers 
+          WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-7 days')
+        ) activities
+        ORDER BY activity_date
+      `, [deviceId, deviceId], (err, weeklyActivity) => {
+        if (err) {
+          console.error('Error getting weekly activity:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Calculate the streak start date (working backwards from last completion)
+        const currentStreak = user.current_streak || 0;
+        let streakStartDate = null;
+        
+        if (user.last_completion_date && currentStreak > 0) {
+          const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
+          streakStartDate = new Date(lastCompletionDate);
+          streakStartDate.setDate(lastCompletionDate.getDate() - (currentStreak - 1));
+        }
+
+        // Generate debug info for each day
+        const today = new Date();
+        const activityDates = weeklyActivity.map(row => row.activity_date);
+        const weeklyActivityArray = [];
+        const debugInfo = [];
+
+        for (let i = 6; i >= 0; i--) {
+          const checkDate = new Date(today);
+          checkDate.setDate(today.getDate() - i);
+          const dateString = checkDate.toISOString().split('T')[0];
+          
+          let activityStatus = 'none';
+          let reasoning = 'No activity, not part of streak';
+          
+          if (streakStartDate) {
+            const streakStartDateString = streakStartDate.toISOString().split('T')[0];
+            const lastCompletionDateString = user.last_completion_date.split('T')[0];
+            
+            if (dateString >= streakStartDateString && dateString <= lastCompletionDateString) {
+              if (activityDates.includes(dateString)) {
+                activityStatus = 'streak';
+                reasoning = 'Within streak range AND has activity';
+              } else {
+                activityStatus = 'missed';
+                reasoning = 'Within streak range BUT missing activity';
+              }
+            } else if (dateString > lastCompletionDateString) {
+              if (activityDates.includes(dateString)) {
+                activityStatus = 'activity';
+                reasoning = 'After streak ended but has activity';
+              } else {
+                activityStatus = 'none';
+                reasoning = 'After streak ended, no activity';
+              }
+            } else {
+              reasoning = 'Before streak started';
+            }
+          } else {
+            if (activityDates.includes(dateString)) {
+              activityStatus = 'activity';
+              reasoning = 'No current streak, but has activity';
+            }
+          }
+          
+          weeklyActivityArray.push(activityStatus);
+          debugInfo.push({
+            date: dateString,
+            dayOfWeek: checkDate.toLocaleDateString('en-US', { weekday: 'short' }),
+            status: activityStatus,
+            reasoning: reasoning,
+            hasActivity: activityDates.includes(dateString)
+          });
+        }
+
+        res.json({
+          user: {
+            current_streak: user.current_streak,
+            last_completion_date: user.last_completion_date,
+            all_time_best_streak: user.all_time_best_streak
+          },
+          streakCalculation: {
+            currentStreak,
+            streakStartDate: streakStartDate?.toISOString().split('T')[0],
+            lastCompletionDate: user.last_completion_date?.split('T')[0]
+          },
+          activityDates,
+          weeklyActivityArray,
+          debugInfo
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in weekly activity debug endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // DEBUG ENDPOINT - Test streak updates with specific dates
 app.post('/api/debug/test-streak/:deviceId', (req, res) => {
   try {
