@@ -285,28 +285,62 @@ const updateUserStreak = (deviceId, actionDate) => {
       return;
     }
 
+    console.log(`=== STREAK DEBUG for ${deviceId} ===`);
+    console.log('Current user data:', {
+      current_streak: user.current_streak,
+      all_time_best_streak: user.all_time_best_streak,
+      last_completion_date: user.last_completion_date
+    });
+    console.log('New action date:', actionDate);
+
     let newStreak = 1;
     let newBestStreak = user.all_time_best_streak || 0;
     
     if (user.last_completion_date) {
-      const lastDate = new Date(user.last_completion_date);
-      const currentDate = new Date(actionDate);
-      const daysDiff = Math.floor((currentDate - lastDate) / (1000 * 60 * 60 * 24));
+      // Parse dates more carefully - extract just the date part (YYYY-MM-DD)
+      const lastDateStr = user.last_completion_date.split('T')[0]; // Get YYYY-MM-DD part
+      const currentDateStr = actionDate.split('T')[0]; // Get YYYY-MM-DD part
+      
+      const lastDate = new Date(lastDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
+      const currentDate = new Date(currentDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
+      
+      // Calculate difference in days (more reliable calculation)
+      const timeDiff = currentDate.getTime() - lastDate.getTime();
+      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+      
+      console.log('Date comparison:', {
+        lastDateStr,
+        currentDateStr,
+        lastDate: lastDate.toISOString(),
+        currentDate: currentDate.toISOString(),
+        timeDiff,
+        daysDiff
+      });
       
       if (daysDiff === 1) {
         // Consecutive day - streak continues
         newStreak = (user.current_streak || 0) + 1;
+        console.log(`Consecutive day detected! Incrementing streak: ${user.current_streak} → ${newStreak}`);
       } else if (daysDiff === 0) {
         // Same day - keep current streak, don't increment for same-day actions
         newStreak = user.current_streak || 1;
+        console.log(`Same day detected. Keeping streak at: ${newStreak}`);
+      } else {
+        // Gap > 1 day - streak resets to 1
+        console.log(`Gap detected (${daysDiff} days). Resetting streak to 1`);
+        newStreak = 1;
       }
-      // If daysDiff > 1, streak resets to 1 (already set above)
+    } else {
+      console.log('No previous completion date. Starting new streak at 1');
     }
     
     // Update best streak if current is higher
     if (newStreak > newBestStreak) {
       newBestStreak = newStreak;
+      console.log(`New best streak! ${newBestStreak}`);
     }
+    
+    console.log(`Final streak values: current=${newStreak}, best=${newBestStreak}`);
     
     db.run(
       "UPDATE users SET current_streak = ?, all_time_best_streak = ?, last_completion_date = ? WHERE device_id = ?",
@@ -315,7 +349,8 @@ const updateUserStreak = (deviceId, actionDate) => {
         if (err) {
           console.error('Error updating streak:', err);
         } else {
-          console.log(`Updated streak for ${deviceId}: ${newStreak} (best: ${newBestStreak})`);
+          console.log(`✅ Successfully updated streak for ${deviceId}: ${newStreak} (best: ${newBestStreak})`);
+          console.log('=== END STREAK DEBUG ===\n');
         }
       }
     );
@@ -1033,6 +1068,72 @@ app.get('/api/data/home/:deviceId', (req, res) => {
     });
   } catch (error) {
     console.error('Error in home screen endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// DEBUG ENDPOINT - Test streak updates with specific dates
+app.post('/api/debug/test-streak/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { challengeDate, resetStreak = false } = req.body;
+
+    if (!deviceId || !challengeDate) {
+      return res.status(400).json({ error: 'deviceId and challengeDate are required' });
+    }
+
+    console.log(`\n🧪 TESTING STREAK UPDATE for ${deviceId} with date: ${challengeDate}`);
+
+    // If resetStreak is true, reset the user's streak first
+    if (resetStreak) {
+      db.run(
+        "UPDATE users SET current_streak = 0, last_completion_date = NULL WHERE device_id = ?",
+        [deviceId],
+        (err) => {
+          if (err) {
+            console.error('Error resetting streak:', err);
+            return res.status(500).json({ error: 'Failed to reset streak' });
+          }
+          console.log(`🔄 Reset streak for ${deviceId}`);
+          
+          // Now update the streak with the test date
+          updateUserStreak(deviceId, challengeDate);
+          
+          // Return current user data after a short delay
+          setTimeout(() => {
+            db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+              if (err) {
+                return res.status(500).json({ error: 'Database error' });
+              }
+              res.json({
+                message: 'Streak test completed (with reset)',
+                testDate: challengeDate,
+                userAfterUpdate: user
+              });
+            });
+          }, 100);
+        }
+      );
+    } else {
+      // Just update the streak with the test date
+      updateUserStreak(deviceId, challengeDate);
+      
+      // Return current user data after a short delay
+      setTimeout(() => {
+        db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+          if (err) {
+            return res.status(500).json({ error: 'Database error' });
+          }
+          res.json({
+            message: 'Streak test completed',
+            testDate: challengeDate,
+            userAfterUpdate: user
+          });
+        });
+      }, 100);
+    }
+  } catch (error) {
+    console.error('Error in streak test endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
