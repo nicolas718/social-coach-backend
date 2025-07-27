@@ -837,7 +837,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   // Social confidence percentage (based on 90-day target)
                   const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
                   
-                  // Generate weekly activity array (last 7 days, Monday to Sunday)
+                  // Generate streak-aware weekly activity array (last 7 days)
                   const weeklyActivityArray = [];
                   const today = new Date();
                   
@@ -847,12 +847,45 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                     activityMap[row.activity_date] = row.activity_count;
                   });
                   
+                  // Calculate the streak start date (working backwards from last completion)
+                  let streakStartDate = null;
+                  
+                  if (user.last_completion_date && currentStreak > 0) {
+                    const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
+                    streakStartDate = new Date(lastCompletionDate);
+                    streakStartDate.setDate(lastCompletionDate.getDate() - (currentStreak - 1));
+                  }
+                  
                   for (let i = 6; i >= 0; i--) {
                     const checkDate = new Date(today);
                     checkDate.setDate(today.getDate() - i);
                     const dateString = checkDate.toISOString().split('T')[0];
                     const activityCount = activityMap[dateString] || 0;
-                    weeklyActivityArray.push(activityCount);
+                    
+                    let activityStatus = 'none';
+                    
+                    if (streakStartDate) {
+                      const streakStartDateString = streakStartDate.toISOString().split('T')[0];
+                      const lastCompletionDateString = user.last_completion_date.split('T')[0];
+                      
+                      if (dateString >= streakStartDateString && dateString <= lastCompletionDateString) {
+                        if (activityCount > 0) {
+                          activityStatus = 'streak';
+                        } else {
+                          activityStatus = 'missed';
+                        }
+                      } else if (dateString > lastCompletionDateString) {
+                        if (activityCount > 0) {
+                          activityStatus = 'activity';
+                        }
+                      }
+                    } else {
+                      if (activityCount > 0) {
+                        activityStatus = 'activity';
+                      }
+                    }
+                    
+                    weeklyActivityArray.push(activityStatus);
                   }
                   
                   // Calculate Personal Benefits (MVP simplified formulas)
@@ -1033,16 +1066,64 @@ app.get('/api/data/home/:deviceId', (req, res) => {
             user.all_time_best_streak || 0
           );
 
-          // Generate weekly activity array (last 7 days, boolean values)
+          // Generate streak-aware weekly activity array (last 7 days)
           const weeklyActivityArray = [];
           const today = new Date();
           const activityDates = weeklyActivity.map(row => row.activity_date);
+          
+          // Calculate the streak start date (working backwards from last completion)
+          const currentStreak = user.current_streak || 0;
+          let streakStartDate = null;
+          
+          if (user.last_completion_date && currentStreak > 0) {
+            const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
+            streakStartDate = new Date(lastCompletionDate);
+            streakStartDate.setDate(lastCompletionDate.getDate() - (currentStreak - 1));
+          }
+          
+          console.log('Streak calculation for weekly activity:', {
+            currentStreak,
+            lastCompletionDate: user.last_completion_date,
+            streakStartDate: streakStartDate?.toISOString().split('T')[0],
+            activityDates
+          });
           
           for (let i = 6; i >= 0; i--) {
             const checkDate = new Date(today);
             checkDate.setDate(today.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
-            weeklyActivityArray.push(activityDates.includes(dateString));
+            
+            let activityStatus = 'none'; // Default: no activity, not part of streak
+            
+            if (streakStartDate) {
+              const streakStartDateString = streakStartDate.toISOString().split('T')[0];
+              const lastCompletionDateString = user.last_completion_date.split('T')[0];
+              
+              // Check if this date is within the streak range
+              if (dateString >= streakStartDateString && dateString <= lastCompletionDateString) {
+                if (activityDates.includes(dateString)) {
+                  activityStatus = 'streak'; // Green: part of current streak
+                } else {
+                  activityStatus = 'missed'; // Red: should have been active but wasn't
+                }
+              } else if (dateString > lastCompletionDateString) {
+                // Days after the streak ended
+                if (activityDates.includes(dateString)) {
+                  // This shouldn't happen if streak logic is correct, but handle it
+                  activityStatus = 'activity';
+                } else {
+                  activityStatus = 'none';
+                }
+              }
+              // Days before streak started remain 'none'
+            } else {
+              // No current streak
+              if (activityDates.includes(dateString)) {
+                activityStatus = 'activity'; // Had activity but not part of a streak
+              }
+            }
+            
+            weeklyActivityArray.push(activityStatus);
           }
 
           // Check if user has activity today
