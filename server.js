@@ -166,6 +166,97 @@ const breathworkAffirmations = [
   "You radiate calm confidence and genuine warmth"
 ];
 
+// Challenge templates for date-based generation
+const challengeTemplates = [
+  {
+    name: "eye_contact",
+    level: "beginner",
+    prompt: "Create a challenge about making eye contact and smiling at 3 different people today. Focus on noticing how they respond back and building confidence gradually.",
+    badge: "⭐ Foundation"
+  },
+  {
+    name: "small_talk",
+    level: "beginner", 
+    prompt: "Create a challenge about starting one genuine conversation with a stranger today, like a cashier or someone waiting in line.",
+    badge: "💬 Communication"
+  },
+  {
+    name: "compliment",
+    level: "beginner",
+    prompt: "Create a challenge about giving two genuine compliments to different people today, focusing on choices they made rather than appearance.",
+    badge: "😊 Positivity"
+  },
+  {
+    name: "question_asking",
+    level: "intermediate",
+    prompt: "Create a challenge about asking one thoughtful, curious question to someone new today and really listening to their answer.",
+    badge: "🤔 Curiosity"
+  },
+  {
+    name: "active_listening",
+    level: "intermediate",
+    prompt: "Create a challenge about practicing active listening in conversations today - asking follow-up questions and showing genuine interest.",
+    badge: "👂 Listening"
+  },
+  {
+    name: "share_opinion",
+    level: "intermediate",
+    prompt: "Create a challenge about sharing one authentic opinion or perspective in a conversation today, even if it's different from others.",
+    badge: "💭 Authenticity"
+  },
+  {
+    name: "group_interaction",
+    level: "advanced",
+    prompt: "Create a challenge about contributing meaningfully to a group conversation or joining a new group discussion today.",
+    badge: "👥 Groups"
+  },
+  {
+    name: "vulnerability",
+    level: "advanced",
+    prompt: "Create a challenge about sharing something slightly personal or vulnerable with someone today to build deeper connection.",
+    badge: "💝 Connection"
+  },
+  {
+    name: "leadership",
+    level: "advanced", 
+    prompt: "Create a challenge about taking initiative in a social situation today - suggesting plans, leading a conversation, or helping organize something.",
+    badge: "🌟 Leadership"
+  },
+  {
+    name: "conflict_resolution",
+    level: "advanced",
+    prompt: "Create a challenge about addressing a minor disagreement or misunderstanding with someone constructively today.",
+    badge: "🤝 Resolution"
+  }
+];
+
+// Simple hash function to convert date string to consistent number
+function hashDate(dateString) {
+  let hash = 0;
+  for (let i = 0; i < dateString.length; i++) {
+    const char = dateString.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
+}
+
+// Get challenge template based on date
+function getChallengeTemplateForDate(dateString, level = "beginner") {
+  const hash = hashDate(dateString);
+  
+  // Filter templates by level
+  const levelTemplates = challengeTemplates.filter(template => template.level === level);
+  
+  // If no templates for level, use beginner as fallback
+  const availableTemplates = levelTemplates.length > 0 ? levelTemplates : 
+    challengeTemplates.filter(template => template.level === "beginner");
+  
+  // Use hash to select consistent template for this date
+  const templateIndex = hash % availableTemplates.length;
+  return availableTemplates[templateIndex];
+}
+
 // Helper function to ensure user exists
 const ensureUserExists = (deviceId, callback) => {
   db.get("SELECT device_id FROM users WHERE device_id = ?", [deviceId], (err, row) => {
@@ -1124,14 +1215,21 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
 
 app.post('/generate-daily-challenge', async (req, res) => {
   try {
-    const { level = "beginner" } = req.body;
-    console.log('Received daily challenge request:', { level });
+    const { level = "beginner", date } = req.body;
     
-    const prompt = `Generate a daily social challenge for someone with ${level} social confidence level.
+    // Use provided date or current date
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    
+    console.log('Received daily challenge request:', { level, date: targetDate });
+    
+    // Get consistent template for this date
+    const template = getChallengeTemplateForDate(targetDate, level);
+    
+    const prompt = `${template.prompt}
 
 Create a challenge that:
 - Is achievable for someone at ${level} level
-- Builds social skills gradually
+- Builds social skills gradually  
 - Is specific and actionable
 - Can be completed in one day
 
@@ -1140,7 +1238,7 @@ Generate:
 2. Description: More detailed explanation of what to do (2-3 sentences)
 3. Tips: Practical advice for completing this challenge successfully
 4. WhyThisMatters: Explanation of the benefits and reasoning behind this challenge
-5. Badge: Difficulty level indicator (Foundation, Growth, or Advanced)
+5. Badge: Use "${template.badge}" as the badge
 
 Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badge`;
 
@@ -1180,6 +1278,12 @@ Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badg
     if (!challengeData.challenge || !challengeData.description || !challengeData.tips || !challengeData.whyThisMatters || !challengeData.badge) {
       throw new Error('Invalid response format from AI');
     }
+    
+    // Add metadata for debugging
+    challengeData.templateUsed = template.name;
+    challengeData.dateGenerated = targetDate;
+    
+    console.log(`Generated challenge for ${targetDate} using template: ${template.name}`);
     
     res.json(challengeData);
     
