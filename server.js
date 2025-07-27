@@ -857,7 +857,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   
                   // Find the actual consecutive streak from the end
                   let consecutiveStreakDates = [];
-                  if (activityDates.length > 0 && user.last_completion_date) {
+                  if (user.last_completion_date && currentStreak > 0) {
                     const lastCompletionDateStr = user.last_completion_date.split('T')[0];
                     
                     // Start from the last completion date and work backwards to find consecutive days
@@ -867,14 +867,9 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                     // Build consecutive streak by checking each day backwards
                     while (streakCount < currentStreak) {
                       const currentDateStr = currentDate.toISOString().split('T')[0];
-                      if (activityDates.includes(currentDateStr)) {
-                        consecutiveStreakDates.unshift(currentDateStr); // Add to beginning
-                        streakCount++;
-                        currentDate.setDate(currentDate.getDate() - 1); // Go back one day
-                      } else {
-                        // If we find a gap, stop building the streak
-                        break;
-                      }
+                      consecutiveStreakDates.unshift(currentDateStr); // Add to beginning
+                      streakCount++;
+                      currentDate.setDate(currentDate.getDate() - 1); // Go back one day
                     }
                   }
                   
@@ -1091,13 +1086,9 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           console.log('Last completion date:', user.last_completion_date);
           console.log('Activity dates found:', activityDates);
           
-          // Sort activity dates to find consecutive streak
-          const sortedActivityDates = [...activityDates].sort();
-          console.log('Sorted activity dates:', sortedActivityDates);
-          
           // Find the actual consecutive streak from the end
           let consecutiveStreakDates = [];
-          if (sortedActivityDates.length > 0 && user.last_completion_date) {
+          if (user.last_completion_date && (user.current_streak || 0) > 0) {
             const lastCompletionDateStr = user.last_completion_date.split('T')[0];
             
             // Start from the last completion date and work backwards to find consecutive days
@@ -1107,14 +1098,9 @@ app.get('/api/data/home/:deviceId', (req, res) => {
             // Build consecutive streak by checking each day backwards
             while (streakCount < (user.current_streak || 0)) {
               const currentDateStr = currentDate.toISOString().split('T')[0];
-              if (activityDates.includes(currentDateStr)) {
-                consecutiveStreakDates.unshift(currentDateStr); // Add to beginning
-                streakCount++;
-                currentDate.setDate(currentDate.getDate() - 1); // Go back one day
-              } else {
-                // If we find a gap, stop building the streak
-                break;
-              }
+              consecutiveStreakDates.unshift(currentDateStr); // Add to beginning
+              streakCount++;
+              currentDate.setDate(currentDate.getDate() - 1); // Go back one day
             }
           }
           
@@ -1131,7 +1117,7 @@ app.get('/api/data/home/:deviceId', (req, res) => {
               // This date is part of the current consecutive streak
               activityStatus = 'streak';
             } else if (activityDates.includes(dateString)) {
-              // Has activity but not part of current streak
+              // Has activity but not part of current streak (shouldn't happen with proper streak logic)
               activityStatus = 'activity';
             } else {
               // No activity on this date
