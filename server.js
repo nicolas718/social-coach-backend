@@ -1068,45 +1068,56 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           console.log('Current streak:', user.current_streak);
           console.log('Activity dates found:', activityDates);
           
-          // Simple logic - use today as reference
-          const today = new Date();
-          console.log('Reference date (today):', today.toISOString().split('T')[0]);
+          // Smart reference date - use latest activity if it exists and is recent, otherwise today
+          let referenceDate = new Date();
+          if (activityDates.length > 0) {
+            const sortedDates = activityDates.sort();
+            const latestActivity = new Date(sortedDates[sortedDates.length - 1]);
+            
+            // If latest activity is in future (debug mode) OR is very recent, use it as reference
+            const daysDiff = (latestActivity.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (daysDiff >= 0 || daysDiff >= -1) {  // Future or within 1 day
+              referenceDate = latestActivity;
+              console.log('🧪 Using latest activity as reference (debug mode)');
+            }
+          }
           
-          // Build array of the last 7 days ending on today
+          console.log('Reference date:', referenceDate.toISOString().split('T')[0]);
+          
+          // Build array of the last 7 days ending on reference date
           for (let i = 6; i >= 0; i--) {
-            const checkDate = new Date(today);
-            checkDate.setDate(today.getDate() - i);
+            const checkDate = new Date(referenceDate);
+            checkDate.setDate(referenceDate.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
             
             const hasActivity = activityDates.includes(dateString);
             let activityStatus = 'none';
             
             if (hasActivity) {
-              // Has activity - mark as streak if user has current streak
+              // Has activity - mark as streak if user has current streak, otherwise activity
               activityStatus = (user.current_streak || 0) > 0 ? 'streak' : 'activity';
             } else {
-              // No activity - simple missed day logic
+              // No activity - check if it should be marked as missed
               if (activityDates.length >= 1) {
                 const sortedDates = activityDates.sort();
-                const checkTime = checkDate.getTime();
                 
+                // If we have multiple activities, mark gaps between them as missed
                 if (activityDates.length >= 2) {
-                  // Multiple activities: check if day is between first and last
-                  const firstActivity = new Date(sortedDates[0]).getTime();
-                  const lastActivity = new Date(sortedDates[sortedDates.length - 1]).getTime();
+                  const firstActivity = new Date(sortedDates[0]);
+                  const lastActivity = new Date(sortedDates[sortedDates.length - 1]);
                   
-                  if (checkTime > firstActivity && checkTime < lastActivity) {
-                    activityStatus = 'missed';  // Red - missed day between activities
+                  if (checkDate > firstActivity && checkDate < lastActivity) {
+                    activityStatus = 'missed';  // Red - gap between activities
                   }
-                } else {
-                  // Single activity: mark days after the activity (within reasonable range) as missed
-                  const singleActivity = new Date(sortedDates[0]).getTime();
-                  const daysDiff = (checkTime - singleActivity) / (1000 * 60 * 60 * 24);
-                  
-                  // Mark as missed if it's 1-7 days after the single activity
-                  if (daysDiff > 0 && daysDiff <= 7) {
-                    activityStatus = 'missed';  // Red - missed day after activity
-                  }
+                }
+                
+                // If single activity or recent activity, check for consecutive expectation
+                const latestActivity = new Date(sortedDates[sortedDates.length - 1]);
+                const daysSinceActivity = (checkDate.getTime() - latestActivity.getTime()) / (1000 * 60 * 60 * 24);
+                
+                // Mark as missed if it's 1-3 days after the latest activity (expected continuation)
+                if (daysSinceActivity > 0 && daysSinceActivity <= 3 && (user.current_streak || 0) > 0) {
+                  activityStatus = 'missed';  // Red - expected but missing
                 }
               }
             }
@@ -1118,8 +1129,8 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           console.log('Final weekly activity array:', weeklyActivityArray);
           console.log('Array breakdown:');
           weeklyActivityArray.forEach((status, index) => {
-            const dayDate = new Date(today);
-            dayDate.setDate(today.getDate() - (6 - index));
+            const dayDate = new Date(referenceDate);
+            dayDate.setDate(referenceDate.getDate() - (6 - index));
             console.log(`  Day ${index}: ${dayDate.toISOString().split('T')[0]} = ${status}`);
           });
           console.log('=== END WEEKLY ACTIVITY CALCULATION ===');
