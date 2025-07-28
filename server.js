@@ -1151,10 +1151,10 @@ app.get('/api/data/home/:deviceId', (req, res) => {
 
         // Get activity data for week calculation
         // Calculate date threshold more safely to avoid date manipulation errors
-        const dateThreshold = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days in milliseconds
+        const dateThreshold = new Date(referenceDate.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days in milliseconds
         const dateThresholdString = dateThreshold.toISOString().split('T')[0];
         
-        console.log(`🔍 DEBUG: Using date threshold: ${dateThresholdString} (30 days before ${today.toISOString().split('T')[0]})`);
+        console.log(`🔍 DEBUG: Using date threshold: ${dateThresholdString} (30 days before ${referenceDate.toISOString().split('T')[0]})`);
         
         db.all(`
           SELECT DISTINCT date(activity_date) as activity_date
