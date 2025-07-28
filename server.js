@@ -8,6 +8,14 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Check if Anthropic API key is configured
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('❌ ANTHROPIC_API_KEY environment variable is not set');
+  console.log('🔧 Anthropic-dependent endpoints will fail');
+} else {
+  console.log('✅ Anthropic API key is configured');
+}
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -1427,6 +1435,15 @@ app.post('/generate-daily-challenge', async (req, res) => {
   try {
     const { level = "beginner", date } = req.body;
     
+    // Check if Anthropic API key is available
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('❌ Cannot generate challenge: ANTHROPIC_API_KEY not configured');
+      return res.status(500).json({ 
+        error: 'Service configuration error', 
+        details: 'AI service not properly configured on server' 
+      });
+    }
+    
     // Use provided date or current date
     const targetDate = date || new Date().toISOString().split('T')[0];
     
@@ -1452,17 +1469,36 @@ Generate:
 
 Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badge`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 500,
-      system: "You create progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions. Return only valid JSON.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    });
+    let message;
+    try {
+      message = await anthropic.messages.create({
+        model: "claude-3-5-haiku-20241022",
+        max_tokens: 500,
+        system: "You create progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions. Return only valid JSON.",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+    } catch (anthropicError) {
+      console.error('❌ Anthropic API Error:', anthropicError);
+      console.error('❌ Error type:', anthropicError.constructor.name);
+      console.error('❌ Error status:', anthropicError.status);
+      console.error('❌ Error message:', anthropicError.message);
+      
+      // Provide specific error based on the type
+      if (anthropicError.status === 401) {
+        throw new Error('Invalid API key configuration');
+      } else if (anthropicError.status === 404) {
+        throw new Error('Anthropic service not found - check model name or endpoint');
+      } else if (anthropicError.status === 429) {
+        throw new Error('API rate limit exceeded - try again later');
+      } else {
+        throw new Error(`Anthropic API error: ${anthropicError.message}`);
+      }
+    }
 
     const result = message.content[0].text.trim();
     console.log('Raw Claude Daily Challenge Response:', result);
