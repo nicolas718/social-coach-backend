@@ -1699,6 +1699,46 @@ app.post('/api/debug/reset-user/:deviceId', (req, res) => {
   }
 });
 
+// Anthropic API health check endpoint
+app.get('/api/anthropic/health', async (req, res) => {
+  try {
+    console.log('🔍 Testing Anthropic API connection...');
+    
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ 
+        status: 'error',
+        error: 'ANTHROPIC_API_KEY environment variable not set',
+        hasApiKey: false
+      });
+    }
+    
+    // Try a simple API call to test connection
+    const testMessage = await anthropic.messages.create({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 10,
+      messages: [{ role: "user", content: "Say hello" }]
+    });
+    
+    res.json({ 
+      status: 'healthy',
+      hasApiKey: true,
+      testResponse: testMessage.content[0].text,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Anthropic health check failed:', error);
+    res.status(500).json({ 
+      status: 'error',
+      error: error.message,
+      errorType: error.constructor.name,
+      errorStatus: error.status,
+      hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
