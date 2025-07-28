@@ -1091,16 +1091,28 @@ app.get('/api/data/home/:deviceId', (req, res) => {
               // Has activity - mark as streak if user has current streak
               activityStatus = (user.current_streak || 0) > 0 ? 'streak' : 'activity';
             } else {
-              // No activity - check if it's a missed day (gap between activities)
-              if (activityDates.length >= 2) {
+              // No activity - check if it's a missed day
+              if (activityDates.length >= 1) {
                 const sortedDates = activityDates.sort();
-                const firstActivity = new Date(sortedDates[0]).getTime();
-                const lastActivity = new Date(sortedDates[sortedDates.length - 1]).getTime();
                 const checkTime = checkDate.getTime();
                 
-                // If this day is between first and last activity, it's missed
-                if (checkTime > firstActivity && checkTime < lastActivity) {
-                  activityStatus = 'missed';  // Red - missed day
+                if (activityDates.length >= 2) {
+                  // Multiple activities: check if day is between first and last
+                  const firstActivity = new Date(sortedDates[0]).getTime();
+                  const lastActivity = new Date(sortedDates[sortedDates.length - 1]).getTime();
+                  
+                  if (checkTime > firstActivity && checkTime < lastActivity) {
+                    activityStatus = 'missed';  // Red - missed day between activities
+                  }
+                } else {
+                  // Single activity: mark days after the activity (within reasonable range) as missed
+                  const singleActivity = new Date(sortedDates[0]).getTime();
+                  const daysDiff = (checkTime - singleActivity) / (1000 * 60 * 60 * 24);
+                  
+                  // Mark as missed if it's 1-7 days after the single activity
+                  if (daysDiff > 0 && daysDiff <= 7) {
+                    activityStatus = 'missed';  // Red - missed day after activity
+                  }
                 }
               }
             }
