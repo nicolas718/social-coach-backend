@@ -1383,7 +1383,7 @@ Generate:
 Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
 
     const message = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 400,
       system: "You create contextually perfect conversation guidance. Return only valid JSON.",
       messages: [
@@ -1471,17 +1471,21 @@ Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badg
 
     let message;
     try {
+      console.log('🔍 Testing simplified Anthropic call first...');
+      
+      // Test with the same simple format that works in health check
       message = await anthropic.messages.create({
-        model: "claude-3-haiku-20240307",
+        model: "claude-3-5-haiku-20241022",
         max_tokens: 500,
-        system: "You create progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions. Return only valid JSON.",
         messages: [
           {
             role: "user",
-            content: prompt
+            content: "Generate a simple JSON response with: {\"challenge\": \"Say hello to someone new\", \"description\": \"Practice basic social interaction\", \"tips\": \"Start with a smile\", \"whyThisMatters\": \"Builds confidence\", \"badge\": \"Foundation\"}"
           }
         ]
       });
+      
+      console.log('✅ Simplified call succeeded, response:', message.content[0].text);
     } catch (anthropicError) {
       console.error('❌ Anthropic API Error:', anthropicError);
       console.error('❌ Error type:', anthropicError.constructor.name);
@@ -1582,7 +1586,7 @@ Provide a supportive coaching response that:
 Return ONLY a plain text response, no JSON formatting.`;
 
     const aiMessage = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 150,
       system: "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available.",
       messages: [
@@ -1714,7 +1718,7 @@ app.get('/api/anthropic/health', async (req, res) => {
     
     // Try a simple API call to test connection
     const testMessage = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 10,
       messages: [{ role: "user", content: "Say hello" }]
     });
