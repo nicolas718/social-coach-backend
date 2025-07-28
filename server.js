@@ -1107,22 +1107,29 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 // Home Screen Data API Endpoint
 app.get('/api/data/home/:deviceId', (req, res) => {
   try {
+    console.log('🏠 Home endpoint started');
     const { deviceId } = req.params;
     const { customDate } = req.query;  // Get custom date from query parameter
 
+    console.log(`🏠 Device ID: ${deviceId}, Custom Date: ${customDate}`);
+
     if (!deviceId) {
+      console.log('❌ No device ID provided');
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
     // Use custom date if provided (for debug mode), otherwise use current date
     const referenceDate = customDate ? new Date(customDate + 'T00:00:00Z') : new Date();
     console.log(`🏠 Home screen request for device: ${deviceId}`);
+    console.log(`🏠 Reference date: ${referenceDate.toISOString()}`);
     if (customDate) {
       console.log(`🧪 DEBUG MODE: Using custom date: ${customDate} (${referenceDate.toISOString()})`);
     }
 
     // Ensure user exists first
+    console.log('🏠 Calling ensureUserExists...');
     ensureUserExists(deviceId, (err) => {
+      console.log('🏠 ensureUserExists callback called', err ? 'with error:' : 'successfully', err);
       if (err) {
         console.error('❌ Error ensuring user exists:', err);
         return res.status(500).json({ error: 'Database error creating user' });
