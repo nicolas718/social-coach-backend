@@ -1077,12 +1077,17 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           const weeklyActivityArray = [];
           const today = referenceDate;
           
+          console.log(`🔍 DEBUG: Building week array for reference date: ${today.toISOString()}`);
+          
           // Find first activity date to determine when user started
           const firstActivityDate = activityDates.length > 0 ? new Date(activityDates[0]) : null;
+          console.log(`🔍 DEBUG: First activity date: ${firstActivityDate ? firstActivityDate.toISOString() : 'none'}`);
+          console.log(`🔍 DEBUG: Activity dates found: [${activityDates.join(', ')}]`);
           
           for (let i = 6; i >= 0; i--) {
-            const checkDate = new Date(today);
-            checkDate.setDate(today.getDate() - i);
+            // Create date more reliably to avoid timezone issues
+            const checkDate = new Date(today.getTime());
+            checkDate.setUTCDate(today.getUTCDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
             
             const hasActivity = activityDates.includes(dateString);
@@ -1099,9 +1104,17 @@ app.get('/api/data/home/:deviceId', (req, res) => {
               activityStatus = 'none';
             }
             
-            console.log(`📅 ${dateString}: ${activityStatus} (hasActivity: ${hasActivity}, started: ${firstActivityDate ? 'yes' : 'no'})`);
+            console.log(`📅 Day ${6-i} - ${dateString}: ${activityStatus} (hasActivity: ${hasActivity}, started: ${firstActivityDate ? 'yes' : 'no'})`);
             weeklyActivityArray.push(activityStatus);
           }
+
+          // Ensure we always have exactly 7 elements
+          while (weeklyActivityArray.length < 7) {
+            weeklyActivityArray.push('none');
+          }
+          weeklyActivityArray.splice(7); // Trim to exactly 7 if somehow more
+
+          console.log(`🔍 DEBUG: Final weeklyActivityArray (${weeklyActivityArray.length} elements): [${weeklyActivityArray.join(', ')}]`);
 
           // Check if user has activity today
           const todayString = today.toISOString().split('T')[0];
