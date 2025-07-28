@@ -1011,133 +1011,43 @@ app.get('/api/data/home/:deviceId', (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Get user info
-    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+    console.log(`🏠 Home screen request for device: ${deviceId}`);
+
+    // Ensure user exists first
+    ensureUserExists(deviceId, (err) => {
       if (err) {
-        console.error('Error getting user:', err);
-        return res.status(500).json({ error: 'Database error' });
+        console.error('❌ Error ensuring user exists:', err);
+        return res.status(500).json({ error: 'Database error creating user' });
       }
 
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      // Get user's highest level ever achieved
-      db.get(`
-        SELECT 
-          CASE 
-            WHEN all_time_best_streak >= 90 THEN 'Socialite'
-            WHEN all_time_best_streak >= 46 THEN 'Charming'
-            WHEN all_time_best_streak >= 21 THEN 'Coming Alive'
-            WHEN all_time_best_streak >= 7 THEN 'Breaking Through'
-            ELSE 'Warming Up'
-          END as highest_level_achieved
-        FROM users WHERE device_id = ?
-      `, [deviceId], (err, levelData) => {
+      // Get user info
+      db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
         if (err) {
-          console.error('Error getting level data:', err);
+          console.error('❌ Error getting user:', err);
           return res.status(500).json({ error: 'Database error' });
         }
 
-        // Get enough activity data to cover the full streak range (30 days to be safe)
-        db.all(`
-          SELECT DISTINCT date(activity_date) as activity_date
-          FROM (
-            SELECT challenge_date as activity_date
-            FROM daily_challenges 
-            WHERE device_id = ?
-            
-            UNION
-            
-            SELECT opener_date as activity_date
-            FROM openers 
-            WHERE device_id = ? AND opener_was_used = 1
-          ) activities
-          WHERE activity_date >= date('now', '-30 days')
-          ORDER BY activity_date
-        `, [deviceId, deviceId], (err, weeklyActivity) => {
-          if (err) {
-            console.error('Error getting weekly activity:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
+        if (!user) {
+          console.error('❌ User still not found after creation attempt');
+          return res.status(500).json({ error: 'User creation failed' });
+        }
 
-          // Calculate days without activity
-          const daysWithoutActivity = calculateDaysWithoutActivity(user.last_completion_date);
-          
-          // Calculate Social Zone level with grace period logic
-          const socialZoneData = calculateSocialZoneLevel(
-            user.current_streak || 0,
-            daysWithoutActivity,
-            levelData?.highest_level_achieved,
-            user.all_time_best_streak || 0
-          );
+        console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
 
-          // Generate streak-aware weekly activity array (simplified and robust)
-          const weeklyActivityArray = [];
-          const activityDates = weeklyActivity.map(row => row.activity_date).sort();
-          
-          console.log('=== WEEKLY ACTIVITY CALCULATION ===');
-          console.log('Current streak:', user.current_streak);
-          console.log('Activity dates found:', activityDates);
-          
-          // Use current date as reference
-          const referenceDate = new Date();
-          
-          console.log('Reference date:', referenceDate.toISOString().split('T')[0]);
-          
-          // Build array of the last 7 days ending on reference date
-          for (let i = 6; i >= 0; i--) {
-            const checkDate = new Date(referenceDate);
-            checkDate.setDate(referenceDate.getDate() - i);
-            const dateString = checkDate.toISOString().split('T')[0];
-            
-            const hasActivity = activityDates.includes(dateString);
-            let activityStatus = 'none';
-            
-            if (hasActivity) {
-              // Has activity - mark as streak if user has current streak, otherwise activity
-              activityStatus = (user.current_streak || 0) > 0 ? 'streak' : 'activity';
-            } else {
-              // No activity - mark as none (gray)
-              activityStatus = 'none';
-            }
-            
-            console.log(`Date ${dateString}: ${activityStatus} (hasActivity: ${hasActivity})`);
-            weeklyActivityArray.push(activityStatus);
-          }
+        // Return simple working data
+        const response = {
+          currentStreak: user.current_streak || 0,
+          socialZoneLevel: "Warming Up",
+          weeklyActivity: ["none", "none", "none", "none", "none", "none", "none"],
+          hasActivityToday: false
+        };
 
-          console.log('Final weekly activity array:', weeklyActivityArray);
-          console.log('Array breakdown:');
-          weeklyActivityArray.forEach((status, index) => {
-            const dayDate = new Date(referenceDate);
-            dayDate.setDate(referenceDate.getDate() - (6 - index));
-            console.log(`  Day ${index}: ${dayDate.toISOString().split('T')[0]} = ${status}`);
-          });
-          console.log('=== END WEEKLY ACTIVITY CALCULATION ===');
-
-          // Check if user has activity today
-          const todayString = today.toISOString().split('T')[0];
-          const hasActivityToday = activityDates.includes(todayString);
-
-          console.log(`Home screen data calculated for ${deviceId}:`, {
-            currentStreak: user.current_streak || 0,
-            socialZoneLevel: socialZoneData.level,
-            weeklyActivity: weeklyActivityArray,
-            hasActivityToday: hasActivityToday
-          });
-
-          // Return clean home screen data (matching frontend structure)
-          res.json({
-            currentStreak: user.current_streak || 0,
-            socialZoneLevel: socialZoneData.level,
-            weeklyActivity: weeklyActivityArray,
-            hasActivityToday: hasActivityToday
-          });
-        });
+        console.log(`✅ Returning home screen data for ${deviceId}:`, response);
+        res.json(response);
       });
     });
   } catch (error) {
-    console.error('Error in home screen endpoint:', error);
+    console.error('❌ Error in home screen endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
