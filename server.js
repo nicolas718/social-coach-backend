@@ -1014,12 +1014,18 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 app.get('/api/data/home/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
+    const { customDate } = req.query;  // Get custom date from query parameter
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
+    // Use custom date if provided (for debug mode), otherwise use current date
+    const referenceDate = customDate ? new Date(customDate + 'T00:00:00Z') : new Date();
     console.log(`🏠 Home screen request for device: ${deviceId}`);
+    if (customDate) {
+      console.log(`🧪 DEBUG MODE: Using custom date: ${customDate} (${referenceDate.toISOString()})`);
+    }
 
     // Ensure user exists first
     ensureUserExists(deviceId, (err) => {
@@ -1069,7 +1075,7 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           
           // Build weekly activity array for last 7 days (simple logic)
           const weeklyActivityArray = [];
-          const today = new Date();
+          const today = referenceDate;
           
           // Find first activity date to determine when user started
           const firstActivityDate = activityDates.length > 0 ? new Date(activityDates[0]) : null;
