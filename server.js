@@ -1471,21 +1471,16 @@ Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badg
 
     let message;
     try {
-      console.log('🔍 Testing simplified Anthropic call first...');
-      
-      // Test with the same simple format that works in health check
       message = await anthropic.messages.create({
         model: "claude-3-5-haiku-20241022",
         max_tokens: 500,
         messages: [
           {
             role: "user",
-            content: "Generate a simple JSON response with: {\"challenge\": \"Say hello to someone new\", \"description\": \"Practice basic social interaction\", \"tips\": \"Start with a smile\", \"whyThisMatters\": \"Builds confidence\", \"badge\": \"Foundation\"}"
+            content: prompt
           }
         ]
       });
-      
-      console.log('✅ Simplified call succeeded, response:', message.content[0].text);
     } catch (anthropicError) {
       console.error('❌ Anthropic API Error:', anthropicError);
       console.error('❌ Error type:', anthropicError.constructor.name);
