@@ -1452,13 +1452,17 @@ app.post('/generate-daily-challenge', async (req, res) => {
     // Get consistent template for this date
     const template = getChallengeTemplateForDate(targetDate, level);
     
-    const prompt = `${template.prompt}
+    const prompt = `You are a social skills coach who creates progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions.
+
+${template.prompt}
 
 Create a challenge that:
 - Is achievable for someone at ${level} level
 - Builds social skills gradually  
 - Is specific and actionable
 - Can be completed in one day
+- Focuses on authentic connection, not scripted interactions
+- Builds confidence progressively
 
 Generate:
 1. Challenge: The main task to complete (keep it concise, 1-2 sentences)
@@ -1467,7 +1471,7 @@ Generate:
 4. WhyThisMatters: Explanation of the benefits and reasoning behind this challenge
 5. Badge: Use "${template.badge}" as the badge
 
-Return ONLY JSON with fields: challenge, description, tips, whyThisMatters, badge`;
+Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters, badge. No markdown formatting, no extra text, just the JSON object.`;
 
     let message;
     try {
