@@ -1042,16 +1042,75 @@ app.get('/api/data/home/:deviceId', (req, res) => {
 
         console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
 
-        // Return simple working data
-        const response = {
-          currentStreak: user.current_streak || 0,
-          socialZoneLevel: "Warming Up",
-          weeklyActivity: ["none", "none", "none", "none", "none", "none", "none"],
-          hasActivityToday: false
-        };
+        // Get activity data for week calculation
+        db.all(`
+          SELECT DISTINCT date(activity_date) as activity_date
+          FROM (
+            SELECT challenge_date as activity_date
+            FROM daily_challenges 
+            WHERE device_id = ?
+            
+            UNION
+            
+            SELECT opener_date as activity_date
+            FROM openers 
+            WHERE device_id = ? AND opener_was_used = 1
+          ) activities
+          WHERE activity_date >= date('now', '-30 days')
+          ORDER BY activity_date
+        `, [deviceId, deviceId], (err, weeklyActivity) => {
+          if (err) {
+            console.error('❌ Error getting weekly activity:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
 
-        console.log(`✅ Returning home screen data for ${deviceId}:`, response);
-        res.json(response);
+          const activityDates = weeklyActivity.map(row => row.activity_date).sort();
+          console.log('📊 Activity dates found:', activityDates);
+          
+          // Build weekly activity array for last 7 days (simple logic)
+          const weeklyActivityArray = [];
+          const today = new Date();
+          
+          // Find first activity date to determine when user started
+          const firstActivityDate = activityDates.length > 0 ? new Date(activityDates[0]) : null;
+          
+          for (let i = 6; i >= 0; i--) {
+            const checkDate = new Date(today);
+            checkDate.setDate(today.getDate() - i);
+            const dateString = checkDate.toISOString().split('T')[0];
+            
+            const hasActivity = activityDates.includes(dateString);
+            let activityStatus = 'none';
+            
+            if (hasActivity) {
+              // Has activity = GREEN (part of streak)
+              activityStatus = 'streak';
+            } else if (firstActivityDate && checkDate >= firstActivityDate) {
+              // No activity but user has started = RED (missed day)
+              activityStatus = 'missed';
+            } else {
+              // No activity and before user started = GRAY (none)
+              activityStatus = 'none';
+            }
+            
+            console.log(`📅 ${dateString}: ${activityStatus} (hasActivity: ${hasActivity}, started: ${firstActivityDate ? 'yes' : 'no'})`);
+            weeklyActivityArray.push(activityStatus);
+          }
+
+          // Check if user has activity today
+          const todayString = today.toISOString().split('T')[0];
+          const hasActivityToday = activityDates.includes(todayString);
+
+          const response = {
+            currentStreak: user.current_streak || 0,
+            socialZoneLevel: "Warming Up",
+            weeklyActivity: weeklyActivityArray,
+            hasActivityToday: hasActivityToday
+          };
+
+          console.log(`✅ Returning home screen data for ${deviceId}:`, response);
+          res.json(response);
+        });
       });
     });
   } catch (error) {
