@@ -616,6 +616,9 @@ app.post('/api/data/challenge', (req, res) => {
 
           console.log(`📝 Challenge saved successfully for ${deviceId}, now updating streak...`);
 
+          // Capture the challenge ID before the callback to preserve context
+          const challengeId = this.lastID;
+
           // Update streak and wait for completion before responding
           updateUserStreakWithCallback(deviceId, challengeDate, (streakErr) => {
             if (streakErr) {
@@ -627,7 +630,7 @@ app.post('/api/data/challenge', (req, res) => {
 
             res.json({ 
               success: true, 
-              challengeId: this.lastID,
+              challengeId: challengeId,
               message: 'Challenge data saved and streak updated successfully' 
             });
           });
