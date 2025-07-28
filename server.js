@@ -1140,6 +1140,12 @@ app.get('/api/data/home/:deviceId', (req, res) => {
         console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
 
         // Get activity data for week calculation
+        const dateThreshold = new Date(today.getTime());
+        dateThreshold.setDate(today.getDate() - 30); // 30 days before reference date
+        const dateThresholdString = dateThreshold.toISOString().split('T')[0];
+        
+        console.log(`🔍 DEBUG: Using date threshold: ${dateThresholdString} (30 days before ${today.toISOString().split('T')[0]})`);
+        
         db.all(`
           SELECT DISTINCT date(activity_date) as activity_date
           FROM (
@@ -1153,9 +1159,9 @@ app.get('/api/data/home/:deviceId', (req, res) => {
             FROM openers 
             WHERE device_id = ? AND opener_was_used = 1
           ) activities
-          WHERE activity_date >= date('now', '-30 days')
+          WHERE activity_date >= ?
           ORDER BY activity_date
-        `, [deviceId, deviceId], (err, weeklyActivity) => {
+        `, [deviceId, deviceId, dateThresholdString], (err, weeklyActivity) => {
           if (err) {
             console.error('❌ Error getting weekly activity:', err);
             return res.status(500).json({ error: 'Database error' });
