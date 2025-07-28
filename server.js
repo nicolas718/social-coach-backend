@@ -259,18 +259,28 @@ function getChallengeTemplateForDate(dateString, level = "beginner") {
 
 // Helper function to ensure user exists
 const ensureUserExists = (deviceId, callback) => {
+  console.log(`🔍 Checking if user exists: ${deviceId}`);
+  
   db.get("SELECT device_id FROM users WHERE device_id = ?", [deviceId], (err, row) => {
     if (err) {
+      console.error('❌ Error checking user existence:', err);
       callback(err);
       return;
     }
     
     if (!row) {
+      console.log(`👤 User not found, creating new user: ${deviceId}`);
       // Create new user
       db.run("INSERT INTO users (device_id) VALUES (?)", [deviceId], (err) => {
+        if (err) {
+          console.error('❌ Error creating user:', err);
+        } else {
+          console.log(`✅ User created successfully: ${deviceId}`);
+        }
         callback(err);
       });
     } else {
+      console.log(`✅ User already exists: ${deviceId}`);
       callback(null);
     }
   });
@@ -493,9 +503,11 @@ app.post('/api/data/challenge', (req, res) => {
 
     ensureUserExists(deviceId, (err) => {
       if (err) {
-        console.error('Error ensuring user exists:', err);
-        return res.status(500).json({ error: 'Database error' });
+        console.error('❌ Error ensuring user exists:', err);
+        return res.status(500).json({ error: 'Database error creating user' });
       }
+      
+      console.log(`✅ User exists/created, proceeding with challenge for: ${deviceId}`);
 
       // Insert challenge data with success field
       db.run(
