@@ -1101,6 +1101,56 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   }
 });
 
+// COMPLETELY NEW DEBUG HOME ENDPOINT - SIMPLE AND BULLETPROOF
+app.get('/api/debug/home/:deviceId/:day', (req, res) => {
+  try {
+    const { deviceId, day } = req.params;
+    const dayNum = parseInt(day) || 1;
+    
+    console.log(`🧪 DEBUG HOME: Device ${deviceId}, Day ${dayNum}`);
+    
+    // Get completed days from query parameter (comma-separated list)
+    const completedDaysParam = req.query.completed || '';
+    const completedDays = completedDaysParam ? completedDaysParam.split(',').map(d => parseInt(d)).filter(d => !isNaN(d)) : [];
+    
+    console.log(`🧪 DEBUG HOME: Completed days: [${completedDays.join(', ')}]`);
+    
+    // Build simple week array based on current day and completed days
+    const weeklyActivity = [];
+    
+    // Calculate 7 days ending with current day
+    for (let i = 6; i >= 0; i--) {
+      const checkDay = dayNum - i;
+      
+      if (checkDay <= 0) {
+        // Before user started
+        weeklyActivity.push('none');
+      } else if (completedDays.includes(checkDay)) {
+        // Completed day
+        weeklyActivity.push('streak');
+      } else {
+        // Missed day (after user started but not completed)
+        weeklyActivity.push('missed');
+      }
+    }
+    
+    console.log(`🧪 DEBUG HOME: Week array: [${weeklyActivity.join(', ')}]`);
+    
+    const response = {
+      currentStreak: completedDays.length,
+      socialZoneLevel: "Warming Up",
+      weeklyActivity: weeklyActivity,
+      hasActivityToday: completedDays.includes(dayNum)
+    };
+    
+    console.log(`🧪 DEBUG HOME: Response:`, response);
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Error in debug home endpoint:', error);
+    res.status(500).json({ error: 'Debug endpoint error' });
+  }
+});
+
 // Home Screen Data API Endpoint
 app.get('/api/data/home/:deviceId', (req, res) => {
   try {
