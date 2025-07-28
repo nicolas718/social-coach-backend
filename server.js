@@ -1150,11 +1150,18 @@ app.get('/api/data/home/:deviceId', (req, res) => {
         console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
 
         // Get activity data for week calculation
-        // Calculate date threshold more safely to avoid date manipulation errors
-        const dateThreshold = new Date(referenceDate.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days in milliseconds
-        const dateThresholdString = dateThreshold.toISOString().split('T')[0];
-        
-        console.log(`🔍 DEBUG: Using date threshold: ${dateThresholdString} (30 days before ${referenceDate.toISOString().split('T')[0]})`);
+        // When using custom date (debug mode), look for ALL activities, not just 30 days before debug date
+        let dateThresholdString;
+        if (customDate) {
+          // Debug mode: look for all activities (use a very old date)
+          dateThresholdString = '2020-01-01';
+          console.log(`🧪 DEBUG MODE: Looking for ALL activities since ${dateThresholdString}`);
+        } else {
+          // Normal mode: look for activities within last 30 days
+          const dateThreshold = new Date(referenceDate.getTime() - (30 * 24 * 60 * 60 * 1000));
+          dateThresholdString = dateThreshold.toISOString().split('T')[0];
+          console.log(`🔍 DEBUG: Using date threshold: ${dateThresholdString} (30 days before ${referenceDate.toISOString().split('T')[0]})`);
+        }
         
         db.all(`
           SELECT DISTINCT date(activity_date) as activity_date
