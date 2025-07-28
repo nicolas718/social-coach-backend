@@ -329,6 +329,10 @@ const updateUserStreak = (deviceId, actionDate) => {
         // Gap > 1 day - streak resets to 1
         console.log(`Gap detected (${daysDiff} days). Resetting streak to 1`);
         newStreak = 1;
+        
+        // CRITICAL: Also reset the user's current streak in the database immediately
+        // This ensures that when we calculate weekly activity, the streak is already reset
+        console.log(`🔥 STREAK RESET: Gap of ${daysDiff} days detected, resetting current_streak to 0 first`);
       }
     } else {
       console.log('No previous completion date. Starting new streak at 1');
@@ -355,6 +359,56 @@ const updateUserStreak = (deviceId, actionDate) => {
       }
     );
   });
+};
+
+// Helper function to calculate which days should be expected in a streak progression
+const calculateStreakExpectation = (activityDates, currentStreak, referenceDate) => {
+  const expectedDays = [];
+  
+  if (activityDates.length === 0) {
+    return { expectedDays, reasoning: 'No activities yet' };
+  }
+  
+  const sortedDates = activityDates.sort();
+  const firstActivity = sortedDates[0];
+  const lastActivity = sortedDates[sortedDates.length - 1];
+  
+  // If user has a current streak, we expect consecutive days from the start of that streak
+  if (currentStreak > 0) {
+    // Calculate expected streak days based on the last activity
+    const lastActivityDate = new Date(lastActivity);
+    
+    // Work backwards from last activity to find expected start
+    for (let i = currentStreak - 1; i >= 0; i--) {
+      const expectedDate = new Date(lastActivityDate);
+      expectedDate.setDate(lastActivityDate.getDate() - i);
+      expectedDays.push(expectedDate.toISOString().split('T')[0]);
+    }
+    
+    // Also expect the day after last activity if we're progressing
+    const nextDay = new Date(lastActivityDate);
+    nextDay.setDate(lastActivityDate.getDate() + 1);
+    if (nextDay <= referenceDate) {
+      expectedDays.push(nextDay.toISOString().split('T')[0]);
+    }
+  } else {
+    // No current streak, but if there are activities, the days between them should be consecutive
+    if (activityDates.length >= 2) {
+      const start = new Date(firstActivity);
+      const end = new Date(lastActivity);
+      
+      let current = new Date(start);
+      while (current <= end) {
+        expectedDays.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+    }
+  }
+  
+  return {
+    expectedDays,
+    reasoning: `Streak: ${currentStreak}, First: ${firstActivity}, Last: ${lastActivity}`
+  };
 };
 
 // Helper function to calculate Social Zone level with grace period logic
@@ -1067,21 +1121,37 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           console.log('Current streak:', user.current_streak);
           console.log('Activity dates found:', activityDates);
           
-          // Use the most recent activity date as "today" for debug support
-          // This makes the week view align with debug dates that might be in the future
-          let today = new Date();
+          // CRITICAL FIX: Use debug progression logic
+          // For debug testing, we need to show a moving 7-day window that follows the user's progression
+          
+          let referenceDate = new Date(); // Default to real today
+          
           if (activityDates.length > 0) {
-            const latestActivityDate = new Date(Math.max(...activityDates.map(d => new Date(d).getTime())));
-            // Use latest activity date as reference
-            today = latestActivityDate;
+            // Sort activities to understand the progression
+            const sortedDates = activityDates.sort();
+            const latestActivity = new Date(sortedDates[sortedDates.length - 1]);
+            
+            // Check if latest activity is in the future (debug mode)
+            if (latestActivity > referenceDate) {
+              // Debug mode: use latest activity as reference
+              referenceDate = latestActivity;
+              console.log('DEBUG MODE: Using latest activity as reference');
+            } else {
+              // Normal mode: but still use latest activity if it's recent
+              referenceDate = latestActivity;
+            }
           }
           
-          console.log('Reference date (today):', today.toISOString().split('T')[0]);
+          console.log('Reference date (today):', referenceDate.toISOString().split('T')[0]);
+          
+          // Calculate streak expectations based on progression
+          const streakExpectation = calculateStreakExpectation(activityDates, user.current_streak, referenceDate);
+          console.log('Streak expectation:', streakExpectation);
           
           // Build array of the last 7 days ending on reference date
           for (let i = 6; i >= 0; i--) {
-            const checkDate = new Date(today);
-            checkDate.setDate(today.getDate() - i);
+            const checkDate = new Date(referenceDate);
+            checkDate.setDate(referenceDate.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
             
             const hasActivity = activityDates.includes(dateString);
@@ -1091,41 +1161,23 @@ app.get('/api/data/home/:deviceId', (req, res) => {
               // Has activity - mark as streak if user has current streak
               activityStatus = (user.current_streak || 0) > 0 ? 'streak' : 'activity';
             } else {
-              // No activity - check if it's a missed day
-              if (activityDates.length >= 1) {
-                const sortedDates = activityDates.sort();
-                const checkTime = checkDate.getTime();
-                
-                if (activityDates.length >= 2) {
-                  // Multiple activities: check if day is between first and last
-                  const firstActivity = new Date(sortedDates[0]).getTime();
-                  const lastActivity = new Date(sortedDates[sortedDates.length - 1]).getTime();
-                  
-                  if (checkTime > firstActivity && checkTime < lastActivity) {
-                    activityStatus = 'missed';  // Red - missed day between activities
-                  }
-                } else {
-                  // Single activity: mark days after the activity (within reasonable range) as missed
-                  const singleActivity = new Date(sortedDates[0]).getTime();
-                  const daysDiff = (checkTime - singleActivity) / (1000 * 60 * 60 * 24);
-                  
-                  // Mark as missed if it's 1-7 days after the single activity
-                  if (daysDiff > 0 && daysDiff <= 7) {
-                    activityStatus = 'missed';  // Red - missed day after activity
-                  }
-                }
+              // No activity - check if it should be marked as missed based on progression
+              if (streakExpectation.expectedDays.includes(dateString)) {
+                activityStatus = 'missed';  // Red - expected but missing
+              } else {
+                activityStatus = 'none';    // Gray - not expected
               }
             }
             
-            console.log(`Date ${dateString}: ${activityStatus} (hasActivity: ${hasActivity})`);
+            console.log(`Date ${dateString}: ${activityStatus} (hasActivity: ${hasActivity}, expected: ${streakExpectation.expectedDays.includes(dateString)})`);
             weeklyActivityArray.push(activityStatus);
           }
 
           console.log('Final weekly activity array:', weeklyActivityArray);
           console.log('Array breakdown:');
           weeklyActivityArray.forEach((status, index) => {
-            const dayDate = new Date(today);
-            dayDate.setDate(today.getDate() - (6 - index));
+            const dayDate = new Date(referenceDate);
+            dayDate.setDate(referenceDate.getDate() - (6 - index));
             console.log(`  Day ${index}: ${dayDate.toISOString().split('T')[0]} = ${status}`);
           });
           console.log('=== END WEEKLY ACTIVITY CALCULATION ===');
@@ -1705,6 +1757,96 @@ app.get('/api/breathwork/affirmations', async (req, res) => {
       error: 'Failed to get affirmations', 
       details: error.message 
     });
+  }
+});
+
+// DEBUG ENDPOINT - Get weekly activity with specific reference date
+app.post('/api/debug/weekly-activity-reference/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { referenceDate } = req.body;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    console.log(`🧪 DEBUG: Getting weekly activity for ${deviceId} with reference date: ${referenceDate}`);
+
+    // Get user info
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        console.error('Error getting user:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get activity data
+      db.all(`
+        SELECT DISTINCT date(activity_date) as activity_date
+        FROM (
+          SELECT challenge_date as activity_date
+          FROM daily_challenges 
+          WHERE device_id = ?
+          
+          UNION
+          
+          SELECT opener_date as activity_date
+          FROM openers 
+          WHERE device_id = ? AND opener_was_used = 1
+        ) activities
+        ORDER BY activity_date
+      `, [deviceId, deviceId], (err, weeklyActivity) => {
+        if (err) {
+          console.error('Error getting weekly activity:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        const activityDates = weeklyActivity.map(row => row.activity_date).sort();
+        const useReferenceDate = referenceDate ? new Date(referenceDate) : new Date();
+        
+        console.log('🧪 Using reference date:', useReferenceDate.toISOString().split('T')[0]);
+        
+        // Calculate streak expectations
+        const streakExpectation = calculateStreakExpectation(activityDates, user.current_streak, useReferenceDate);
+        
+        // Build array of the last 7 days ending on reference date
+        const weeklyActivityArray = [];
+        for (let i = 6; i >= 0; i--) {
+          const checkDate = new Date(useReferenceDate);
+          checkDate.setDate(useReferenceDate.getDate() - i);
+          const dateString = checkDate.toISOString().split('T')[0];
+          
+          const hasActivity = activityDates.includes(dateString);
+          let activityStatus = 'none';
+          
+          if (hasActivity) {
+            activityStatus = (user.current_streak || 0) > 0 ? 'streak' : 'activity';
+          } else {
+            if (streakExpectation.expectedDays.includes(dateString)) {
+              activityStatus = 'missed';
+            } else {
+              activityStatus = 'none';
+            }
+          }
+          
+          weeklyActivityArray.push(activityStatus);
+        }
+
+        res.json({
+          currentStreak: user.current_streak || 0,
+          weeklyActivity: weeklyActivityArray,
+          referenceDate: useReferenceDate.toISOString().split('T')[0],
+          streakExpectation: streakExpectation,
+          activityDates: activityDates
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in debug weekly activity endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
