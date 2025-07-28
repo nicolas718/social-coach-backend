@@ -1065,61 +1065,47 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           
           console.log('=== WEEKLY ACTIVITY CALCULATION ===');
           console.log('Current streak:', user.current_streak);
-          console.log('Last completion date:', user.last_completion_date);
           console.log('Activity dates found:', activityDates);
           
-          // Always use today for consistent weekly view
-          const today = new Date();
+          // Use the most recent activity date as "today" for debug support
+          // This makes the week view align with debug dates that might be in the future
+          let today = new Date();
+          if (activityDates.length > 0) {
+            const latestActivityDate = new Date(Math.max(...activityDates.map(d => new Date(d).getTime())));
+            // Use latest activity date as reference
+            today = latestActivityDate;
+          }
           
-          // Simple and direct weekly activity calculation
-          console.log('=== WEEKLY ACTIVITY CALCULATION ===');
-          console.log('User current streak:', user.current_streak);
-          console.log('User last completion:', user.last_completion_date);
+          console.log('Reference date (today):', today.toISOString().split('T')[0]);
           
-          // Build array of the last 7 days ending today
+          // Build array of the last 7 days ending on reference date
           for (let i = 6; i >= 0; i--) {
             const checkDate = new Date(today);
             checkDate.setDate(today.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
             
+            const hasActivity = activityDates.includes(dateString);
             let activityStatus = 'none';
             
-            // Simple logic: if there's activity on this date, it's either streak or activity
-            if (activityDates.includes(dateString)) {
-              if ((user.current_streak || 0) > 0) {
-                activityStatus = 'streak';  // Green - part of current streak
-              } else {
-                activityStatus = 'activity';  // Blue - activity but no streak
-              }
+            if (hasActivity) {
+              // Has activity - mark as streak if user has current streak
+              activityStatus = (user.current_streak || 0) > 0 ? 'streak' : 'activity';
             } else {
-              // No activity - check if it's a gap in recent activities (missed day)
-              const recentDays = 7;
-              const recentDate = new Date(today);
-              recentDate.setDate(today.getDate() - recentDays);
-              
-              // If we have recent activity but this day is missing, it might be missed
-              const hasRecentActivity = activityDates.some(date => new Date(date) >= recentDate);
-              const checkDateTime = checkDate.getTime();
-              
-              // Check if this day falls between activity dates (indicating a missed day)
-              let isMissed = false;
-              for (let j = 0; j < activityDates.length - 1; j++) {
-                const date1 = new Date(activityDates[j]).getTime();
-                const date2 = new Date(activityDates[j + 1]).getTime();
-                const daysBetween = Math.abs(date2 - date1) / (1000 * 60 * 60 * 24);
+              // No activity - check if it's a missed day (gap between activities)
+              if (activityDates.length >= 2) {
+                const sortedDates = activityDates.sort();
+                const firstActivity = new Date(sortedDates[0]).getTime();
+                const lastActivity = new Date(sortedDates[sortedDates.length - 1]).getTime();
+                const checkTime = checkDate.getTime();
                 
-                if (checkDateTime > Math.min(date1, date2) && 
-                    checkDateTime < Math.max(date1, date2) && 
-                    daysBetween <= 7) {
-                  isMissed = true;
-                  break;
+                // If this day is between first and last activity, it's missed
+                if (checkTime > firstActivity && checkTime < lastActivity) {
+                  activityStatus = 'missed';  // Red - missed day
                 }
               }
-              
-              activityStatus = isMissed ? 'missed' : 'none';  // Red or gray
             }
             
-            console.log(`Date ${dateString}: ${activityStatus} (hasActivity: ${activityDates.includes(dateString)})`);
+            console.log(`Date ${dateString}: ${activityStatus} (hasActivity: ${hasActivity})`);
             weeklyActivityArray.push(activityStatus);
           }
 
