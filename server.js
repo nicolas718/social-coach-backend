@@ -1068,8 +1068,13 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           console.log('Last completion date:', user.last_completion_date);
           console.log('Activity dates found:', activityDates);
           
-          // Use today as reference point for 7-day window for simplicity
+          // Always use today for consistent weekly view
           const today = new Date();
+          
+          // Simple and direct weekly activity calculation
+          console.log('=== WEEKLY ACTIVITY CALCULATION ===');
+          console.log('User current streak:', user.current_streak);
+          console.log('User last completion:', user.last_completion_date);
           
           // Build array of the last 7 days ending today
           for (let i = 6; i >= 0; i--) {
@@ -1079,22 +1084,52 @@ app.get('/api/data/home/:deviceId', (req, res) => {
             
             let activityStatus = 'none';
             
-            // Simple logic: if there's activity on this date, mark it as streak if we have a current streak
+            // Simple logic: if there's activity on this date, it's either streak or activity
             if (activityDates.includes(dateString)) {
               if ((user.current_streak || 0) > 0) {
-                activityStatus = 'streak';  // Part of streak
+                activityStatus = 'streak';  // Green - part of current streak
               } else {
-                activityStatus = 'activity';  // Activity but no streak
+                activityStatus = 'activity';  // Blue - activity but no streak
               }
             } else {
-              activityStatus = 'none';  // No activity
+              // No activity - check if it's a gap in recent activities (missed day)
+              const recentDays = 7;
+              const recentDate = new Date(today);
+              recentDate.setDate(today.getDate() - recentDays);
+              
+              // If we have recent activity but this day is missing, it might be missed
+              const hasRecentActivity = activityDates.some(date => new Date(date) >= recentDate);
+              const checkDateTime = checkDate.getTime();
+              
+              // Check if this day falls between activity dates (indicating a missed day)
+              let isMissed = false;
+              for (let j = 0; j < activityDates.length - 1; j++) {
+                const date1 = new Date(activityDates[j]).getTime();
+                const date2 = new Date(activityDates[j + 1]).getTime();
+                const daysBetween = Math.abs(date2 - date1) / (1000 * 60 * 60 * 24);
+                
+                if (checkDateTime > Math.min(date1, date2) && 
+                    checkDateTime < Math.max(date1, date2) && 
+                    daysBetween <= 7) {
+                  isMissed = true;
+                  break;
+                }
+              }
+              
+              activityStatus = isMissed ? 'missed' : 'none';  // Red or gray
             }
             
-            console.log(`Date ${dateString}: ${activityStatus}`);
+            console.log(`Date ${dateString}: ${activityStatus} (hasActivity: ${activityDates.includes(dateString)})`);
             weeklyActivityArray.push(activityStatus);
           }
 
           console.log('Final weekly activity array:', weeklyActivityArray);
+          console.log('Array breakdown:');
+          weeklyActivityArray.forEach((status, index) => {
+            const dayDate = new Date(today);
+            dayDate.setDate(today.getDate() - (6 - index));
+            console.log(`  Day ${index}: ${dayDate.toISOString().split('T')[0]} = ${status}`);
+          });
           console.log('=== END WEEKLY ACTIVITY CALCULATION ===');
 
           // Check if user has activity today
@@ -1672,6 +1707,64 @@ app.get('/api/breathwork/affirmations', async (req, res) => {
       error: 'Failed to get affirmations', 
       details: error.message 
     });
+  }
+});
+
+// DEBUG ENDPOINT - Reset all user data
+app.post('/api/debug/reset-user/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    console.log(`🧪 RESETTING ALL DATA for device: ${deviceId}`);
+
+    // Reset user data
+    db.run(
+      "UPDATE users SET current_streak = 0, all_time_best_streak = 0, last_completion_date = NULL WHERE device_id = ?",
+      [deviceId],
+      (err) => {
+        if (err) {
+          console.error('Error resetting user data:', err);
+          return res.status(500).json({ error: 'Failed to reset user data' });
+        }
+
+        // Delete all challenge history
+        db.run(
+          "DELETE FROM daily_challenges WHERE device_id = ?",
+          [deviceId],
+          (err) => {
+            if (err) {
+              console.error('Error deleting challenges:', err);
+              return res.status(500).json({ error: 'Failed to delete challenge history' });
+            }
+
+            // Delete all opener history
+            db.run(
+              "DELETE FROM openers WHERE device_id = ?",
+              [deviceId],
+              (err) => {
+                if (err) {
+                  console.error('Error deleting openers:', err);
+                  return res.status(500).json({ error: 'Failed to delete opener history' });
+                }
+
+                console.log(`✅ Successfully reset all data for ${deviceId}`);
+                res.json({
+                  message: 'All user data reset successfully',
+                  deviceId: deviceId
+                });
+              }
+            );
+          }
+        );
+      }
+    );
+  } catch (error) {
+    console.error('Error in reset user endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
