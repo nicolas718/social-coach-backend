@@ -898,21 +898,18 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
               // Get weekly activity counts (last 7 days)
               db.all(`
-                SELECT 
-                  date(action_date) as activity_date,
-                  COUNT(*) as activity_count
+                SELECT DISTINCT date(activity_date) as activity_date
                 FROM (
-                  SELECT challenge_date as action_date
+                  SELECT challenge_date as activity_date
                   FROM daily_challenges 
-                  WHERE device_id = ? AND challenge_date >= date('now', '-7 days')
+                  WHERE device_id = ?
                   
-                  UNION ALL
+                  UNION
                   
-                  SELECT opener_date as action_date
+                  SELECT opener_date as activity_date
                   FROM openers 
-                  WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-7 days')
+                  WHERE device_id = ? AND opener_was_used = 1
                 ) activities
-                GROUP BY date(action_date)
                 ORDER BY activity_date
               `, [deviceId, deviceId], (err, weeklyActivity) => {
                 if (err) {
@@ -1150,35 +1147,56 @@ app.get('/api/data/home/:deviceId', (req, res) => {
         console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
 
         // Get activity data for week calculation
-        // When using custom date (debug mode), look for ALL activities, not just 30 days before debug date
-        let dateThresholdString;
+        // In debug mode: get ALL activities (no date filtering)
+        // In normal mode: get activities from last 30 days
+        let activityQuery;
+        let queryParams;
+        
         if (customDate) {
-          // Debug mode: look for all activities (use a very old date)
-          dateThresholdString = '2020-01-01';
-          console.log(`🧪 DEBUG MODE: Looking for ALL activities since ${dateThresholdString}`);
+          // DEBUG MODE: Get ALL activities, no date filtering
+          console.log(`🧪 DEBUG MODE: Getting ALL activities for device ${deviceId}`);
+          activityQuery = `
+            SELECT DISTINCT date(activity_date) as activity_date
+            FROM (
+              SELECT challenge_date as activity_date
+              FROM daily_challenges 
+              WHERE device_id = ?
+              
+              UNION
+              
+              SELECT opener_date as activity_date
+              FROM openers 
+              WHERE device_id = ? AND opener_was_used = 1
+            ) activities
+            ORDER BY activity_date
+          `;
+          queryParams = [deviceId, deviceId];
         } else {
-          // Normal mode: look for activities within last 30 days
+          // NORMAL MODE: Get activities from last 30 days
           const dateThreshold = new Date(referenceDate.getTime() - (30 * 24 * 60 * 60 * 1000));
-          dateThresholdString = dateThreshold.toISOString().split('T')[0];
-          console.log(`🔍 DEBUG: Using date threshold: ${dateThresholdString} (30 days before ${referenceDate.toISOString().split('T')[0]})`);
+          const dateThresholdString = dateThreshold.toISOString().split('T')[0];
+          console.log(`🔍 NORMAL MODE: Using date threshold: ${dateThresholdString}`);
+          
+          activityQuery = `
+            SELECT DISTINCT date(activity_date) as activity_date
+            FROM (
+              SELECT challenge_date as activity_date
+              FROM daily_challenges 
+              WHERE device_id = ?
+              
+              UNION
+              
+              SELECT opener_date as activity_date
+              FROM openers 
+              WHERE device_id = ? AND opener_was_used = 1
+            ) activities
+            WHERE activity_date >= ?
+            ORDER BY activity_date
+          `;
+          queryParams = [deviceId, deviceId, dateThresholdString];
         }
         
-        db.all(`
-          SELECT DISTINCT date(activity_date) as activity_date
-          FROM (
-            SELECT challenge_date as activity_date
-            FROM daily_challenges 
-            WHERE device_id = ?
-            
-            UNION
-            
-            SELECT opener_date as activity_date
-            FROM openers 
-            WHERE device_id = ? AND opener_was_used = 1
-          ) activities
-          WHERE activity_date >= ?
-          ORDER BY activity_date
-        `, [deviceId, deviceId, dateThresholdString], (err, weeklyActivity) => {
+        db.all(activityQuery, queryParams, (err, weeklyActivity) => {
           if (err) {
             console.error('❌ Error getting weekly activity:', err);
             return res.status(500).json({ error: 'Database error' });
