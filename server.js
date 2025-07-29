@@ -1139,30 +1139,35 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
         if (checkDateString < firstCompletedDate) {
           // Before user started - GREY
           weeklyActivity.push('none');
+        } else if (checkDateString >= currentDate) {
+          // Current day or future - don't mark as missed yet - GREY
+          weeklyActivity.push('none');
         } else {
-          // After user started but not completed - RED
+          // Past day after user started but not completed - RED
           weeklyActivity.push('missed');
         }
       }
     }
     
-    // Calculate current streak - consecutive days from most recent backwards
+    // Calculate current streak - consecutive completed days working backwards from most recent
     let currentStreak = 0;
-    const sortedCompletedDates = completedDates.sort().reverse(); // Most recent first
     
-    if (sortedCompletedDates.length > 0) {
-      // Start from the most recent completed date, not the current date
-      const mostRecentCompletedDate = sortedCompletedDates[0];
-      let checkDate = new Date(mostRecentCompletedDate + 'T00:00:00.000Z');
+    if (completedDates.length > 0) {
+      const sortedCompletedDates = completedDates.sort(); // Earliest to latest
       
-      for (const completedDate of sortedCompletedDates) {
-        const checkDateString = checkDate.toISOString().split('T')[0];
+      // Start from the most recent completed date and work backwards
+      let checkDate = new Date(sortedCompletedDates[sortedCompletedDates.length - 1] + 'T00:00:00.000Z');
+      
+      // Count consecutive days backwards
+      for (let i = sortedCompletedDates.length - 1; i >= 0; i--) {
+        const expectedDateString = checkDate.toISOString().split('T')[0];
         
-        if (checkDateString === completedDate) {
+        if (sortedCompletedDates[i] === expectedDateString) {
           currentStreak++;
           checkDate.setDate(checkDate.getDate() - 1); // Go back one day
         } else {
-          break; // Streak is broken
+          // Gap found, streak is broken
+          break;
         }
       }
     }
