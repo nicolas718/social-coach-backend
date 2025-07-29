@@ -1154,20 +1154,33 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
     
     if (completedDates.length > 0) {
       const sortedCompletedDates = completedDates.sort(); // Earliest to latest
+      const mostRecentCompletedDate = sortedCompletedDates[sortedCompletedDates.length - 1];
+      const mostRecentCompletedDateObj = new Date(mostRecentCompletedDate + 'T00:00:00.000Z');
       
-      // Start from the most recent completed date and work backwards
-      let checkDate = new Date(sortedCompletedDates[sortedCompletedDates.length - 1] + 'T00:00:00.000Z');
+      // Check if there's a gap between most recent completed date and current date
+      // If user missed days, streak should be 0
+      const daysBetween = Math.floor((currentDateObj.getTime() - mostRecentCompletedDateObj.getTime()) / (1000 * 60 * 60 * 24));
       
-      // Count consecutive days backwards
-      for (let i = sortedCompletedDates.length - 1; i >= 0; i--) {
-        const expectedDateString = checkDate.toISOString().split('T')[0];
+      if (daysBetween > 1) {
+        // There are missed days between most recent completion and current date
+        // Streak is broken, reset to 0
+        currentStreak = 0;
+        console.log(`🧪 SIMULATED HOME: Streak broken - ${daysBetween} days between ${mostRecentCompletedDate} and ${currentDate}`);
+      } else {
+        // No gap, count consecutive days backwards
+        let checkDate = new Date(mostRecentCompletedDateObj);
         
-        if (sortedCompletedDates[i] === expectedDateString) {
-          currentStreak++;
-          checkDate.setDate(checkDate.getDate() - 1); // Go back one day
-        } else {
-          // Gap found, streak is broken
-          break;
+        // Count consecutive days backwards
+        for (let i = sortedCompletedDates.length - 1; i >= 0; i--) {
+          const expectedDateString = checkDate.toISOString().split('T')[0];
+          
+          if (sortedCompletedDates[i] === expectedDateString) {
+            currentStreak++;
+            checkDate.setDate(checkDate.getDate() - 1); // Go back one day
+          } else {
+            // Gap found, streak is broken
+            break;
+          }
         }
       }
     }
