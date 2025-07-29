@@ -1101,53 +1101,89 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   }
 });
 
-// COMPLETELY NEW DEBUG HOME ENDPOINT - SIMPLE AND BULLETPROOF
-app.get('/api/debug/home/:deviceId/:day', (req, res) => {
+// SIMULATED DATE HOME ENDPOINT - BACKEND HANDLES ALL LOGIC
+app.get('/api/simulated/home/:deviceId', (req, res) => {
   try {
-    const { deviceId, day } = req.params;
-    const dayNum = parseInt(day) || 1;
+    const { deviceId } = req.params;
+    const { currentDate, completed } = req.query;
     
-    console.log(`🧪 DEBUG HOME: Device ${deviceId}, Day ${dayNum}`);
+    console.log(`🧪 SIMULATED HOME: Device ${deviceId}, Current Date: ${currentDate}`);
     
-    // Get completed days from query parameter (comma-separated list)
-    const completedDaysParam = req.query.completed || '';
-    const completedDays = completedDaysParam ? completedDaysParam.split(',').map(d => parseInt(d)).filter(d => !isNaN(d)) : [];
+    // Get completed dates from query parameter (comma-separated list)
+    const completedDates = completed ? completed.split(',').filter(d => d.length > 0) : [];
+    console.log(`🧪 SIMULATED HOME: Completed dates: [${completedDates.join(', ')}]`);
     
-    console.log(`🧪 DEBUG HOME: Completed days: [${completedDays.join(', ')}]`);
+    // Parse current date
+    const currentDateObj = new Date(currentDate + 'T00:00:00.000Z');
     
-    // Build simple week array based on current day and completed days
+    // Build week array - 7 days ending with current date
     const weeklyActivity = [];
+    const calendar = [];
     
-    // Calculate 7 days ending with current day
     for (let i = 6; i >= 0; i--) {
-      const checkDay = dayNum - i;
+      const checkDate = new Date(currentDateObj);
+      checkDate.setDate(checkDate.getDate() - i);
+      const checkDateString = checkDate.toISOString().split('T')[0]; // YYYY-MM-DD
       
-      if (checkDay <= 0) {
-        // Before user started
-        weeklyActivity.push('none');
-      } else if (completedDays.includes(checkDay)) {
-        // Completed day
+      calendar.push(checkDateString);
+      
+      if (completedDates.includes(checkDateString)) {
+        // Completed day - GREEN
         weeklyActivity.push('streak');
+      } else if (completedDates.length === 0) {
+        // New user - all previous days should be grey
+        weeklyActivity.push('none');
       } else {
-        // Missed day (after user started but not completed)
-        weeklyActivity.push('missed');
+        // Find the first completed date to determine if this is before start or missed
+        const firstCompletedDate = completedDates.sort()[0];
+        if (checkDateString < firstCompletedDate) {
+          // Before user started - GREY
+          weeklyActivity.push('none');
+        } else {
+          // After user started but not completed - RED
+          weeklyActivity.push('missed');
+        }
       }
     }
     
-    console.log(`🧪 DEBUG HOME: Week array: [${weeklyActivity.join(', ')}]`);
+    // Calculate current streak - consecutive days from most recent backwards
+    let currentStreak = 0;
+    const sortedCompletedDates = completedDates.sort().reverse(); // Most recent first
+    
+    if (sortedCompletedDates.length > 0) {
+      // Check if today is completed
+      const todayString = currentDateObj.toISOString().split('T')[0];
+      let checkDate = new Date(currentDateObj);
+      
+      for (const completedDate of sortedCompletedDates) {
+        const completedDateObj = new Date(completedDate + 'T00:00:00.000Z');
+        const checkDateString = checkDate.toISOString().split('T')[0];
+        
+        if (checkDateString === completedDate) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 1); // Go back one day
+        } else {
+          break; // Streak is broken
+        }
+      }
+    }
+    
+    console.log(`🧪 SIMULATED HOME: Calendar: [${calendar.join(', ')}]`);
+    console.log(`🧪 SIMULATED HOME: Week array: [${weeklyActivity.join(', ')}]`);
+    console.log(`🧪 SIMULATED HOME: Current streak: ${currentStreak}`);
     
     const response = {
-      currentStreak: completedDays.length,
+      currentStreak: currentStreak,
       socialZoneLevel: "Warming Up",
       weeklyActivity: weeklyActivity,
-      hasActivityToday: completedDays.includes(dayNum)
+      hasActivityToday: completedDates.includes(currentDate)
     };
     
-    console.log(`🧪 DEBUG HOME: Response:`, response);
+    console.log(`🧪 SIMULATED HOME: Response:`, response);
     res.json(response);
   } catch (error) {
-    console.error('❌ Error in debug home endpoint:', error);
-    res.status(500).json({ error: 'Debug endpoint error' });
+    console.error('❌ Error in simulated home endpoint:', error);
+    res.status(500).json({ error: 'Simulated endpoint error' });
   }
 });
 
