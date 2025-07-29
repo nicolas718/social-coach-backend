@@ -548,6 +548,73 @@ const calculateDaysWithoutActivity = (lastActivityDate) => {
   return daysDiff;
 };
 
+// NEW: Calculate current streak based on both challenges and openers
+const calculateCurrentStreak = (deviceId, callback) => {
+  // Get all activity dates (both challenges and used openers)
+  db.all(`
+    SELECT DISTINCT date(activity_date) as activity_date
+    FROM (
+      SELECT challenge_date as activity_date
+      FROM daily_challenges 
+      WHERE device_id = ? AND challenge_completed = 1
+      
+      UNION
+      
+      SELECT opener_date as activity_date
+      FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+    ) activities
+    ORDER BY activity_date DESC
+  `, [deviceId, deviceId], (err, activityDates) => {
+    if (err) {
+      console.error('Error getting activity dates for streak calculation:', err);
+      return callback(err);
+    }
+
+    console.log(`=== STREAK CALCULATION for ${deviceId} ===`);
+    console.log('Activity dates found:', activityDates.map(d => d.activity_date));
+
+    if (activityDates.length === 0) {
+      console.log('No activity found - streak is 0');
+      return callback(null, 0);
+    }
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    console.log('Today:', todayStr);
+
+    let currentStreak = 0;
+    let checkDate = new Date(today);
+    
+    // Count consecutive days backwards from today
+    while (true) {
+      const checkDateStr = checkDate.toISOString().split('T')[0];
+      console.log(`Checking date: ${checkDateStr}`);
+      
+      // Check if this date has activity
+      const hasActivity = activityDates.some(activity => activity.activity_date === checkDateStr);
+      
+      if (hasActivity) {
+        currentStreak++;
+        console.log(`✅ Activity found on ${checkDateStr}, streak: ${currentStreak}`);
+      } else {
+        console.log(`❌ No activity on ${checkDateStr}, streak ends at ${currentStreak}`);
+        break; // Streak broken
+      }
+      
+      // Move to previous day
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    console.log(`Final streak calculation: ${currentStreak}`);
+    console.log('=== END STREAK CALCULATION ===');
+    
+    callback(null, currentStreak);
+  });
+};
+
 app.get('/', (req, res) => {
   res.json({ message: 'Social Coach Backend API is running!' });
 });
@@ -931,7 +998,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   const activityData = activityFrequency[0];
                   
                   // Calculate core metrics
-                  const currentStreak = user.current_streak || 0;
+                  const currentStreak = user.current_streak || 0; // Keep using database streak for now
                   const totalSuccessfulActions = (challengeStatsData.successful_challenges || 0) + (openerStatsData.successful_openers || 0);
                   const totalActions = (challengeStatsData.total_challenges || 0) + (openerStatsData.total_openers || 0);
                   const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
