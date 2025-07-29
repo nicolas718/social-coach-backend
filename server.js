@@ -1151,12 +1151,11 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
     const sortedCompletedDates = completedDates.sort().reverse(); // Most recent first
     
     if (sortedCompletedDates.length > 0) {
-      // Check if today is completed
-      const todayString = currentDateObj.toISOString().split('T')[0];
-      let checkDate = new Date(currentDateObj);
+      // Start from the most recent completed date, not the current date
+      const mostRecentCompletedDate = sortedCompletedDates[0];
+      let checkDate = new Date(mostRecentCompletedDate + 'T00:00:00.000Z');
       
       for (const completedDate of sortedCompletedDates) {
-        const completedDateObj = new Date(completedDate + 'T00:00:00.000Z');
         const checkDateString = checkDate.toISOString().split('T')[0];
         
         if (checkDateString === completedDate) {
