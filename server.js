@@ -1399,49 +1399,24 @@ app.get('/api/data/home/:deviceId', (req, res) => {
         let activityQuery;
         let queryParams;
         
-        if (customDate) {
-          // DEBUG MODE: Get ALL activities, no date filtering
-          console.log(`🧪 DEBUG MODE: Getting ALL activities for device ${deviceId}`);
-          activityQuery = `
-            SELECT DISTINCT date(activity_date) as activity_date
-            FROM (
-              SELECT challenge_date as activity_date
-              FROM daily_challenges 
-              WHERE device_id = ?
-              
-              UNION
-              
-              SELECT opener_date as activity_date
-              FROM openers 
-              WHERE device_id = ? AND opener_was_used = 1
-            ) activities
-            ORDER BY activity_date
-          `;
-          queryParams = [deviceId, deviceId];
-        } else {
-          // NORMAL MODE: Get activities from last 30 days
-          const dateThreshold = new Date(referenceDate.getTime() - (30 * 24 * 60 * 60 * 1000));
-          const dateThresholdString = dateThreshold.toISOString().split('T')[0];
-          console.log(`🔍 NORMAL MODE: Using date threshold: ${dateThresholdString}`);
-          
-          activityQuery = `
-            SELECT DISTINCT date(activity_date) as activity_date
-            FROM (
-              SELECT challenge_date as activity_date
-              FROM daily_challenges 
-              WHERE device_id = ?
-              
-              UNION
-              
-              SELECT opener_date as activity_date
-              FROM openers 
-              WHERE device_id = ? AND opener_was_used = 1
-            ) activities
-            WHERE activity_date >= ?
-            ORDER BY activity_date
-          `;
-          queryParams = [deviceId, deviceId, dateThresholdString];
-        }
+        // Always get ALL activities, no date filtering (like debug mode)
+        console.log(`🔍 Getting ALL activities for device ${deviceId}`);
+        activityQuery = `
+          SELECT DISTINCT date(activity_date) as activity_date
+          FROM (
+            SELECT challenge_date as activity_date
+            FROM daily_challenges 
+            WHERE device_id = ?
+            
+            UNION
+            
+            SELECT opener_date as activity_date
+            FROM openers 
+            WHERE device_id = ? AND opener_was_used = 1
+          ) activities
+          ORDER BY activity_date
+        `;
+        queryParams = [deviceId, deviceId];
         
         db.all(activityQuery, queryParams, (err, weeklyActivity) => {
           if (err) {
