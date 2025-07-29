@@ -179,62 +179,52 @@ const challengeTemplates = [
   {
     name: "eye_contact",
     level: "beginner",
-    prompt: "Create a challenge about making eye contact and smiling at 3 different people today. Focus on noticing how they respond back and building confidence gradually.",
-    badge: "⭐ Foundation"
+    prompt: "Create a challenge about making eye contact and smiling at 3 different people today. Focus on noticing how they respond back and building confidence gradually."
   },
   {
     name: "small_talk",
     level: "beginner", 
-    prompt: "Create a challenge about starting one genuine conversation with a stranger today, like a cashier or someone waiting in line.",
-    badge: "💬 Communication"
+    prompt: "Create a challenge about starting one genuine conversation with a stranger today, like a cashier or someone waiting in line."
   },
   {
     name: "compliment",
     level: "beginner",
-    prompt: "Create a challenge about giving two genuine compliments to different people today, focusing on choices they made rather than appearance.",
-    badge: "😊 Positivity"
+    prompt: "Create a challenge about giving two genuine compliments to different people today, focusing on choices they made rather than appearance."
   },
   {
     name: "question_asking",
     level: "intermediate",
-    prompt: "Create a challenge about asking one thoughtful, curious question to someone new today and really listening to their answer.",
-    badge: "🤔 Curiosity"
+    prompt: "Create a challenge about asking one thoughtful, curious question to someone new today and really listening to their answer."
   },
   {
     name: "active_listening",
     level: "intermediate",
-    prompt: "Create a challenge about practicing active listening in conversations today - asking follow-up questions and showing genuine interest.",
-    badge: "👂 Listening"
+    prompt: "Create a challenge about practicing active listening in conversations today - asking follow-up questions and showing genuine interest."
   },
   {
     name: "share_opinion",
     level: "intermediate",
-    prompt: "Create a challenge about sharing one authentic opinion or perspective in a conversation today, even if it's different from others.",
-    badge: "💭 Authenticity"
+    prompt: "Create a challenge about sharing one authentic opinion or perspective in a conversation today, even if it's different from others."
   },
   {
     name: "group_interaction",
     level: "advanced",
-    prompt: "Create a challenge about contributing meaningfully to a group conversation or joining a new group discussion today.",
-    badge: "👥 Groups"
+    prompt: "Create a challenge about contributing meaningfully to a group conversation or joining a new group discussion today."
   },
   {
     name: "vulnerability",
     level: "advanced",
-    prompt: "Create a challenge about sharing something slightly personal or vulnerable with someone today to build deeper connection.",
-    badge: "💝 Connection"
+    prompt: "Create a challenge about sharing something slightly personal or vulnerable with someone today to build deeper connection."
   },
   {
     name: "leadership",
     level: "advanced", 
-    prompt: "Create a challenge about taking initiative in a social situation today - suggesting plans, leading a conversation, or helping organize something.",
-    badge: "🌟 Leadership"
+    prompt: "Create a challenge about taking initiative in a social situation today - suggesting plans, leading a conversation, or helping organize something."
   },
   {
     name: "conflict_resolution",
     level: "advanced",
-    prompt: "Create a challenge about addressing a minor disagreement or misunderstanding with someone constructively today.",
-    badge: "🤝 Resolution"
+    prompt: "Create a challenge about addressing a minor disagreement or misunderstanding with someone constructively today."
   }
 ];
 
@@ -1782,9 +1772,8 @@ Generate:
 2. Description: More detailed explanation of what to do (2-3 sentences)
 3. Tips: Practical advice for completing this challenge successfully
 4. WhyThisMatters: Explanation of the benefits and reasoning behind this challenge
-5. Badge: Use "${template.badge}" as the badge
 
-Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters, badge. No markdown formatting, no extra text, just the JSON object.`;
+Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters. No markdown formatting, no extra text, just the JSON object.`;
 
     let message;
     try {
@@ -1837,7 +1826,7 @@ Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters
     const challengeData = JSON.parse(cleanResult);
     
     // Validate the response has required fields
-    if (!challengeData.challenge || !challengeData.description || !challengeData.tips || !challengeData.whyThisMatters || !challengeData.badge) {
+    if (!challengeData.challenge || !challengeData.description || !challengeData.tips || !challengeData.whyThisMatters) {
       throw new Error('Invalid response format from AI');
     }
     
