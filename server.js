@@ -1545,7 +1545,7 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      // Get enough activity data to cover the full streak range (30 days to be safe)
+      // Get ALL activity data, no date filtering (for simulated environment)
       db.all(`
         SELECT DISTINCT date(activity_date) as activity_date
         FROM (
@@ -1559,7 +1559,6 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
           FROM openers 
           WHERE device_id = ? AND opener_was_used = 1
         ) activities
-        WHERE activity_date >= date('now', '-30 days')
         ORDER BY activity_date
       `, [deviceId, deviceId], (err, weeklyActivity) => {
         if (err) {
