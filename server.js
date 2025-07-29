@@ -1577,8 +1577,16 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
         }
 
         // Generate debug info for each day
-        const today = new Date();
+        // Use the most recent activity date as the "today" reference for simulated environment
         const activityDates = weeklyActivity.map(row => row.activity_date);
+        let today = new Date();
+        
+        if (activityDates.length > 0) {
+          // Use the most recent activity date as the reference point
+          const mostRecentActivityDate = activityDates[activityDates.length - 1];
+          today = new Date(mostRecentActivityDate + 'T00:00:00.000Z');
+        }
+        
         const weeklyActivityArray = [];
         const debugInfo = [];
 
