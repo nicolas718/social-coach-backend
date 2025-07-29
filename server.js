@@ -1170,6 +1170,50 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
     const completedDates = completed ? completed.split(',').filter(d => d.length > 0) : [];
     console.log(`🧪 SIMULATED HOME: Completed dates: [${completedDates.join(', ')}]`);
     
+    // Get all activity dates from database (both challenges and openers)
+    console.log(`🧪 SIMULATED HOME: Querying database for all activity dates with deviceId: ${deviceId}`);
+    
+    // Use the same query structure as the analytics endpoint
+    const activityQuery = `
+      SELECT DISTINCT date(activity_date) as activity_date
+      FROM (
+        SELECT challenge_date as activity_date
+        FROM daily_challenges 
+        WHERE device_id = ?
+        
+        UNION
+        
+        SELECT opener_date as activity_date
+        FROM openers 
+        WHERE device_id = ? AND opener_was_used = 1
+      ) activities
+      ORDER BY activity_date
+    `;
+    
+    console.log(`🧪 SIMULATED HOME: Executing query: ${activityQuery}`);
+    console.log(`🧪 SIMULATED HOME: Query parameters: [${deviceId}, ${deviceId}]`);
+    
+    db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+      if (err) {
+        console.error('❌ Error fetching activity dates:', err);
+        res.status(500).json({ error: 'Database error' });
+        return;
+      }
+      
+      console.log(`🧪 SIMULATED HOME: Database query completed. Error: ${err}, Rows found: ${activityRows ? activityRows.length : 0}`);
+      
+      // Get activity dates from database
+      const dbActivityDates = activityRows.map(row => row.activity_date);
+      // Combine with completed dates from query parameter
+      const allActivityDates = [...new Set([...completedDates, ...dbActivityDates])];
+      
+      console.log(`🧪 SIMULATED HOME: DB activity dates: [${dbActivityDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: All activity dates: [${allActivityDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Raw activity rows:`, activityRows);
+      
+      // Use allActivityDates instead of completedDates for all calculations
+      const activityDates = allActivityDates;
+    
     // Parse current date
     const currentDateObj = new Date(currentDate + 'T00:00:00.000Z');
     
@@ -1184,15 +1228,15 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
       
       calendar.push(checkDateString);
       
-      if (completedDates.includes(checkDateString)) {
+      if (activityDates.includes(checkDateString)) {
         // Completed day - GREEN
         weeklyActivity.push('streak');
-      } else if (completedDates.length === 0) {
+      } else if (activityDates.length === 0) {
         // New user - all previous days should be grey
         weeklyActivity.push('none');
       } else {
         // Find the first completed date to determine if this is before start or missed
-        const firstCompletedDate = completedDates.sort()[0];
+        const firstCompletedDate = activityDates.sort()[0];
         if (checkDateString < firstCompletedDate) {
           // Before user started - GREY
           weeklyActivity.push('none');
@@ -1209,29 +1253,29 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
     // Calculate current streak - consecutive completed days working backwards from most recent
     let currentStreak = 0;
     
-    if (completedDates.length > 0) {
-      const sortedCompletedDates = completedDates.sort(); // Earliest to latest
-      const mostRecentCompletedDate = sortedCompletedDates[sortedCompletedDates.length - 1];
-      const mostRecentCompletedDateObj = new Date(mostRecentCompletedDate + 'T00:00:00.000Z');
+    if (activityDates.length > 0) {
+      const sortedActivityDates = activityDates.sort(); // Earliest to latest
+      const mostRecentActivityDate = sortedActivityDates[sortedActivityDates.length - 1];
+      const mostRecentActivityDateObj = new Date(mostRecentActivityDate + 'T00:00:00.000Z');
       
-      // Check if there's a gap between most recent completed date and current date
+      // Check if there's a gap between most recent activity date and current date
       // If user missed days, streak should be 0
-      const daysBetween = Math.floor((currentDateObj.getTime() - mostRecentCompletedDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      const daysBetween = Math.floor((currentDateObj.getTime() - mostRecentActivityDateObj.getTime()) / (1000 * 60 * 60 * 24));
       
       if (daysBetween > 1) {
-        // There are missed days between most recent completion and current date
+        // There are missed days between most recent activity and current date
         // Streak is broken, reset to 0
         currentStreak = 0;
-        console.log(`🧪 SIMULATED HOME: Streak broken - ${daysBetween} days between ${mostRecentCompletedDate} and ${currentDate}`);
+        console.log(`🧪 SIMULATED HOME: Streak broken - ${daysBetween} days between ${mostRecentActivityDate} and ${currentDate}`);
       } else {
         // No gap, count consecutive days backwards
-        let checkDate = new Date(mostRecentCompletedDateObj);
+        let checkDate = new Date(mostRecentActivityDateObj);
         
         // Count consecutive days backwards
-        for (let i = sortedCompletedDates.length - 1; i >= 0; i--) {
+        for (let i = sortedActivityDates.length - 1; i >= 0; i--) {
           const expectedDateString = checkDate.toISOString().split('T')[0];
           
-          if (sortedCompletedDates[i] === expectedDateString) {
+          if (sortedActivityDates[i] === expectedDateString) {
             currentStreak++;
             checkDate.setDate(checkDate.getDate() - 1); // Go back one day
           } else {
@@ -1250,15 +1294,58 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
       currentStreak: currentStreak,
       socialZoneLevel: "Warming Up",
       weeklyActivity: weeklyActivity,
-      hasActivityToday: completedDates.includes(currentDate)
+      hasActivityToday: activityDates.includes(currentDate)
     };
     
     console.log(`🧪 SIMULATED HOME: Response:`, response);
     res.json(response);
-  } catch (error) {
-    console.error('❌ Error in simulated home endpoint:', error);
-    res.status(500).json({ error: 'Simulated endpoint error' });
-  }
+      });
+    } catch (error) {
+      console.error('❌ Error in simulated home endpoint:', error);
+      res.status(500).json({ error: 'Simulated endpoint error' });
+    }
+  });
+
+// Test endpoint to check database queries
+app.get('/api/test/database/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  console.log(`🧪 TEST: Testing database queries for device: ${deviceId}`);
+  
+  // Test the same query that the simulated home endpoint uses
+  const activityQuery = `
+    SELECT DISTINCT date(activity_date) as activity_date
+    FROM (
+      SELECT challenge_date as activity_date
+      FROM daily_challenges 
+      WHERE device_id = ?
+      
+      UNION
+      
+      SELECT opener_date as activity_date
+      FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+    ) activities
+    ORDER BY activity_date
+  `;
+  
+  db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+    if (err) {
+      console.error('❌ TEST: Error in database query:', err);
+      res.status(500).json({ error: 'Database error', details: err.message });
+      return;
+    }
+    
+    console.log(`🧪 TEST: Query successful. Rows found: ${activityRows ? activityRows.length : 0}`);
+    console.log(`🧪 TEST: Raw rows:`, activityRows);
+    
+    res.json({
+      deviceId: deviceId,
+      rowsFound: activityRows ? activityRows.length : 0,
+      activityDates: activityRows ? activityRows.map(row => row.activity_date) : [],
+      rawRows: activityRows
+    });
+  });
 });
 
 // Home Screen Data API Endpoint
@@ -1412,8 +1499,41 @@ app.get('/api/data/home/:deviceId', (req, res) => {
           const todayString = today.toISOString().split('T')[0];
           const hasActivityToday = activityDates.includes(todayString);
 
+          // Calculate current streak from actual activity data
+          let calculatedStreak = 0;
+          if (activityDates.length > 0) {
+            const sortedActivityDates = activityDates.sort(); // Earliest to latest
+            const mostRecentActivityDate = sortedActivityDates[sortedActivityDates.length - 1];
+            const mostRecentActivityDateObj = new Date(mostRecentActivityDate + 'T00:00:00.000Z');
+            
+            // Check if there's a gap between most recent activity date and today
+            const today = new Date();
+            const daysBetween = Math.floor((today.getTime() - mostRecentActivityDateObj.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysBetween <= 1) {
+              // No gap, count consecutive days backwards
+              let checkDate = new Date(mostRecentActivityDateObj);
+              
+              // Count consecutive days backwards
+              for (let i = sortedActivityDates.length - 1; i >= 0; i--) {
+                const expectedDateString = checkDate.toISOString().split('T')[0];
+                
+                if (sortedActivityDates[i] === expectedDateString) {
+                  calculatedStreak++;
+                  checkDate.setDate(checkDate.getDate() - 1); // Go back one day
+                } else {
+                  // Gap found, streak is broken
+                  break;
+                }
+              }
+            }
+          }
+          
+          console.log(`🔍 DEBUG: Calculated streak: ${calculatedStreak} (from activity data)`);
+          console.log(`🔍 DEBUG: Database streak: ${user.current_streak || 0} (from database)`);
+          
           const response = {
-            currentStreak: user.current_streak || 0,
+            currentStreak: calculatedStreak,
             socialZoneLevel: "Warming Up",
             weeklyActivity: weeklyActivityArray,
             hasActivityToday: hasActivityToday
