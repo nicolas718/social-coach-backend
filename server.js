@@ -881,10 +881,17 @@ app.post('/api/data/development', (req, res) => {
 app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
+    const { currentDate, completed } = req.query; // Support simulated timeline
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
+
+    // Use simulated date if provided, otherwise use current date
+    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+    const completedDates = completed ? completed.split(',').filter(d => d.length > 0) : [];
+    
+    console.log(`📊 ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}, Completed: [${completedDates.join(', ')}]`);
 
     // Get user info
     db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
