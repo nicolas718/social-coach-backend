@@ -2278,6 +2278,7 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
 
 // Helper function to get purpose descriptions
 function getPurposeDescription(purpose) {
+  console.log(`🎯 PURPOSE DESCRIPTION: Input "${purpose}", lowercase: "${purpose.toLowerCase()}"`);
   const descriptions = {
     'casual': 'Coffee shops, gyms',
     'romantic': 'Social events, quiet spaces',
@@ -2285,7 +2286,9 @@ function getPurposeDescription(purpose) {
     'social': 'Parties, group settings',
     'academic': 'School, study groups'
   };
-  return descriptions[purpose.toLowerCase()] || 'Various settings';
+  const result = descriptions[purpose.toLowerCase()] || 'Various settings';
+  console.log(`🎯 PURPOSE DESCRIPTION: Result "${result}"`);
+  return result;
 }
 
 // Helper function to format opener dates
