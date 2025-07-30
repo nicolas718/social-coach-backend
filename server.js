@@ -1362,8 +1362,11 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
         if (checkDateString < firstCompletedDate) {
           // Before user started - GREY
           weeklyActivity.push('none');
-        } else if (checkDateString >= currentDate) {
-          // Current day or future - don't mark as missed yet - GREY
+        } else if (checkDateString > currentDate) {
+          // Future day - don't mark as missed yet - GREY
+          weeklyActivity.push('none');
+        } else if (checkDateString === currentDate) {
+          // Current day - always GREY (will be white in frontend)
           weeklyActivity.push('none');
         } else {
           // Past day after user started but not completed - RED
@@ -2336,8 +2339,5 @@ app.get('/api/anthropic/health', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Analytics endpoint: /api/data/analytics/:deviceId`);
-  console.log(`🧪 Simulated home endpoint: /api/simulated/home/:deviceId`);
-  console.log(`🗑️ Clear data endpoint: /api/data/clear/:deviceId`);
+  console.log(`Server running on port ${PORT}`);
 });
