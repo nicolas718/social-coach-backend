@@ -1035,6 +1035,10 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             return res.status(500).json({ error: 'Database error' });
           }
 
+          console.log(`📊 ANALYTICS DEBUG: Device ${deviceId}`);
+          console.log(`📊 ANALYTICS DEBUG: Weekly activity raw data:`, weeklyActivity);
+          console.log(`📊 ANALYTICS DEBUG: Stats:`, stats);
+
           // Calculate core metrics
           const currentStreak = user.current_streak || 0;
           const totalSuccessfulActions = (stats.successful_challenges || 0) + (stats.successful_openers || 0);
@@ -1048,14 +1052,20 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             activityMap[row.activity_date] = row.activity_count;
           });
 
+          console.log(`📊 ANALYTICS DEBUG: Activity map:`, activityMap);
+          console.log(`📊 ANALYTICS DEBUG: Reference date: ${referenceDate.toISOString()}`);
+
           const weeklyActivityArray = [];
           for (let i = 6; i >= 0; i--) {
             const checkDate = new Date(referenceDate);
             checkDate.setDate(referenceDate.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
             const activityCount = activityMap[dateString] || 0;
+            console.log(`📊 ANALYTICS DEBUG: Day ${i}: ${dateString} -> ${activityCount} activities`);
             weeklyActivityArray.push(activityCount);
           }
+
+          console.log(`📊 ANALYTICS DEBUG: Final weekly activity array:`, weeklyActivityArray);
 
           // Calculate personal benefits
           let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
