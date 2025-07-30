@@ -1064,6 +1064,8 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   console.error('Error getting weekly activity:', err);
                   return res.status(500).json({ error: 'Database error' });
                 }
+                
+                console.log('🔍 DEBUG: Weekly activity query result:', weeklyActivity);
 
                 // Get activity frequency for social energy calculation
                 db.all(`
