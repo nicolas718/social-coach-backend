@@ -2336,5 +2336,8 @@ app.get('/api/anthropic/health', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Analytics endpoint: /api/data/analytics/:deviceId`);
+  console.log(`🧪 Simulated home endpoint: /api/simulated/home/:deviceId`);
+  console.log(`🗑️ Clear data endpoint: /api/data/clear/:deviceId`);
 });
