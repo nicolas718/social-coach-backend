@@ -1043,18 +1043,21 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
               // Get weekly activity counts (last 7 days)
               db.all(`
-                SELECT DISTINCT date(activity_date) as activity_date
+                SELECT 
+                  activity_date,
+                  COUNT(*) as activity_count
                 FROM (
                   SELECT challenge_date as activity_date
                   FROM daily_challenges 
                   WHERE device_id = ?
                   
-                  UNION
+                  UNION ALL
                   
                   SELECT opener_date as activity_date
                   FROM openers 
                   WHERE device_id = ? AND opener_was_used = 1
                 ) activities
+                GROUP BY activity_date
                 ORDER BY activity_date
               `, [deviceId, deviceId], (err, weeklyActivity) => {
                 if (err) {
