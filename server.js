@@ -1073,6 +1073,15 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   // Social confidence percentage (based on 90-day target)
                   const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
                   
+                  console.log(`📊 ANALYTICS: Core metrics for ${deviceId}:`, {
+                    currentStreak,
+                    totalActions,
+                    totalSuccessfulActions,
+                    overallSuccessRate,
+                    socialConfidencePercentage,
+                    hasData: currentStreak > 0 || totalActions > 0
+                  });
+                  
                   // Generate streak-aware weekly activity array (simplified and robust)
                   const weeklyActivityArray = [];
                   
@@ -1117,54 +1126,79 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   console.log('=== END ANALYTICS WEEKLY ACTIVITY ===');
                   
                   // Calculate Personal Benefits (MVP simplified formulas)
+                  // RESPECT SIMULATED TIMELINE - If no data, return 0 for all benefits
                   
-                  // 1. Improved Confidence (confidence level progression + streak boost)
-                  let improvedConfidence = 30; // Base confidence
-                  if (confidenceData.recent_challenge_confidence && confidenceData.early_challenge_confidence) {
-                    const confidenceImprovement = (confidenceData.recent_challenge_confidence - confidenceData.early_challenge_confidence) / 4 * 100;
-                    improvedConfidence += Math.max(0, confidenceImprovement);
+                  let improvedConfidence = 0;
+                  let reducedSocialAnxiety = 0;
+                  let enhancedCommunication = 0;
+                  let increasedSocialEnergy = 0;
+                  let betterRelationships = 0;
+                  
+                  // Only calculate benefits if we have actual data (not cleared)
+                  if (currentStreak > 0 || challengeStatsData.total_challenges > 0 || openerStatsData.total_openers > 0) {
+                    
+                    // 1. Improved Confidence (confidence level progression + streak boost)
+                    improvedConfidence = 30; // Base confidence
+                    if (confidenceData.recent_challenge_confidence && confidenceData.early_challenge_confidence) {
+                      const confidenceImprovement = (confidenceData.recent_challenge_confidence - confidenceData.early_challenge_confidence) / 4 * 100;
+                      improvedConfidence += Math.max(0, confidenceImprovement);
+                    }
+                    improvedConfidence += Math.min(40, currentStreak * 2); // Streak bonus
+                    improvedConfidence = Math.min(100, Math.round(improvedConfidence));
+                    
+                    // 2. Reduced Social Anxiety (inverse of confidence improvement + consistency)
+                    reducedSocialAnxiety = 25; // Base anxiety reduction
+                    const consistencyBonus = currentStreak >= 7 ? 20 : Math.round(currentStreak * 2.8);
+                    reducedSocialAnxiety += consistencyBonus;
+                    if (overallSuccessRate > 60) {
+                      reducedSocialAnxiety += Math.round((overallSuccessRate - 60) * 0.5);
+                    }
+                    reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
+                    
+                    // 3. Enhanced Communication Skills (success rate + module progress)
+                    const avgModuleProgress = developmentStatsData.avg_progress || 0;
+                    const moduleProgressScore = Math.min(100, avgModuleProgress); // Use actual average progress
+                    const communicationSkills = Math.round((overallSuccessRate * 0.7) + (moduleProgressScore * 0.3));
+                    enhancedCommunication = Math.min(100, communicationSkills);
+                    
+                    // 4. Increased Social Energy (activity frequency)
+                    let socialEnergy = 20; // Base energy
+                    const recentActiveDays = activityData.recent_active_days || 0;
+                    const totalRecentActions = activityData.total_recent_actions || 0;
+                    
+                    // Frequency bonus: active days in last week
+                    socialEnergy += Math.min(35, recentActiveDays * 5); // Max 35 for 7 active days
+                    
+                    // Volume bonus: total actions in last week  
+                    socialEnergy += Math.min(25, totalRecentActions * 2); // Max 25 for 12+ actions
+                    
+                    if (currentStreak >= 5) {
+                      socialEnergy += 20; // Momentum bonus
+                    }
+                    increasedSocialEnergy = Math.min(100, Math.round(socialEnergy));
+                    
+                    // 5. Better Relationship Building (opener success + conversation skills)
+                    let relationshipBuilding = 25; // Base relationship skills
+                    const openerSuccessRate = openerStatsData.total_openers > 0 ? 
+                      Math.round((openerStatsData.successful_openers / openerStatsData.total_openers) * 100) : 0;
+                    relationshipBuilding += Math.round(openerSuccessRate * 0.4);
+                    relationshipBuilding += Math.min(20, currentStreak * 1.5); // Consistency bonus
+                    betterRelationships = Math.min(100, Math.round(relationshipBuilding));
                   }
-                  improvedConfidence += Math.min(40, currentStreak * 2); // Streak bonus
-                  improvedConfidence = Math.min(100, Math.round(improvedConfidence));
                   
-                  // 2. Reduced Social Anxiety (inverse of confidence improvement + consistency)
-                  let reducedSocialAnxiety = 25; // Base anxiety reduction
-                  const consistencyBonus = currentStreak >= 7 ? 20 : Math.round(currentStreak * 2.8);
-                  reducedSocialAnxiety += consistencyBonus;
-                  if (overallSuccessRate > 60) {
-                    reducedSocialAnxiety += Math.round((overallSuccessRate - 60) * 0.5);
-                  }
-                  reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
-                  
-                  // 3. Enhanced Communication Skills (success rate + module progress)
-                  const avgModuleProgress = developmentStatsData.avg_progress || 0;
-                  const moduleProgressScore = Math.min(100, avgModuleProgress); // Use actual average progress
-                  const communicationSkills = Math.round((overallSuccessRate * 0.7) + (moduleProgressScore * 0.3));
-                  const enhancedCommunication = Math.min(100, communicationSkills);
-                  
-                  // 4. Increased Social Energy (activity frequency)
-                  let socialEnergy = 20; // Base energy
-                  const recentActiveDays = activityData.recent_active_days || 0;
-                  const totalRecentActions = activityData.total_recent_actions || 0;
-                  
-                  // Frequency bonus: active days in last week
-                  socialEnergy += Math.min(35, recentActiveDays * 5); // Max 35 for 7 active days
-                  
-                  // Volume bonus: total actions in last week  
-                  socialEnergy += Math.min(25, totalRecentActions * 2); // Max 25 for 12+ actions
-                  
-                  if (currentStreak >= 5) {
-                    socialEnergy += 20; // Momentum bonus
-                  }
-                  const increasedSocialEnergy = Math.min(100, Math.round(socialEnergy));
-                  
-                  // 5. Better Relationship Building (opener success + conversation skills)
-                  let relationshipBuilding = 25; // Base relationship skills
-                  const openerSuccessRate = openerStatsData.total_openers > 0 ? 
-                    Math.round((openerStatsData.successful_openers / openerStatsData.total_openers) * 100) : 0;
-                  relationshipBuilding += Math.round(openerSuccessRate * 0.4);
-                  relationshipBuilding += Math.min(20, currentStreak * 1.5); // Consistency bonus
-                  const betterRelationships = Math.min(100, Math.round(relationshipBuilding));
+                  console.log(`📊 ANALYTICS: Personal benefits calculated for ${deviceId}:`, {
+                    hasData: currentStreak > 0 || challengeStatsData.total_challenges > 0 || openerStatsData.total_openers > 0,
+                    streak: currentStreak,
+                    totalChallenges: challengeStatsData.total_challenges,
+                    totalOpeners: openerStatsData.total_openers,
+                    benefits: {
+                      confidence: improvedConfidence,
+                      anxiety: reducedSocialAnxiety,
+                      communication: enhancedCommunication,
+                      energy: increasedSocialEnergy,
+                      relationships: betterRelationships
+                    }
+                  });
 
                   console.log(`Analytics calculated for ${deviceId}:`, {
                     streak: currentStreak,
