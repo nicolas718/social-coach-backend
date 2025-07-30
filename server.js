@@ -1512,21 +1512,24 @@ app.get('/api/data/home/:deviceId', (req, res) => {
         let activityQuery;
         let queryParams;
         
-        // Always get ALL activities, no date filtering (like debug mode)
-        console.log(`🔍 Getting ALL activities for device ${deviceId}`);
+        // Always get ALL activities with counts, no date filtering (like debug mode)
+        console.log(`🔍 Getting ALL activities with counts for device ${deviceId}`);
         activityQuery = `
-          SELECT DISTINCT date(activity_date) as activity_date
+          SELECT 
+            activity_date,
+            COUNT(*) as activity_count
           FROM (
             SELECT challenge_date as activity_date
             FROM daily_challenges 
             WHERE device_id = ?
             
-            UNION
+            UNION ALL
             
             SELECT opener_date as activity_date
             FROM openers 
             WHERE device_id = ? AND opener_was_used = 1
           ) activities
+          GROUP BY activity_date
           ORDER BY activity_date
         `;
         queryParams = [deviceId, deviceId];
@@ -1537,55 +1540,36 @@ app.get('/api/data/home/:deviceId', (req, res) => {
             return res.status(500).json({ error: 'Database error' });
           }
 
-          const activityDates = weeklyActivity.map(row => row.activity_date).sort();
-          console.log('📊 Activity dates found:', activityDates);
+          // Create a map of dates to activity counts
+          const activityMap = {};
+          weeklyActivity.forEach(row => {
+            activityMap[row.activity_date] = row.activity_count;
+          });
+          const activityDates = Object.keys(activityMap).sort();
+          console.log('📊 Activity dates with counts found:', activityMap);
           
-          // Build weekly activity array for last 7 days (simple logic)
+          // Build weekly activity array for last 7 days (activity counts)
           const weeklyActivityArray = [];
           const today = referenceDate;
           
           console.log(`🔍 DEBUG: Building week array for reference date: ${today.toISOString()}`);
           
-          // Find first activity date to determine when user started
-          const firstActivityDate = activityDates.length > 0 ? new Date(activityDates[0]) : null;
-          console.log(`🔍 DEBUG: First activity date: ${firstActivityDate ? firstActivityDate.toISOString() : 'none'}`);
-          console.log(`🔍 DEBUG: Activity dates found: [${activityDates.join(', ')}]`);
-          
+          // Build array of the last 7 days ending today (current day on right)
           for (let i = 6; i >= 0; i--) {
-            // Create date more reliably to avoid timezone issues
-            const checkDate = new Date(today.getTime());
-            checkDate.setUTCDate(today.getUTCDate() - i);
+            const checkDate = new Date(today);
+            checkDate.setDate(today.getDate() - i);
             const dateString = checkDate.toISOString().split('T')[0];
+            const activityCount = activityMap[dateString] || 0;
             
-            const hasActivity = activityDates.includes(dateString);
-            let activityStatus = 'none';
-            
-            if (hasActivity) {
-              // Has activity = GREEN (part of streak)
-              activityStatus = 'streak';
-            } else if (firstActivityDate && checkDate >= firstActivityDate) {
-              // No activity but user has started = RED (missed day)
-              activityStatus = 'missed';
-            } else {
-              // No activity and before user started = GRAY (none)
-              activityStatus = 'none';
-            }
-            
-            console.log(`📅 Day ${6-i} - ${dateString}: ${activityStatus} (hasActivity: ${hasActivity}, started: ${firstActivityDate ? 'yes' : 'no'})`);
-            weeklyActivityArray.push(activityStatus);
+            // Return the actual activity count for analytics (not status)
+            weeklyActivityArray.push(activityCount);
           }
-
-          // Ensure we always have exactly 7 elements
-          while (weeklyActivityArray.length < 7) {
-            weeklyActivityArray.push('none');
-          }
-          weeklyActivityArray.splice(7); // Trim to exactly 7 if somehow more
 
           console.log(`🔍 DEBUG: Final weeklyActivityArray (${weeklyActivityArray.length} elements): [${weeklyActivityArray.join(', ')}]`);
 
           // Check if user has activity today
           const todayString = today.toISOString().split('T')[0];
-          const hasActivityToday = activityDates.includes(todayString);
+          const hasActivityToday = (activityMap[todayString] || 0) > 0;
 
           // Calculate current streak from actual activity data
           let calculatedStreak = 0;
