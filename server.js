@@ -967,7 +967,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           currentStreak: 0,
           allTimeBestStreak: 0,
           socialConfidencePercentage: 0,
-          weeklyActivity: ['none', 'none', 'none', 'none', 'none', 'none', 'none'],
+          weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
           overallSuccessRate: 0,
           totalChallenges: 0,
           totalOpeners: 0,
