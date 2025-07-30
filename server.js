@@ -2279,13 +2279,13 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
 // Helper function to get purpose descriptions
 function getPurposeDescription(purpose) {
   const descriptions = {
-    'Casual': 'Coffee shops, gyms',
-    'Romantic': 'Social events, quiet spaces',
-    'Professional': 'Networking, work events',
-    'Social': 'Parties, group settings',
-    'Academic': 'School, study groups'
+    'casual': 'Coffee shops, gyms',
+    'romantic': 'Social events, quiet spaces',
+    'professional': 'Networking, work events',
+    'social': 'Parties, group settings',
+    'academic': 'School, study groups'
   };
-  return descriptions[purpose] || 'Various settings';
+  return descriptions[purpose.toLowerCase()] || 'Various settings';
 }
 
 // Helper function to format opener dates
