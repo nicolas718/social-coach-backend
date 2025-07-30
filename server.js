@@ -2199,3 +2199,201 @@ function calculateAllAnalyticsStats(deviceId, callback) {
 }
 
 // === END ANALYTICS FUNCTIONS ===
+
+// Opener Library Data API Endpoint
+app.get('/api/data/opener-library/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { currentDate } = req.query;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    // Use simulated date if provided, otherwise use current date
+    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+    
+    console.log(`📚 OPENER LIBRARY: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
+
+    // Get all opener statistics
+    const statsQuery = `
+      SELECT 
+        COUNT(*) as total_openers,
+        SUM(CASE WHEN opener_was_used = 1 THEN 1 ELSE 0 END) as used_openers,
+        SUM(CASE WHEN opener_was_used = 1 AND opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_openers
+      FROM openers 
+      WHERE device_id = ?
+    `;
+
+    db.get(statsQuery, [deviceId], (err, stats) => {
+      if (err) {
+        console.error('❌ Error getting opener stats:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      // Calculate success rate (successful / used openers)
+      const successRate = stats.used_openers > 0 
+        ? Math.round((stats.successful_openers / stats.used_openers) * 100)
+        : 0;
+
+      console.log(`📚 STATS: Total: ${stats.total_openers}, Used: ${stats.used_openers}, Successful: ${stats.successful_openers}, Rate: ${successRate}%`);
+
+      // Get successful openers list (most recent first)
+      const successfulOpenersQuery = `
+        SELECT 
+          id,
+          opener_purpose as category,
+          opener_setting as setting,
+          opener_text as text,
+          opener_date as date,
+          opener_rating as rating,
+          opener_confidence_level as confidence
+        FROM openers 
+        WHERE device_id = ? AND opener_was_used = 1 AND opener_was_successful = 1
+        ORDER BY opener_date DESC
+        LIMIT 20
+      `;
+
+      db.all(successfulOpenersQuery, [deviceId], (err, successfulOpeners) => {
+        if (err) {
+          console.error('❌ Error getting successful openers:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Get recent history (all logged openers, most recent first)
+        const recentHistoryQuery = `
+          SELECT 
+            id,
+            opener_purpose as category,
+            opener_setting as setting,
+            opener_text as text,
+            opener_date as date,
+            opener_rating as rating,
+            opener_confidence_level as confidence,
+            opener_was_used as wasUsed,
+            opener_was_successful as wasSuccessful
+          FROM openers 
+          WHERE device_id = ?
+          ORDER BY opener_date DESC
+          LIMIT 50
+        `;
+
+        db.all(recentHistoryQuery, [deviceId], (err, recentHistory) => {
+          if (err) {
+            console.error('❌ Error getting recent history:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          // Get success by purpose breakdown
+          const purposeStatsQuery = `
+            SELECT 
+              opener_purpose,
+              COUNT(*) as total_count,
+              SUM(CASE WHEN opener_was_used = 1 THEN 1 ELSE 0 END) as used_count,
+              SUM(CASE WHEN opener_was_used = 1 AND opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_count
+            FROM openers 
+            WHERE device_id = ?
+            GROUP BY opener_purpose
+            ORDER BY opener_purpose
+          `;
+
+          db.all(purposeStatsQuery, [deviceId], (err, purposeStats) => {
+            if (err) {
+              console.error('❌ Error getting purpose stats:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+
+            // Calculate success rates by purpose
+            const successByPurpose = purposeStats.map(purpose => {
+              const successRate = purpose.used_count > 0 
+                ? (purpose.successful_count / purpose.used_count)
+                : 0;
+              
+              return {
+                name: purpose.opener_purpose,
+                setting: getPurposeDescription(purpose.opener_purpose),
+                successRate: Math.round(successRate * 100),
+                totalUsed: purpose.used_count,
+                totalSuccessful: purpose.successful_count
+              };
+            });
+
+            // Format successful openers for frontend
+            const formattedSuccessfulOpeners = successfulOpeners.map(opener => ({
+              id: opener.id,
+              category: opener.category,
+              setting: opener.setting,
+              text: opener.text,
+              date: formatOpenerDate(opener.date),
+              rating: opener.rating || 0,
+              confidence: opener.confidence || 0,
+              isSuccess: true
+            }));
+
+            // Format recent history for frontend
+            const formattedRecentHistory = recentHistory.map(opener => ({
+              id: opener.id,
+              category: opener.category,
+              setting: opener.setting,
+              text: opener.text,
+              date: formatOpenerDate(opener.date),
+              rating: opener.rating || 0,
+              confidence: opener.confidence || 0,
+              wasUsed: Boolean(opener.wasUsed),
+              isSuccess: Boolean(opener.wasSuccessful)
+            }));
+
+            const response = {
+              successRate: successRate,
+              totalConversations: stats.used_openers,
+              successfulOpeners: formattedSuccessfulOpeners,
+              recentHistory: formattedRecentHistory,
+              successByPurpose: successByPurpose,
+              totalOpeners: stats.total_openers,
+              totalSuccessful: stats.successful_openers
+            };
+
+            console.log(`📚 OPENER LIBRARY: Returning data with ${formattedSuccessfulOpeners.length} successful, ${formattedRecentHistory.length} history, ${successByPurpose.length} purposes`);
+            res.json(response);
+          });
+        });
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Error in opener library endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Helper function to get purpose descriptions
+function getPurposeDescription(purpose) {
+  const descriptions = {
+    'Casual': 'Coffee shops, gyms',
+    'Romantic': 'Social events, quiet spaces',
+    'Professional': 'Networking, work events',
+    'Social': 'Parties, group settings',
+    'Academic': 'School, study groups'
+  };
+  return descriptions[purpose] || 'Various settings';
+}
+
+// Helper function to format opener dates
+function formatOpenerDate(dateString) {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays === 0) return 'Today';
+    if (diffDays <= 7) return `${diffDays} days ago`;
+    if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} week${diffDays > 14 ? 's' : ''} ago`;
+    return `${Math.ceil(diffDays / 30)} month${diffDays > 60 ? 's' : ''} ago`;
+  } catch (error) {
+    return 'Unknown date';
+  }
+}
+
+// Test endpoint to check database queries
