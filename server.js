@@ -1117,30 +1117,18 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   console.log('Current streak:', currentStreak);
                   console.log('Activity dates found:', activityDates);
                   
-                  // Use today as reference point for 7-day window
-                  const today = new Date();
+                  // Use simulated date as reference point for 7-day window
+                  const today = referenceDate;
                   
-                  // Build array of the last 7 days ending today
+                  // Build array of the last 7 days ending today (current day on right)
                   for (let i = 6; i >= 0; i--) {
                     const checkDate = new Date(today);
                     checkDate.setDate(today.getDate() - i);
                     const dateString = checkDate.toISOString().split('T')[0];
                     const activityCount = activityMap[dateString] || 0;
                     
-                    let activityStatus = 'none';
-                    
-                    // Simple logic: if there's activity on this date, mark it as streak if we have a current streak
-                    if (activityCount > 0) {
-                      if (currentStreak > 0) {
-                        activityStatus = 'streak';  // Part of streak
-                      } else {
-                        activityStatus = 'activity';  // Activity but no streak
-                      }
-                    } else {
-                      activityStatus = 'none';  // No activity
-                    }
-                    
-                    weeklyActivityArray.push(activityStatus);
+                    // Return the actual activity count for analytics (not status)
+                    weeklyActivityArray.push(activityCount);
                   }
                   
                   console.log('Analytics final weekly activity array:', weeklyActivityArray);
