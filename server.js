@@ -2214,7 +2214,7 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
             }
 
             // Define all possible purposes
-            const allPurposes = ['casual', 'romantic', 'professional', 'social', 'academic'];
+            const allPurposes = ['casual', 'romantic', 'professional'];
             
             // Create a map of existing stats
             const statsMap = {};
