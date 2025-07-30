@@ -937,11 +937,11 @@ app.delete('/api/data/clear/:deviceId', (req, res) => {
   }
 });
 
-// Get User Analytics - COMPLETE UPDATE WITH ALL FRONTEND DATA
+// Get User Analytics - ORGANIZED AND CLEAN
 app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { currentDate, completed } = req.query; // Support simulated timeline
+    const { currentDate, completed } = req.query;
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
@@ -949,18 +949,17 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
     // Use simulated date if provided, otherwise use current date
     const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
-    const completedDates = completed ? completed.split(',').filter(d => d.length > 0) : [];
     
-    console.log(`📊 ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}, Completed: [${completedDates.join(', ')}]`);
+    console.log(`📊 ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
-    // Get user info - DON'T CREATE USER IF NOT EXISTS (for testing)
+    // Get user info
     db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
       if (err) {
         console.error('Error getting user:', err);
         return res.status(500).json({ error: 'Database error' });
       }
 
-      // If no user exists, return all zeros (for testing)
+      // If no user exists, return all zeros
       if (!user) {
         console.log(`📊 ANALYTICS: No user found for ${deviceId}, returning all zeros`);
         return res.json({
@@ -985,284 +984,133 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
         });
       }
 
-      // Get challenge stats with success tracking
-      db.all(`
+      // Get all analytics data in one organized query
+      const analyticsQuery = `
         SELECT 
-          COUNT(*) as total_challenges,
-          SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) as successful_challenges,
-          AVG(challenge_confidence_level) as avg_challenge_confidence
-        FROM daily_challenges 
-        WHERE device_id = ?
-      `, [deviceId], (err, challengeStats) => {
+          -- Challenge stats
+          (SELECT COUNT(*) FROM daily_challenges WHERE device_id = ?) as total_challenges,
+          (SELECT SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) FROM daily_challenges WHERE device_id = ?) as successful_challenges,
+          (SELECT AVG(challenge_confidence_level) FROM daily_challenges WHERE device_id = ? AND challenge_confidence_level IS NOT NULL) as avg_challenge_confidence,
+          
+          -- Opener stats
+          (SELECT COUNT(*) FROM openers WHERE device_id = ? AND opener_was_used = 1) as total_openers,
+          (SELECT SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) FROM openers WHERE device_id = ? AND opener_was_used = 1) as successful_openers,
+          (SELECT AVG(opener_rating) FROM openers WHERE device_id = ? AND opener_was_used = 1) as avg_rating,
+          
+          -- Development stats
+          (SELECT COUNT(*) FROM development_modules WHERE device_id = ?) as total_modules_started,
+          (SELECT SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) FROM development_modules WHERE device_id = ?) as completed_modules,
+          (SELECT AVG(development_progress_percentage) FROM development_modules WHERE device_id = ?) as avg_progress
+      `;
+      
+      db.get(analyticsQuery, [deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId], (err, stats) => {
         if (err) {
-          console.error('Error getting challenge stats:', err);
+          console.error('Error getting analytics stats:', err);
           return res.status(500).json({ error: 'Database error' });
         }
 
-        // Get opener stats (only count used openers for success rate)
-        db.all(`
+        // Get weekly activity counts
+        const weeklyActivityQuery = `
           SELECT 
-            COUNT(*) as total_openers,
-            SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_openers,
-            AVG(opener_rating) as avg_rating,
-            AVG(opener_confidence_level) as avg_opener_confidence
-          FROM openers 
-          WHERE device_id = ? AND opener_was_used = 1
-        `, [deviceId], (err, openerStats) => {
+            activity_date,
+            COUNT(*) as activity_count
+          FROM (
+            SELECT challenge_date as activity_date
+            FROM daily_challenges 
+            WHERE device_id = ?
+            
+            UNION ALL
+            
+            SELECT opener_date as activity_date
+            FROM openers 
+            WHERE device_id = ? AND opener_was_used = 1
+          ) activities
+          GROUP BY activity_date
+          ORDER BY activity_date
+        `;
+        
+        db.all(weeklyActivityQuery, [deviceId, deviceId], (err, weeklyActivity) => {
           if (err) {
-            console.error('Error getting opener stats:', err);
+            console.error('Error getting weekly activity:', err);
             return res.status(500).json({ error: 'Database error' });
           }
 
-          // Get development module stats
-          db.all(`
-            SELECT 
-              COUNT(*) as total_modules_started,
-              SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) as completed_modules,
-              AVG(development_progress_percentage) as avg_progress
-            FROM development_modules 
-            WHERE device_id = ?
-          `, [deviceId], (err, developmentStats) => {
-            if (err) {
-              console.error('Error getting development stats:', err);
-              return res.status(500).json({ error: 'Database error' });
+          // Calculate core metrics
+          const currentStreak = user.current_streak || 0;
+          const totalSuccessfulActions = (stats.successful_challenges || 0) + (stats.successful_openers || 0);
+          const totalActions = (stats.total_challenges || 0) + (stats.total_openers || 0);
+          const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
+          const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
+
+          // Build weekly activity array
+          const activityMap = {};
+          weeklyActivity.forEach(row => {
+            activityMap[row.activity_date] = row.activity_count;
+          });
+
+          const weeklyActivityArray = [];
+          for (let i = 6; i >= 0; i--) {
+            const checkDate = new Date(referenceDate);
+            checkDate.setDate(referenceDate.getDate() - i);
+            const dateString = checkDate.toISOString().split('T')[0];
+            const activityCount = activityMap[dateString] || 0;
+            weeklyActivityArray.push(activityCount);
+          }
+
+          // Calculate personal benefits
+          let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
+          let increasedSocialEnergy = 0, betterRelationships = 0;
+
+          if (currentStreak > 0 || stats.total_challenges > 0 || stats.total_openers > 0) {
+            // Improved Confidence
+            improvedConfidence = 30 + Math.min(40, currentStreak * 2);
+            
+            // Reduced Social Anxiety
+            reducedSocialAnxiety = 25 + (currentStreak >= 7 ? 20 : Math.round(currentStreak * 2.8));
+            if (overallSuccessRate > 60) {
+              reducedSocialAnxiety += Math.round((overallSuccessRate - 60) * 0.5);
             }
+            
+            // Enhanced Communication
+            const moduleProgressScore = Math.min(100, stats.avg_progress || 0);
+            enhancedCommunication = Math.round((overallSuccessRate * 0.7) + (moduleProgressScore * 0.3));
+            
+            // Increased Social Energy
+            increasedSocialEnergy = 20 + (currentStreak >= 5 ? 20 : 0);
+            
+            // Better Relationships
+            const openerSuccessRate = stats.total_openers > 0 ? 
+              Math.round((stats.successful_openers / stats.total_openers) * 100) : 0;
+            betterRelationships = 25 + Math.round(openerSuccessRate * 0.4) + Math.min(20, currentStreak * 1.5);
+          }
 
-            // Get confidence progression (early vs recent)
-            db.all(`
-              SELECT 
-                AVG(CASE WHEN created_at < datetime('now', '-30 days') THEN challenge_confidence_level END) as early_challenge_confidence,
-                AVG(CASE WHEN created_at >= datetime('now', '-30 days') THEN challenge_confidence_level END) as recent_challenge_confidence
-              FROM daily_challenges 
-              WHERE device_id = ? AND challenge_confidence_level IS NOT NULL
-            `, [deviceId], (err, confidenceProgression) => {
-              if (err) {
-                console.error('Error getting confidence progression:', err);
-                return res.status(500).json({ error: 'Database error' });
-              }
+          // Cap all benefits at 100
+          improvedConfidence = Math.min(100, Math.round(improvedConfidence));
+          reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
+          enhancedCommunication = Math.min(100, enhancedCommunication);
+          increasedSocialEnergy = Math.min(100, Math.round(increasedSocialEnergy));
+          betterRelationships = Math.min(100, Math.round(betterRelationships));
 
-              // Get weekly activity counts (last 7 days)
-              db.all(`
-                SELECT 
-                  activity_date,
-                  COUNT(*) as activity_count
-                FROM (
-                  SELECT challenge_date as activity_date
-                  FROM daily_challenges 
-                  WHERE device_id = ?
-                  
-                  UNION ALL
-                  
-                  SELECT opener_date as activity_date
-                  FROM openers 
-                  WHERE device_id = ? AND opener_was_used = 1
-                ) activities
-                GROUP BY activity_date
-                ORDER BY activity_date
-              `, [deviceId, deviceId], (err, weeklyActivity) => {
-                if (err) {
-                  console.error('Error getting weekly activity:', err);
-                  return res.status(500).json({ error: 'Database error' });
-                }
-                
-
-
-                // Get activity frequency for social energy calculation
-                db.all(`
-                  SELECT 
-                    COUNT(DISTINCT action_date) as recent_active_days,
-                    COUNT(*) as total_recent_actions
-                  FROM (
-                    SELECT date(challenge_date) as action_date FROM daily_challenges WHERE device_id = ? AND challenge_date >= date('now', '-7 days')
-                    UNION ALL
-                    SELECT date(opener_date) as action_date FROM openers WHERE device_id = ? AND opener_was_used = 1 AND opener_date >= date('now', '-7 days')
-                  )
-                `, [deviceId, deviceId], (err, activityFrequency) => {
-                  if (err) {
-                    console.error('Error getting activity frequency:', err);
-                    return res.status(500).json({ error: 'Database error' });
-                  }
-
-                  // Extract stats
-                  const challengeStatsData = challengeStats[0];
-                  const openerStatsData = openerStats[0];
-                  const developmentStatsData = developmentStats[0];
-                  const confidenceData = confidenceProgression[0];
-                  const activityData = activityFrequency[0];
-                  
-                  // Calculate core metrics
-                  const currentStreak = user.current_streak || 0; // Keep using database streak for now
-                  const totalSuccessfulActions = (challengeStatsData.successful_challenges || 0) + (openerStatsData.successful_openers || 0);
-                  const totalActions = (challengeStatsData.total_challenges || 0) + (openerStatsData.total_openers || 0);
-                  const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
-                  
-                  // Social confidence percentage (based on 90-day target)
-                  const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
-                  
-                  console.log(`📊 ANALYTICS: Core metrics for ${deviceId}:`, {
-                    currentStreak,
-                    totalActions,
-                    totalSuccessfulActions,
-                    overallSuccessRate,
-                    socialConfidencePercentage,
-                    hasData: currentStreak > 0 || totalActions > 0
-                  });
-                  
-                  // Generate streak-aware weekly activity array (simplified and robust)
-                  const weeklyActivityArray = [];
-                  
-                  // Create a map of dates to activity counts
-                  const activityMap = {};
-                  weeklyActivity.forEach(row => {
-                    activityMap[row.activity_date] = row.activity_count;
-                  });
-                  const activityDates = Object.keys(activityMap).sort();
-                  
-                  console.log('=== ANALYTICS WEEKLY ACTIVITY ===');
-                  console.log('Current streak:', currentStreak);
-                  console.log('Activity dates found:', activityDates);
-                  
-                  // Use simulated date as reference point for 7-day window
-                  const today = referenceDate;
-                  
-                  // Build array of the last 7 days ending today (current day on right)
-                  for (let i = 6; i >= 0; i--) {
-                    const checkDate = new Date(today);
-                    checkDate.setDate(today.getDate() - i);
-                    const dateString = checkDate.toISOString().split('T')[0];
-                    const activityCount = activityMap[dateString] || 0;
-                    
-                    // Return the actual activity count for analytics (not status)
-                    weeklyActivityArray.push(activityCount);
-                  }
-                  
-                  console.log('Analytics final weekly activity array:', weeklyActivityArray);
-                  console.log('=== END ANALYTICS WEEKLY ACTIVITY ===');
-                  
-                  // Calculate Personal Benefits (MVP simplified formulas)
-                  // RESPECT SIMULATED TIMELINE - If no data, return 0 for all benefits
-                  
-                  let improvedConfidence = 0;
-                  let reducedSocialAnxiety = 0;
-                  let enhancedCommunication = 0;
-                  let increasedSocialEnergy = 0;
-                  let betterRelationships = 0;
-                  
-                  // Only calculate benefits if we have actual data (not cleared)
-                  if (currentStreak > 0 || challengeStatsData.total_challenges > 0 || openerStatsData.total_openers > 0) {
-                    
-                    // 1. Improved Confidence (confidence level progression + streak boost)
-                    improvedConfidence = 30; // Base confidence
-                    if (confidenceData.recent_challenge_confidence && confidenceData.early_challenge_confidence) {
-                      const confidenceImprovement = (confidenceData.recent_challenge_confidence - confidenceData.early_challenge_confidence) / 4 * 100;
-                      improvedConfidence += Math.max(0, confidenceImprovement);
-                    }
-                    improvedConfidence += Math.min(40, currentStreak * 2); // Streak bonus
-                    improvedConfidence = Math.min(100, Math.round(improvedConfidence));
-                    
-                    // 2. Reduced Social Anxiety (inverse of confidence improvement + consistency)
-                    reducedSocialAnxiety = 25; // Base anxiety reduction
-                    const consistencyBonus = currentStreak >= 7 ? 20 : Math.round(currentStreak * 2.8);
-                    reducedSocialAnxiety += consistencyBonus;
-                    if (overallSuccessRate > 60) {
-                      reducedSocialAnxiety += Math.round((overallSuccessRate - 60) * 0.5);
-                    }
-                    reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
-                    
-                    // 3. Enhanced Communication Skills (success rate + module progress)
-                    const avgModuleProgress = developmentStatsData.avg_progress || 0;
-                    const moduleProgressScore = Math.min(100, avgModuleProgress); // Use actual average progress
-                    const communicationSkills = Math.round((overallSuccessRate * 0.7) + (moduleProgressScore * 0.3));
-                    enhancedCommunication = Math.min(100, communicationSkills);
-                    
-                    // 4. Increased Social Energy (activity frequency)
-                    let socialEnergy = 20; // Base energy
-                    const recentActiveDays = activityData.recent_active_days || 0;
-                    const totalRecentActions = activityData.total_recent_actions || 0;
-                    
-                    // Frequency bonus: active days in last week
-                    socialEnergy += Math.min(35, recentActiveDays * 5); // Max 35 for 7 active days
-                    
-                    // Volume bonus: total actions in last week  
-                    socialEnergy += Math.min(25, totalRecentActions * 2); // Max 25 for 12+ actions
-                    
-                    if (currentStreak >= 5) {
-                      socialEnergy += 20; // Momentum bonus
-                    }
-                    increasedSocialEnergy = Math.min(100, Math.round(socialEnergy));
-                    
-                    // 5. Better Relationship Building (opener success + conversation skills)
-                    let relationshipBuilding = 25; // Base relationship skills
-                    const openerSuccessRate = openerStatsData.total_openers > 0 ? 
-                      Math.round((openerStatsData.successful_openers / openerStatsData.total_openers) * 100) : 0;
-                    relationshipBuilding += Math.round(openerSuccessRate * 0.4);
-                    relationshipBuilding += Math.min(20, currentStreak * 1.5); // Consistency bonus
-                    betterRelationships = Math.min(100, Math.round(relationshipBuilding));
-                  }
-                  
-                  console.log(`📊 ANALYTICS: Personal benefits calculated for ${deviceId}:`, {
-                    hasData: currentStreak > 0 || challengeStatsData.total_challenges > 0 || openerStatsData.total_openers > 0,
-                    streak: currentStreak,
-                    totalChallenges: challengeStatsData.total_challenges,
-                    totalOpeners: openerStatsData.total_openers,
-                    benefits: {
-                      confidence: improvedConfidence,
-                      anxiety: reducedSocialAnxiety,
-                      communication: enhancedCommunication,
-                      energy: increasedSocialEnergy,
-                      relationships: betterRelationships
-                    }
-                  });
-
-                  console.log(`Analytics calculated for ${deviceId}:`, {
-                    streak: currentStreak,
-                    successRate: overallSuccessRate,
-                    socialConfidence: socialConfidencePercentage,
-                    weeklyActivity: weeklyActivityArray,
-                    benefits: {
-                      confidence: improvedConfidence,
-                      anxiety: reducedSocialAnxiety,
-                      communication: enhancedCommunication,
-                      energy: increasedSocialEnergy,
-                      relationships: betterRelationships
-                    }
-                  });
-
-                  // Return complete analytics data for frontend
-                  res.json({
-                    // Streak Info
-                    currentStreak: currentStreak,
-                    allTimeBestStreak: user.all_time_best_streak || 0,
-                    
-                    // Social Confidence (calculated from streak)
-                    socialConfidencePercentage: socialConfidencePercentage,
-                    
-                    // Weekly Activity (7 days of activity counts)
-                    weeklyActivity: weeklyActivityArray,
-                    
-                    // Overall Success Rate (from challenges + openers)
-                    overallSuccessRate: overallSuccessRate,
-                    totalChallenges: challengeStatsData.total_challenges || 0,
-                    totalOpeners: openerStatsData.total_openers || 0,
-                    successfulChallenges: challengeStatsData.successful_challenges || 0,
-                    successfulOpeners: openerStatsData.successful_openers || 0,
-                    
-                    // Personal Benefits (calculated from various data points)
-                    improvedConfidence: improvedConfidence,
-                    reducedSocialAnxiety: reducedSocialAnxiety,
-                    enhancedCommunication: enhancedCommunication,
-                    increasedSocialEnergy: increasedSocialEnergy,
-                    betterRelationships: betterRelationships,
-                    
-                    // Additional data (for debugging/future use)
-                    averageRating: Math.round((openerStatsData.avg_rating || 0) * 10) / 10,
-                    totalModulesStarted: developmentStatsData.total_modules_started || 0,
-                    completedModules: developmentStatsData.completed_modules || 0,
-                    averageModuleProgress: Math.round((developmentStatsData.avg_progress || 0) * 10) / 10
-                  });
-                });
-              });
-            });
+          // Return complete analytics data
+          res.json({
+            currentStreak: currentStreak,
+            allTimeBestStreak: user.all_time_best_streak || 0,
+            socialConfidencePercentage: socialConfidencePercentage,
+            weeklyActivity: weeklyActivityArray,
+            overallSuccessRate: overallSuccessRate,
+            totalChallenges: stats.total_challenges || 0,
+            totalOpeners: stats.total_openers || 0,
+            successfulChallenges: stats.successful_challenges || 0,
+            successfulOpeners: stats.successful_openers || 0,
+            improvedConfidence: improvedConfidence,
+            reducedSocialAnxiety: reducedSocialAnxiety,
+            enhancedCommunication: enhancedCommunication,
+            increasedSocialEnergy: increasedSocialEnergy,
+            betterRelationships: betterRelationships,
+            averageRating: Math.round((stats.avg_rating || 0) * 10) / 10,
+            totalModulesStarted: stats.total_modules_started || 0,
+            completedModules: stats.completed_modules || 0,
+            averageModuleProgress: Math.round((stats.avg_progress || 0) * 10) / 10
           });
         });
       });
