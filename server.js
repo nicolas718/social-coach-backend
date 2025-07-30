@@ -2160,7 +2160,7 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
           opener_confidence_level as confidence
         FROM openers 
         WHERE device_id = ? AND opener_was_used = 1 AND opener_was_successful = 1
-        ORDER BY opener_date DESC
+        ORDER BY id DESC, opener_date DESC
         LIMIT 20
       `;
 
@@ -2184,7 +2184,7 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
             opener_was_successful as wasSuccessful
           FROM openers 
           WHERE device_id = ?
-          ORDER BY opener_date DESC
+          ORDER BY id DESC, opener_date DESC
           LIMIT 50
         `;
 
