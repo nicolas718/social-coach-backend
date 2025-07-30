@@ -877,6 +877,66 @@ app.post('/api/data/development', (req, res) => {
   }
 });
 
+// Clear all data for a device (for testing)
+app.delete('/api/data/clear/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    console.log(`🗑️ CLEARING ALL DATA for device: ${deviceId}`);
+
+    // Delete all data for this device
+    db.serialize(() => {
+      // Delete from all tables
+      db.run('DELETE FROM daily_challenges WHERE device_id = ?', [deviceId], (err) => {
+        if (err) {
+          console.error('Error deleting challenges:', err);
+        } else {
+          console.log('✅ Deleted daily challenges');
+        }
+      });
+
+      db.run('DELETE FROM openers WHERE device_id = ?', [deviceId], (err) => {
+        if (err) {
+          console.error('Error deleting openers:', err);
+        } else {
+          console.log('✅ Deleted openers');
+        }
+      });
+
+      db.run('DELETE FROM development_modules WHERE device_id = ?', [deviceId], (err) => {
+        if (err) {
+          console.error('Error deleting development modules:', err);
+        } else {
+          console.log('✅ Deleted development modules');
+        }
+      });
+
+      db.run('DELETE FROM users WHERE device_id = ?', [deviceId], (err) => {
+        if (err) {
+          console.error('Error deleting user:', err);
+        } else {
+          console.log('✅ Deleted user');
+        }
+      });
+
+      // Send success response
+      res.json({ 
+        success: true, 
+        message: 'All data cleared for testing',
+        clearedTables: ['daily_challenges', 'openers', 'development_modules', 'users']
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Error clearing data:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get User Analytics - COMPLETE UPDATE WITH ALL FRONTEND DATA
 app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
