@@ -1124,11 +1124,15 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
                   const today = referenceDate;
                   
                   // Build array of the last 7 days ending today (current day on right)
+                  console.log('🔍 DEBUG: Activity map:', activityMap);
+                  console.log('🔍 DEBUG: Reference date:', today.toISOString());
                   for (let i = 6; i >= 0; i--) {
                     const checkDate = new Date(today);
                     checkDate.setDate(today.getDate() - i);
                     const dateString = checkDate.toISOString().split('T')[0];
                     const activityCount = activityMap[dateString] || 0;
+                    
+                    console.log(`🔍 DEBUG: Day ${i}: ${dateString} -> ${activityCount} activities`);
                     
                     // Return the actual activity count for analytics (not status)
                     weeklyActivityArray.push(activityCount);
