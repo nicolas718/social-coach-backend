@@ -2213,18 +2213,28 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
               return res.status(500).json({ error: 'Database error' });
             }
 
-            // Calculate success rates by purpose
-            const successByPurpose = purposeStats.map(purpose => {
-              const successRate = purpose.used_count > 0 
-                ? (purpose.successful_count / purpose.used_count)
+            // Define all possible purposes
+            const allPurposes = ['casual', 'romantic', 'professional', 'social', 'academic'];
+            
+            // Create a map of existing stats
+            const statsMap = {};
+            purposeStats.forEach(stat => {
+              statsMap[stat.opener_purpose] = stat;
+            });
+            
+            // Calculate success rates by purpose - include all purposes
+            const successByPurpose = allPurposes.map(purpose => {
+              const stat = statsMap[purpose] || { used_count: 0, successful_count: 0 };
+              const successRate = stat.used_count > 0 
+                ? (stat.successful_count / stat.used_count)
                 : 0;
               
               return {
-                name: purpose.opener_purpose,
-                setting: getPurposeDescription(purpose.opener_purpose),
+                name: purpose.charAt(0).toUpperCase() + purpose.slice(1),
+                setting: getPurposeDescription(purpose),
                 successRate: Math.round(successRate * 100),
-                totalUsed: purpose.used_count,
-                totalSuccessful: purpose.successful_count
+                totalUsed: stat.used_count,
+                totalSuccessful: stat.successful_count
               };
             });
 
