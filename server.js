@@ -984,60 +984,18 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
         });
       }
 
-      // Get all analytics data in one organized query
-      const analyticsQuery = `
-        SELECT 
-          -- Challenge stats
-          (SELECT COUNT(*) FROM daily_challenges WHERE device_id = ?) as total_challenges,
-          (SELECT SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) FROM daily_challenges WHERE device_id = ?) as successful_challenges,
-          (SELECT AVG(challenge_confidence_level) FROM daily_challenges WHERE device_id = ? AND challenge_confidence_level IS NOT NULL) as avg_challenge_confidence,
-          
-          -- Opener stats
-          (SELECT COUNT(*) FROM openers WHERE device_id = ? AND opener_was_used = 1) as total_openers,
-          (SELECT SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) FROM openers WHERE device_id = ? AND opener_was_used = 1) as successful_openers,
-          (SELECT AVG(opener_rating) FROM openers WHERE device_id = ? AND opener_was_used = 1) as avg_rating,
-          
-          -- Development stats
-          (SELECT COUNT(*) FROM development_modules WHERE device_id = ?) as total_modules_started,
-          (SELECT SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) FROM development_modules WHERE device_id = ?) as completed_modules,
-          (SELECT AVG(development_progress_percentage) FROM development_modules WHERE device_id = ?) as avg_progress
-      `;
-      
-      db.get(analyticsQuery, [deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId], (err, stats) => {
+      // Use organized analytics functions
+      calculateAllAnalyticsStats(deviceId, (err, stats) => {
         if (err) {
           console.error('Error getting analytics stats:', err);
           return res.status(500).json({ error: 'Database error' });
         }
 
-        // Get weekly activity counts
-        const weeklyActivityQuery = `
-          SELECT 
-            activity_date,
-            COUNT(*) as activity_count
-          FROM (
-            SELECT challenge_date as activity_date
-            FROM daily_challenges 
-            WHERE device_id = ?
-            
-            UNION ALL
-            
-            SELECT opener_date as activity_date
-            FROM openers 
-            WHERE device_id = ? AND opener_was_used = 1
-          ) activities
-          GROUP BY activity_date
-          ORDER BY activity_date
-        `;
-        
-        db.all(weeklyActivityQuery, [deviceId, deviceId], (err, weeklyActivity) => {
+        calculateWeeklyActivityCounts(deviceId, referenceDate, (err, weeklyActivityArray) => {
           if (err) {
             console.error('Error getting weekly activity:', err);
             return res.status(500).json({ error: 'Database error' });
           }
-
-          console.log(`📊 ANALYTICS DEBUG: Device ${deviceId}`);
-          console.log(`📊 ANALYTICS DEBUG: Weekly activity raw data:`, weeklyActivity);
-          console.log(`📊 ANALYTICS DEBUG: Stats:`, stats);
 
           // Calculate core metrics
           const currentStreak = user.current_streak || 0;
@@ -1045,27 +1003,6 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           const totalActions = (stats.total_challenges || 0) + (stats.total_openers || 0);
           const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
           const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
-
-          // Build weekly activity array
-          const activityMap = {};
-          weeklyActivity.forEach(row => {
-            activityMap[row.activity_date] = row.activity_count;
-          });
-
-          console.log(`📊 ANALYTICS DEBUG: Activity map:`, activityMap);
-          console.log(`📊 ANALYTICS DEBUG: Reference date: ${referenceDate.toISOString()}`);
-
-          const weeklyActivityArray = [];
-          for (let i = 6; i >= 0; i--) {
-            const checkDate = new Date(referenceDate);
-            checkDate.setDate(referenceDate.getDate() - i);
-            const dateString = checkDate.toISOString().split('T')[0];
-            const activityCount = activityMap[dateString] || 0;
-            console.log(`📊 ANALYTICS DEBUG: Day ${i}: ${dateString} -> ${activityCount} activities`);
-            weeklyActivityArray.push(activityCount);
-          }
-
-          console.log(`📊 ANALYTICS DEBUG: Final weekly activity array:`, weeklyActivityArray);
 
           // Calculate personal benefits
           let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
@@ -2176,3 +2113,89 @@ app.get('/api/anthropic/health', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// === ANALYTICS CALCULATION FUNCTIONS ===
+
+function calculateWeeklyActivityCounts(deviceId, referenceDate, callback) {
+  const weeklyActivityQuery = `
+    SELECT 
+      activity_date,
+      COUNT(*) as activity_count
+    FROM (
+      SELECT DATE(challenge_date) as activity_date
+      FROM daily_challenges 
+      WHERE device_id = ?
+      
+      UNION ALL
+      
+      SELECT DATE(opener_date) as activity_date
+      FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+    ) activities
+    GROUP BY activity_date
+    ORDER BY activity_date
+  `;
+  
+  db.all(weeklyActivityQuery, [deviceId, deviceId], (err, weeklyActivity) => {
+    if (err) {
+      return callback(err, null);
+    }
+
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Device ${deviceId}`);
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Raw data:`, weeklyActivity);
+
+    // Build activity map
+    const activityMap = {};
+    weeklyActivity.forEach(row => {
+      activityMap[row.activity_date] = row.activity_count;
+    });
+
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Activity map:`, activityMap);
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Reference date: ${referenceDate.toISOString()}`);
+
+    // Build 7-day array (current day on right)
+    const weeklyActivityArray = [];
+    for (let i = 6; i >= 0; i--) {
+      const checkDate = new Date(referenceDate);
+      checkDate.setDate(referenceDate.getDate() - i);
+      const dateString = checkDate.toISOString().split('T')[0];
+      const activityCount = activityMap[dateString] || 0;
+      console.log(`📊 WEEKLY ACTIVITY DEBUG: Day ${i}: ${dateString} -> ${activityCount} activities`);
+      weeklyActivityArray.push(activityCount);
+    }
+
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Final array:`, weeklyActivityArray);
+    callback(null, weeklyActivityArray);
+  });
+}
+
+function calculateAllAnalyticsStats(deviceId, callback) {
+  const analyticsQuery = `
+    SELECT 
+      -- Challenge stats
+      (SELECT COUNT(*) FROM daily_challenges WHERE device_id = ?) as total_challenges,
+      (SELECT SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) FROM daily_challenges WHERE device_id = ?) as successful_challenges,
+      (SELECT AVG(challenge_confidence_level) FROM daily_challenges WHERE device_id = ? AND challenge_confidence_level IS NOT NULL) as avg_challenge_confidence,
+      
+      -- Opener stats
+      (SELECT COUNT(*) FROM openers WHERE device_id = ? AND opener_was_used = 1) as total_openers,
+      (SELECT SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) FROM openers WHERE device_id = ? AND opener_was_used = 1) as successful_openers,
+      (SELECT AVG(opener_rating) FROM openers WHERE device_id = ? AND opener_was_used = 1) as avg_rating,
+      
+      -- Development stats
+      (SELECT COUNT(*) FROM development_modules WHERE device_id = ?) as total_modules_started,
+      (SELECT SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) FROM development_modules WHERE device_id = ?) as completed_modules,
+      (SELECT AVG(development_progress_percentage) FROM development_modules WHERE device_id = ?) as avg_progress
+  `;
+  
+  db.get(analyticsQuery, [deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId], (err, stats) => {
+    if (err) {
+      return callback(err, null);
+    }
+    
+    console.log(`📊 ANALYTICS STATS DEBUG: Device ${deviceId}`, stats);
+    callback(null, stats);
+  });
+}
+
+// === END ANALYTICS FUNCTIONS ===
