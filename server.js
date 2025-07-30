@@ -953,15 +953,36 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
     
     console.log(`📊 ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}, Completed: [${completedDates.join(', ')}]`);
 
-    // Get user info
+    // Get user info - DON'T CREATE USER IF NOT EXISTS (for testing)
     db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
       if (err) {
         console.error('Error getting user:', err);
         return res.status(500).json({ error: 'Database error' });
       }
 
+      // If no user exists, return all zeros (for testing)
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        console.log(`📊 ANALYTICS: No user found for ${deviceId}, returning all zeros`);
+        return res.json({
+          currentStreak: 0,
+          allTimeBestStreak: 0,
+          socialConfidencePercentage: 0,
+          weeklyActivity: ['none', 'none', 'none', 'none', 'none', 'none', 'none'],
+          overallSuccessRate: 0,
+          totalChallenges: 0,
+          totalOpeners: 0,
+          successfulChallenges: 0,
+          successfulOpeners: 0,
+          improvedConfidence: 0,
+          reducedSocialAnxiety: 0,
+          enhancedCommunication: 0,
+          increasedSocialEnergy: 0,
+          betterRelationships: 0,
+          averageRating: 0,
+          totalModulesStarted: 0,
+          completedModules: 0,
+          averageModuleProgress: 0
+        });
       }
 
       // Get challenge stats with success tracking
