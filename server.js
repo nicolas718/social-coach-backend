@@ -1489,45 +1489,15 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
         const weeklyActivityArray = [];
         const debugInfo = [];
 
-        // Loop creates dates from 6 days ago to today for week bar positions 0-6
         for (let i = 6; i >= 0; i--) {
           const checkDate = new Date(today);
           checkDate.setDate(today.getDate() - i);
           const dateString = checkDate.toISOString().split('T')[0];
           
-          console.log(`🔍 Week position ${6-i}: ${dateString} (${i} days ago)`);
-          
+          // Simple logic: if this date has activity, mark as streak
           let activityStatus = 'none';
-          let reasoning = 'No activity, not part of streak';
-          
-          if (streakStartDate) {
-            const streakStartDateString = streakStartDate.toISOString().split('T')[0];
-            const lastCompletionDateString = user.last_completion_date.split('T')[0];
-            
-            if (dateString >= streakStartDateString && dateString <= lastCompletionDateString) {
-              if (activityDates.includes(dateString)) {
-                activityStatus = 'streak';
-                reasoning = 'Within streak range AND has activity';
-              } else {
-                activityStatus = 'missed';
-                reasoning = 'Within streak range BUT missing activity';
-              }
-            } else if (dateString > lastCompletionDateString) {
-              if (activityDates.includes(dateString)) {
-                activityStatus = 'activity';
-                reasoning = 'After streak ended but has activity';
-              } else {
-                activityStatus = 'none';
-                reasoning = 'After streak ended, no activity';
-              }
-            } else {
-              reasoning = 'Before streak started';
-            }
-          } else {
-            if (activityDates.includes(dateString)) {
-              activityStatus = 'activity';
-              reasoning = 'No current streak, but has activity';
-            }
+          if (activityDates.includes(dateString)) {
+            activityStatus = 'streak';
           }
           
           weeklyActivityArray.push(activityStatus);
