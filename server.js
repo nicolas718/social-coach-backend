@@ -1494,6 +1494,8 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
           checkDate.setDate(today.getDate() - i);
           const dateString = checkDate.toISOString().split('T')[0];
           
+          console.log(`📅 Position ${6-i}: ${dateString} (today-${i})`);
+          
           let activityStatus = 'none';
           
           // If this date has activity, it's green (streak)
