@@ -1063,7 +1063,130 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   }
 });
 
-// SIMULATED DATE HOME ENDPOINT - BACKEND HANDLES ALL LOGIC
+// NEW CLEAN WEEK BAR + STREAK SYSTEM
+app.get('/api/clean/home/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { currentDate } = req.query;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`🎯 CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
+    
+    // Step 1: Get user account creation date
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        console.error('Error getting user:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+      const accountCreationDate = user ? new Date(user.created_at || '2025-01-01') : today;
+      
+      console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
+      console.log(`🎯 Current date: ${today.toISOString().split('T')[0]}`);
+      
+      // Step 2: Get all activity dates (used openers + completed challenges)
+      const activityQuery = `
+        SELECT DISTINCT date(activity_date) as activity_date, COUNT(*) as activity_count
+        FROM (
+          SELECT opener_date as activity_date FROM openers 
+          WHERE device_id = ? AND opener_was_used = 1
+          
+          UNION ALL
+          
+          SELECT challenge_date as activity_date FROM daily_challenges 
+          WHERE device_id = ?
+        ) activities
+        GROUP BY date(activity_date)
+        ORDER BY activity_date
+      `;
+      
+      db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+        if (err) {
+          console.error('Error getting activities:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        const activityDates = activityRows.map(row => row.activity_date);
+        console.log(`🎯 Activity dates: [${activityDates.join(', ')}]`);
+        
+        // Step 3: Build week bar (6 previous days + today)
+        const weekBar = [];
+        let currentStreak = 0;
+        
+        for (let i = 6; i >= 0; i--) {
+          const checkDate = new Date(today);
+          checkDate.setDate(today.getDate() - i);
+          const dateString = checkDate.toISOString().split('T')[0];
+          
+          let color = 'none';
+          
+          if (i === 0) {
+            // Position 6: Today is always white
+            color = 'today';
+          } else if (checkDate < accountCreationDate) {
+            // Before account creation: grey
+            color = 'before';
+          } else if (activityDates.includes(dateString)) {
+            // Has activity: green
+            color = 'activity';
+          } else {
+            // No activity after account creation: red
+            color = 'missed';
+          }
+          
+          weekBar.push(color);
+          console.log(`🎯 Day ${i}: ${dateString} → ${color}`);
+        }
+        
+        // Step 4: Calculate current streak
+        currentStreak = calculateConsecutiveStreak(activityDates, today);
+        
+        console.log(`🎯 Current streak: ${currentStreak}`);
+        console.log(`🎯 Week bar: [${weekBar.join(', ')}]`);
+        
+        res.json({
+          currentStreak: currentStreak,
+          weeklyActivity: weekBar,
+          hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
+          socialZoneLevel: "Warming Up"
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in clean home endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+function calculateConsecutiveStreak(activityDates, today) {
+  if (activityDates.length === 0) return 0;
+  
+  const sortedDates = activityDates.sort();
+  const todayString = today.toISOString().split('T')[0];
+  
+  let streak = 0;
+  let checkDate = new Date(today);
+  
+  // Count backwards from today
+  for (let i = 0; i < 365; i++) { // Max 365 days to prevent infinite loop
+    const dateString = checkDate.toISOString().split('T')[0];
+    
+    if (activityDates.includes(dateString)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  
+  return streak;
+}
+
+// ORIGINAL SIMULATED ENDPOINT (BACKUP)
 app.get('/api/simulated/home/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
