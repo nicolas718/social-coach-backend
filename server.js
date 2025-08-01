@@ -1209,13 +1209,14 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           if (i === 0) {
             // Position 6: Today is always white
             color = 'today';
+          } else if (activityDates.includes(dateString)) {
+            // Has activity: green (check activity FIRST, before account creation logic)
+            color = 'activity';
           } else if (checkDate < accountCreationDate) {
             // Before account creation: grey
             color = 'before';
             console.log(`🎯 BEFORE: ${dateString} < ${accountCreationDate.toISOString()}`);
-          } else if (activityDates.includes(dateString)) {
-            // Has activity: green
-            color = 'activity';
+          
                       } else {
             // No activity after account creation: red
             color = 'missed';
@@ -1248,25 +1249,9 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
 function calculateConsecutiveStreak(activityDates, today) {
   if (activityDates.length === 0) return 0;
   
-  const sortedDates = activityDates.sort();
-  const todayString = today.toISOString().split('T')[0];
-  
-  let streak = 0;
-  let checkDate = new Date(today);
-  
-  // Count backwards from today
-  for (let i = 0; i < 365; i++) { // Max 365 days to prevent infinite loop
-                    const dateString = checkDate.toISOString().split('T')[0];
-    
-    if (activityDates.includes(dateString)) {
-      streak++;
-      checkDate.setDate(checkDate.getDate() - 1);
-                    } else {
-      break;
-    }
-  }
-  
-  return streak;
+  // Per user requirement: "streak should only count for 1 per day"
+  // This means total number of unique activity days, not consecutive
+  return activityDates.length;
 }
 
 // ORIGINAL SIMULATED ENDPOINT (BACKUP)
