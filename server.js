@@ -1149,8 +1149,21 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
               }
 
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
-      // Set account creation to a fixed early date to avoid interference, or use actual creation date
-      const accountCreationDate = user ? new Date(user.created_at || '2025-01-01') : new Date('2025-01-01');
+      // For simulated dates, use a smart account creation date
+      // If user exists but created_at is recent (today), assume account was created before simulated period
+      let accountCreationDate;
+      if (user && user.created_at) {
+        const userCreatedDate = new Date(user.created_at);
+        const realToday = new Date();
+        // If account was created today (real-time), set it to before simulation period
+        if (userCreatedDate.toDateString() === realToday.toDateString()) {
+          accountCreationDate = new Date('2025-01-01'); // Well before simulation period
+        } else {
+          accountCreationDate = userCreatedDate;
+        }
+      } else {
+        accountCreationDate = new Date('2025-01-01'); // Default early date
+      }
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
       console.log(`🎯 Current date: ${today.toISOString().split('T')[0]}`);
