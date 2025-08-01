@@ -1161,10 +1161,9 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           accountCreationDate = userCreatedDate;
         }
       } else {
-        // No user record = treat as created "today" in simulation
-        // Set to end of today so previous days are "before" account creation
+        // No user record = treat as created "tomorrow" so today and previous days are "before" account  
         accountCreationDate = new Date(today);
-        accountCreationDate.setHours(23, 59, 59, 999); // End of today
+        accountCreationDate.setDate(accountCreationDate.getDate() + 1); // Tomorrow
       }
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
