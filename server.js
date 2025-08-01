@@ -752,8 +752,13 @@ app.post('/api/data/opener', (req, res) => {
             return res.status(500).json({ error: 'Failed to save opener data' });
           }
 
-          // NO STREAK UPDATE HERE - let frontend completedDays handle it via simulated endpoint
-          console.log(`Opener saved: Used=${openerWasUsed}, Success=${openerWasSuccessful}`);
+          // CONDITIONAL STREAK UPDATE: Only if opener was actually used (same as challenges)
+          if (openerWasUsed === true) {
+            updateUserStreak(deviceId, openerDate);
+            console.log(`Opener was USED - streak updated for ${deviceId}: Success=${openerWasSuccessful}`);
+          } else {
+            console.log(`Opener was NOT USED - no streak update for ${deviceId}: Data saved but no streak credit`);
+          }
 
           res.json({ 
             success: true, 
