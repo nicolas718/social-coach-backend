@@ -1100,18 +1100,18 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
       
       // Step 2: Get all activity dates (used openers + completed challenges)
       const activityQuery = `
-        SELECT DISTINCT date(activity_date) as activity_date, COUNT(*) as activity_count
-                FROM (
+        SELECT DISTINCT substr(activity_date, 1, 10) as activity_date, COUNT(*) as activity_count
+        FROM (
           SELECT opener_date as activity_date FROM openers 
           WHERE device_id = ? AND opener_was_used = 1
-                  
-                  UNION ALL
-                  
+          
+          UNION ALL
+          
           SELECT challenge_date as activity_date FROM daily_challenges 
           WHERE device_id = ?
-                ) activities
-        GROUP BY date(activity_date)
-                ORDER BY activity_date
+        ) activities
+        GROUP BY substr(activity_date, 1, 10)
+        ORDER BY activity_date
       `;
       
       db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
