@@ -1149,7 +1149,8 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
               }
 
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
-      const accountCreationDate = user ? new Date(user.created_at || '2025-01-01') : today;
+      // Set account creation to a fixed early date to avoid interference, or use actual creation date
+      const accountCreationDate = user ? new Date(user.created_at || '2025-01-01') : new Date('2025-01-01');
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
       console.log(`🎯 Current date: ${today.toISOString().split('T')[0]}`);
