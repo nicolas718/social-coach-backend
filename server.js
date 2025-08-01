@@ -757,7 +757,7 @@ app.post('/api/data/opener', (req, res) => {
             updateUserStreakWithCallback(deviceId, openerDate, (streakErr) => {
               if (streakErr) {
                 console.error('Error updating streak after opener:', streakErr);
-              } else {
+          } else {
                 console.log(`✅ Opener streak updated for ${deviceId}`);
               }
             });
@@ -1087,11 +1087,11 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
     
     // Step 1: Get user account creation date
     db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
-      if (err) {
+              if (err) {
         console.error('Error getting user:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
+                return res.status(500).json({ error: 'Database error' });
+              }
+
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
       const accountCreationDate = user ? new Date(user.created_at || '2025-01-01') : today;
       
@@ -1101,27 +1101,28 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
       // Step 2: Get all activity dates (used openers + completed challenges)
       const activityQuery = `
         SELECT DISTINCT date(activity_date) as activity_date, COUNT(*) as activity_count
-        FROM (
+                FROM (
           SELECT opener_date as activity_date FROM openers 
           WHERE device_id = ? AND opener_was_used = 1
-          
-          UNION ALL
-          
+                  
+                  UNION ALL
+                  
           SELECT challenge_date as activity_date FROM daily_challenges 
           WHERE device_id = ?
-        ) activities
+                ) activities
         GROUP BY date(activity_date)
-        ORDER BY activity_date
+                ORDER BY activity_date
       `;
       
       db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
-        if (err) {
+                  if (err) {
           console.error('Error getting activities:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
+                    return res.status(500).json({ error: 'Database error' });
+                  }
+
         const activityDates = activityRows.map(row => row.activity_date);
         console.log(`🎯 Activity dates: [${activityDates.join(', ')}]`);
+        console.log(`🎯 Raw activity rows:`, activityRows);
         
         // Step 3: Build week bar (6 previous days + today)
         const weekBar = [];
@@ -1183,12 +1184,12 @@ function calculateConsecutiveStreak(activityDates, today) {
   
   // Count backwards from today
   for (let i = 0; i < 365; i++) { // Max 365 days to prevent infinite loop
-    const dateString = checkDate.toISOString().split('T')[0];
+                    const dateString = checkDate.toISOString().split('T')[0];
     
     if (activityDates.includes(dateString)) {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);
-    } else {
+                      } else {
       break;
     }
   }
@@ -1627,8 +1628,8 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
           let activityStatus = 'none';
           
           // If this date has activity, it's green (streak)
-          if (activityDates.includes(dateString)) {
-            activityStatus = 'streak';
+              if (activityDates.includes(dateString)) {
+                activityStatus = 'streak';
           }
           // If user has a current streak, check if this date should be red (missed)
           else if (user.current_streak > 0 && user.last_completion_date) {
@@ -1638,7 +1639,7 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
             
             // If this date is between the last completion and today (exclusive), it's missed
             if (currentDate > lastCompletionDate && currentDate < todayDate) {
-              activityStatus = 'missed';
+                activityStatus = 'missed';
             }
           }
           
