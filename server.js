@@ -1197,16 +1197,18 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           } else if (checkDate < accountCreationDate) {
             // Before account creation: grey
             color = 'before';
+            console.log(`🎯 BEFORE ACCOUNT: ${dateString} < ${accountCreationDate.toISOString().split('T')[0]}`);
           } else if (activityDates.includes(dateString)) {
             // Has activity: green
             color = 'activity';
+            console.log(`🎯 MATCH FOUND: ${dateString} in [${activityDates.join(', ')}]`);
           } else {
             // No activity after account creation: red
             color = 'missed';
           }
           
           weekBar.push(color);
-          console.log(`🎯 Day ${i}: ${dateString} → ${color} (today: ${today.toISOString().split('T')[0]})`);
+          console.log(`🎯 Day ${i}: ${dateString} → ${color} (today: ${today.toISOString().split('T')[0]}, activity: ${activityDates.includes(dateString)})`);
         }
         
         // Step 4: Calculate current streak
