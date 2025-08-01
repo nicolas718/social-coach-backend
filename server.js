@@ -1073,6 +1073,40 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   }
 });
 
+// DEBUG ENDPOINT FOR ACTIVITY QUERY TEST
+app.get('/api/debug/query/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  const activityQuery = `
+    SELECT DISTINCT substr(activity_date, 1, 10) as activity_date, COUNT(*) as activity_count
+    FROM (
+      SELECT opener_date as activity_date FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+      
+      UNION ALL
+      
+      SELECT challenge_date as activity_date FROM daily_challenges 
+      WHERE device_id = ?
+    ) activities
+    GROUP BY substr(activity_date, 1, 10)
+    ORDER BY activity_date
+  `;
+  
+  db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    const activityDates = activityRows.map(row => row.activity_date);
+    
+    res.json({
+      rawRows: activityRows,
+      activityDates: activityDates,
+      query: activityQuery
+    });
+  });
+});
+
 // DEBUG ENDPOINT FOR ACTIVITY DATA
 app.get('/api/debug/activity/:deviceId', (req, res) => {
   const { deviceId } = req.params;
