@@ -1161,9 +1161,9 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           accountCreationDate = userCreatedDate;
         }
       } else {
-        // No user record = treat as created "tomorrow" so today and previous days are "before" account  
-        accountCreationDate = new Date(today);
-        accountCreationDate.setDate(accountCreationDate.getDate() + 1); // Tomorrow
+        // No user record = treat as created at start of simulated period
+        // So current simulation days can show proper red/green colors
+        accountCreationDate = new Date('2025-01-01'); // Well before simulation period
       }
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
