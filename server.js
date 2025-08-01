@@ -1481,7 +1481,7 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
         let today = new Date();
         if (currentDate) {
           today = new Date(currentDate + 'T00:00:00.000Z');
-          console.log(`🧪 SIMULATED HOME: Using provided currentDate: ${currentDate}`);
+          console.log(`🧪 SIMULATED HOME: Using provided currentDate: ${currentDate} (FIXED VERSION)`);
         } else {
           console.log(`🧪 SIMULATED HOME: No currentDate provided, using current date`);
         }
