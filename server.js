@@ -1079,21 +1079,21 @@ app.get('/api/debug/query/:deviceId', (req, res) => {
   
   const activityQuery = `
     SELECT DISTINCT substr(activity_date, 1, 10) as activity_date, COUNT(*) as activity_count
-    FROM (
+                FROM (
       SELECT opener_date as activity_date FROM openers 
       WHERE device_id = ? AND opener_was_used = 1
-      
-      UNION ALL
-      
+                  
+                  UNION ALL
+                  
       SELECT challenge_date as activity_date FROM daily_challenges 
       WHERE device_id = ?
-    ) activities
+                ) activities
     GROUP BY substr(activity_date, 1, 10)
-    ORDER BY activity_date
+                ORDER BY activity_date
   `;
   
   db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
-    if (err) {
+                if (err) {
       return res.status(500).json({ error: 'Database error', details: err.message });
     }
     
@@ -1113,14 +1113,14 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
   
   db.all("SELECT * FROM openers WHERE device_id = ? ORDER BY opener_date DESC", [deviceId], (err, openers) => {
     if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
+                  return res.status(500).json({ error: 'Database error' });
+                }
+
     db.all("SELECT * FROM daily_challenges WHERE device_id = ? ORDER BY challenge_date DESC", [deviceId], (err, challenges) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
+                  if (err) {
+                    return res.status(500).json({ error: 'Database error' });
+                  }
+
       res.json({
         openers: openers,
         challenges: challenges
@@ -1149,20 +1149,22 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
               }
 
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
-      // For simulated dates, use a smart account creation date
-      // If user exists but created_at is recent (today), assume account was created before simulated period
+      // Account creation logic for proper week bar colors
       let accountCreationDate;
       if (user && user.created_at) {
         const userCreatedDate = new Date(user.created_at);
         const realToday = new Date();
-        // If account was created today (real-time), set it to before simulation period
+        // If account was created today (real-time), treat as created at start of simulation
         if (userCreatedDate.toDateString() === realToday.toDateString()) {
-          accountCreationDate = new Date('2025-01-01'); // Well before simulation period
+          accountCreationDate = new Date(today); // Created "today" in simulation
         } else {
           accountCreationDate = userCreatedDate;
         }
       } else {
-        accountCreationDate = new Date('2025-01-01'); // Default early date
+        // No user record = treat as created "today" in simulation
+        // Set to end of today so previous days are "before" account creation
+        accountCreationDate = new Date(today);
+        accountCreationDate.setHours(23, 59, 59, 999); // End of today
       }
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
@@ -1198,10 +1200,10 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         const weekBar = [];
         let currentStreak = 0;
         
-        for (let i = 6; i >= 0; i--) {
-          const checkDate = new Date(today);
-          checkDate.setDate(today.getDate() - i);
-          const dateString = checkDate.toISOString().split('T')[0];
+                  for (let i = 6; i >= 0; i--) {
+                    const checkDate = new Date(today);
+                    checkDate.setDate(today.getDate() - i);
+                    const dateString = checkDate.toISOString().split('T')[0];
           
           let color = 'none';
           
@@ -1211,10 +1213,11 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           } else if (checkDate < accountCreationDate) {
             // Before account creation: grey
             color = 'before';
+            console.log(`🎯 BEFORE: ${dateString} < ${accountCreationDate.toISOString()}`);
           } else if (activityDates.includes(dateString)) {
             // Has activity: green
             color = 'activity';
-          } else {
+                      } else {
             // No activity after account creation: red
             color = 'missed';
           }
@@ -1259,7 +1262,7 @@ function calculateConsecutiveStreak(activityDates, today) {
     if (activityDates.includes(dateString)) {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);
-                      } else {
+                    } else {
       break;
     }
   }
