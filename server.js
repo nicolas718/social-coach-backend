@@ -752,13 +752,8 @@ app.post('/api/data/opener', (req, res) => {
             return res.status(500).json({ error: 'Failed to save opener data' });
           }
 
-          // CONDITIONAL STREAK UPDATE: Only if opener was actually used (same as challenges)
-          if (openerWasUsed === true) {
-            updateUserStreak(deviceId, openerDate);
-            console.log(`Opener was USED - streak updated for ${deviceId}: Success=${openerWasSuccessful}`);
-          } else {
-            console.log(`Opener was NOT USED - no streak update for ${deviceId}: Data saved but no streak credit`);
-          }
+          // NO STREAK UPDATE HERE - frontend completedDays handles it via simulated endpoint
+          console.log(`Opener saved: Used=${openerWasUsed}, Success=${openerWasSuccessful}`);
 
           res.json({ 
             success: true, 
@@ -1114,13 +1109,15 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
       
       // Get activity dates from database
       const dbActivityDates = activityRows.map(row => row.activity_date);
-      
-      // ONLY use database activity dates (openers auto-save, challenges use completedDates for UI only)
-      const activityDates = dbActivityDates;
+      // Combine with completed dates from query parameter (remove duplicates)
+      const allActivityDates = [...new Set([...completedDates, ...dbActivityDates])];
       
       console.log(`🧪 SIMULATED HOME: DB activity dates: [${dbActivityDates.join(', ')}]`);
-      console.log(`🧪 SIMULATED HOME: Completed dates ignored: [${completedDates.join(', ')}]`);
-      console.log(`🧪 SIMULATED HOME: Final activity dates: [${activityDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Completed dates: [${completedDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Combined activity dates: [${allActivityDates.join(', ')}]`);
+      
+      // Use combined dates for week bar calculation
+      const activityDates = allActivityDates;
     
     // Parse current date
     const currentDateObj = new Date(currentDate + 'T00:00:00.000Z');
