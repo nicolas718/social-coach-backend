@@ -1172,7 +1172,7 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           }
           
           weekBar.push(color);
-          console.log(`🎯 Day ${i}: ${dateString} → ${color}`);
+          console.log(`🎯 Day ${i}: ${dateString} → ${color} (today: ${today.toISOString().split('T')[0]})`);
         }
         
         // Step 4: Calculate current streak
