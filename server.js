@@ -1195,11 +1195,14 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           if (i === 0) {
             // Position 6: Today is always white
             color = 'today';
+          } else if (checkDate < accountCreationDate) {
+            // Before account creation: grey
+            color = 'before';
           } else if (activityDates.includes(dateString)) {
             // Has activity: green
             color = 'activity';
           } else {
-            // No activity: red (simplified - no "before" logic for now)
+            // No activity after account creation: red
             color = 'missed';
           }
           
