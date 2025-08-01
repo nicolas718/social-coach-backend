@@ -1489,10 +1489,13 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
         const weeklyActivityArray = [];
         const debugInfo = [];
 
+        // Loop creates dates from 6 days ago to today for week bar positions 0-6
         for (let i = 6; i >= 0; i--) {
           const checkDate = new Date(today);
           checkDate.setDate(today.getDate() - i);
           const dateString = checkDate.toISOString().split('T')[0];
+          
+          console.log(`🔍 Week position ${6-i}: ${dateString} (${i} days ago)`);
           
           let activityStatus = 'none';
           let reasoning = 'No activity, not part of streak';
