@@ -1073,6 +1073,28 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   }
 });
 
+// DEBUG ENDPOINT FOR ACTIVITY DATA
+app.get('/api/debug/activity/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  db.all("SELECT * FROM openers WHERE device_id = ? ORDER BY opener_date DESC", [deviceId], (err, openers) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    db.all("SELECT * FROM daily_challenges WHERE device_id = ? ORDER BY challenge_date DESC", [deviceId], (err, challenges) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      res.json({
+        openers: openers,
+        challenges: challenges
+      });
+    });
+  });
+});
+
 // NEW CLEAN WEEK BAR + STREAK SYSTEM
 app.get('/api/clean/home/:deviceId', (req, res) => {
   try {
