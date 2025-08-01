@@ -1114,15 +1114,13 @@ app.get('/api/simulated/home/:deviceId', (req, res) => {
       
       // Get activity dates from database
       const dbActivityDates = activityRows.map(row => row.activity_date);
-      // Combine with completed dates from query parameter
-      const allActivityDates = [...new Set([...completedDates, ...dbActivityDates])];
+      
+      // ONLY use database activity dates (openers auto-save, challenges use completedDates for UI only)
+      const activityDates = dbActivityDates;
       
       console.log(`🧪 SIMULATED HOME: DB activity dates: [${dbActivityDates.join(', ')}]`);
-      console.log(`🧪 SIMULATED HOME: All activity dates: [${allActivityDates.join(', ')}]`);
-      console.log(`🧪 SIMULATED HOME: Raw activity rows:`, activityRows);
-      
-      // Use allActivityDates instead of completedDates for all calculations
-      const activityDates = allActivityDates;
+      console.log(`🧪 SIMULATED HOME: Completed dates ignored: [${completedDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Final activity dates: [${activityDates.join(', ')}]`);
     
     // Parse current date
     const currentDateObj = new Date(currentDate + 'T00:00:00.000Z');
