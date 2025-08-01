@@ -1494,10 +1494,22 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
           checkDate.setDate(today.getDate() - i);
           const dateString = checkDate.toISOString().split('T')[0];
           
-          // Simple logic: if this date has activity, mark as streak
           let activityStatus = 'none';
+          
+          // If this date has activity, it's green (streak)
           if (activityDates.includes(dateString)) {
             activityStatus = 'streak';
+          }
+          // If user has a current streak, check if this date should be red (missed)
+          else if (user.current_streak > 0 && user.last_completion_date) {
+            const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
+            const currentDate = new Date(dateString + 'T00:00:00Z');
+            const todayDate = new Date(today.toISOString().split('T')[0] + 'T00:00:00Z');
+            
+            // If this date is between the last completion and today (exclusive), it's missed
+            if (currentDate > lastCompletionDate && currentDate < todayDate) {
+              activityStatus = 'missed';
+            }
           }
           
           weeklyActivityArray.push(activityStatus);
