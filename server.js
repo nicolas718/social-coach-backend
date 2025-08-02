@@ -268,9 +268,11 @@ const ensureUserExists = (deviceId, callback) => {
     
     if (!row) {
       console.log(`👤 User not found, creating new user: ${deviceId}`);
-      // Create new user with creation date set to start of simulation period
-      // This ensures week bar shows proper colors instead of all "before"
-      const creationDate = '2025-01-01 00:00:00'; // Well before any simulation dates
+      // Create new user with creation date set to current date
+      // This ensures week bar shows grey for past days and red only for missed days after creation
+      const now = new Date();
+      const creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
+      console.log(`👤 Setting user creation date to: ${creationDate}`);
       db.run("INSERT INTO users (device_id, created_at) VALUES (?, ?)", [deviceId, creationDate], (err) => {
         if (err) {
           console.error('❌ Error creating user:', err);
@@ -1208,10 +1210,10 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           } else if (activityDates.includes(dateString)) {
             // Has activity: green (check activity FIRST, before account creation logic)
             color = 'activity';
-          } else if (checkDate < accountCreationDate) {
+          } else if (dateString < accountCreationDate.toISOString().split('T')[0]) {
             // Before account creation: grey
             color = 'before';
-            console.log(`🎯 BEFORE: ${dateString} < ${accountCreationDate.toISOString()}`);
+            console.log(`🎯 BEFORE: ${dateString} < ${accountCreationDate.toISOString().split('T')[0]}`);
           
                       } else {
             // No activity after account creation: red
@@ -2604,17 +2606,19 @@ app.post('/api/debug/fix-user/:deviceId', (req, res) => {
   
   console.log(`🔧 FORCE FIX: Updating user creation date for ${deviceId}`);
   
-  // Update existing user's creation date to 2025-01-01
-  db.run("UPDATE users SET created_at = '2025-01-01 00:00:00' WHERE device_id = ?", [deviceId], (err) => {
+  // Update existing user's creation date to current date
+  const now = new Date();
+  const creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
+  db.run("UPDATE users SET created_at = ? WHERE device_id = ?", [creationDate, deviceId], (err) => {
     if (err) {
       console.error('Error updating user:', err);
       return res.status(500).json({ error: err.message });
     }
     
-    console.log(`✅ User creation date fixed for ${deviceId}`);
+    console.log(`✅ User creation date fixed for ${deviceId} to ${creationDate}`);
     res.json({ 
       success: true, 
-      message: 'User creation date updated to 2025-01-01',
+      message: `User creation date updated to ${creationDate}`,
       deviceId: deviceId 
     });
   });
