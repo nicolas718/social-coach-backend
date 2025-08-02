@@ -1154,14 +1154,8 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
       // Account creation logic for proper week bar colors
       let accountCreationDate;
       if (user && user.created_at) {
-        const userCreatedDate = new Date(user.created_at);
-        const realToday = new Date();
-        // If account was created today (real-time), treat as created at start of simulation
-        if (userCreatedDate.toDateString() === realToday.toDateString()) {
-          accountCreationDate = new Date(today); // Created "today" in simulation
-        } else {
-          accountCreationDate = userCreatedDate;
-        }
+        // Always use the stored creation date
+        accountCreationDate = new Date(user.created_at);
       } else {
         // No user record = treat as created well in the past
         // This allows all simulation days to show proper red/green colors
@@ -2585,3 +2579,21 @@ function calculateAllAnalyticsStats(deviceId, callback) {
 }
 
 // === END ANALYTICS FUNCTIONS ===
+
+// Debug endpoint to check user data
+app.get('/api/debug/user/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    res.json({
+      user: user || null,
+      userExists: !!user,
+      created_at: user ? user.created_at : null,
+      current_streak: user ? user.current_streak : null
+    });
+  });
+});
