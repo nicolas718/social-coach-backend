@@ -268,12 +268,14 @@ const ensureUserExists = (deviceId, callback) => {
     
     if (!row) {
       console.log(`👤 User not found, creating new user: ${deviceId}`);
-      // Create new user
-      db.run("INSERT INTO users (device_id) VALUES (?)", [deviceId], (err) => {
+      // Create new user with creation date set to start of simulation period
+      // This ensures week bar shows proper colors instead of all "before"
+      const creationDate = '2025-01-01 00:00:00'; // Well before any simulation dates
+      db.run("INSERT INTO users (device_id, created_at) VALUES (?, ?)", [deviceId, creationDate], (err) => {
         if (err) {
           console.error('❌ Error creating user:', err);
         } else {
-          console.log(`✅ User created successfully: ${deviceId}`);
+          console.log(`✅ User created successfully: ${deviceId} with creation date: ${creationDate}`);
         }
         callback(err);
       });
