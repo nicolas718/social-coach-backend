@@ -1264,9 +1264,47 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
 function calculateConsecutiveStreak(activityDates, today) {
   if (activityDates.length === 0) return 0;
   
-  // Per user requirement: "streak should only count for 1 per day"
-  // This means total number of unique activity days, not consecutive
-  return activityDates.length;
+  // Sort dates in descending order (most recent first)
+  const sortedDates = activityDates.sort((a, b) => b.localeCompare(a));
+  
+  // Get today's date string
+  const todayString = today.toISOString().split('T')[0];
+  
+  // Get yesterday's date string
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayString = yesterday.toISOString().split('T')[0];
+  
+  // Check if there's activity today or yesterday
+  const hasActivityToday = sortedDates.includes(todayString);
+  const hasActivityYesterday = sortedDates.includes(yesterdayString);
+  
+  // If no activity today or yesterday, streak is broken
+  if (!hasActivityToday && !hasActivityYesterday) {
+    return 0;
+  }
+  
+  // Count consecutive days backwards from today or yesterday
+  let streak = 0;
+  let checkDate = new Date(today);
+  
+  // If activity today, start from today; otherwise start from yesterday
+  if (!hasActivityToday && hasActivityYesterday) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  
+  // Count consecutive days
+  while (true) {
+    const dateString = checkDate.toISOString().split('T')[0];
+    if (sortedDates.includes(dateString)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  
+  return streak;
 }
 
 // ORIGINAL SIMULATED ENDPOINT (BACKUP)
