@@ -1161,9 +1161,9 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           accountCreationDate = userCreatedDate;
         }
       } else {
-        // No user record after reset = treat as created TODAY
-        // Previous days should be grey (before account), today and future can be red/green
-        accountCreationDate = new Date(today);
+        // No user record = treat as created well in the past
+        // This allows all simulation days to show proper red/green colors
+        accountCreationDate = new Date('2025-01-01'); // Well before any simulation dates
       }
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
