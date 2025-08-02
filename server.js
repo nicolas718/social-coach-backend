@@ -1161,10 +1161,9 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           accountCreationDate = userCreatedDate;
         }
       } else {
-        // No user record = treat as created 7 days ago in simulation
-        // So the week bar can show proper red/green colors for all 7 days
+        // No user record after reset = treat as created TODAY
+        // Previous days should be grey (before account), today and future can be red/green
         accountCreationDate = new Date(today);
-        accountCreationDate.setDate(accountCreationDate.getDate() - 7); // 7 days ago
       }
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
