@@ -256,7 +256,7 @@ function getChallengeTemplateForDate(dateString, level = "beginner") {
 }
 
 // Helper function to ensure user exists
-const ensureUserExists = (deviceId, callback) => {
+const ensureUserExists = (deviceId, callback, customDate = null) => {
   console.log(`🔍 Checking if user exists: ${deviceId}`);
   
   db.get("SELECT device_id FROM users WHERE device_id = ?", [deviceId], (err, row) => {
@@ -268,11 +268,22 @@ const ensureUserExists = (deviceId, callback) => {
     
     if (!row) {
       console.log(`👤 User not found, creating new user: ${deviceId}`);
-      // Create new user with creation date set to current date
-      // This ensures week bar shows grey for past days and red only for missed days after creation
-      const now = new Date();
-      const creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
-      console.log(`👤 Setting user creation date to: ${creationDate}`);
+      // Create new user with creation date
+      // If customDate provided (simulated mode), use that date
+      // Otherwise use current real date
+      let creationDate;
+      if (customDate) {
+        // Use the simulated date provided
+        const simDate = new Date(customDate + 'T00:00:00Z');
+        creationDate = simDate.toISOString().replace('T', ' ').substring(0, 19);
+        console.log(`👤 Using simulated date for user creation: ${creationDate}`);
+      } else {
+        // Use current real date
+        const now = new Date();
+        creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
+        console.log(`👤 Using real date for user creation: ${creationDate}`);
+      }
+      
       db.run("INSERT INTO users (device_id, created_at) VALUES (?, ?)", [deviceId, creationDate], (err) => {
         if (err) {
           console.error('❌ Error creating user:', err);
@@ -652,6 +663,9 @@ app.post('/api/data/challenge', (req, res) => {
         return res.status(400).json({ error: 'Invalid confidence level. Must be 1-4 (1=Anxious, 2=Nervous, 3=Comfortable, 4=Confident)' });
       }
     }
+
+    // Extract date from challengeDate for user creation
+    const dateForUserCreation = challengeDate ? challengeDate.split('T')[0] : null;
 
     ensureUserExists(deviceId, (err) => {
       if (err) {
@@ -2603,23 +2617,34 @@ app.get('/api/debug/user/:deviceId', (req, res) => {
 // Force fix user creation date
 app.post('/api/debug/fix-user/:deviceId', (req, res) => {
   const { deviceId } = req.params;
+  const { creationDate } = req.body; // Accept custom date from request
   
   console.log(`🔧 FORCE FIX: Updating user creation date for ${deviceId}`);
   
-  // Update existing user's creation date to current date
-  const now = new Date();
-  const creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
-  db.run("UPDATE users SET created_at = ? WHERE device_id = ?", [creationDate, deviceId], (err) => {
+  // Use provided date or current date
+  let dateToSet;
+  if (creationDate) {
+    // Use provided date
+    const customDate = new Date(creationDate + 'T00:00:00Z');
+    dateToSet = customDate.toISOString().replace('T', ' ').substring(0, 19);
+  } else {
+    // Use current date
+    const now = new Date();
+    dateToSet = now.toISOString().replace('T', ' ').substring(0, 19);
+  }
+  
+  db.run("UPDATE users SET created_at = ? WHERE device_id = ?", [dateToSet, deviceId], (err) => {
     if (err) {
       console.error('Error updating user:', err);
       return res.status(500).json({ error: err.message });
     }
     
-    console.log(`✅ User creation date fixed for ${deviceId} to ${creationDate}`);
+    console.log(`✅ User creation date fixed for ${deviceId} to ${dateToSet}`);
     res.json({ 
       success: true, 
-      message: `User creation date updated to ${creationDate}`,
-      deviceId: deviceId 
+      message: `User creation date updated to ${dateToSet}`,
+      deviceId: deviceId,
+      createdAt: dateToSet
     });
   });
 });
