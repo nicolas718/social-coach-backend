@@ -2597,3 +2597,25 @@ app.get('/api/debug/user/:deviceId', (req, res) => {
     });
   });
 });
+
+// Force fix user creation date
+app.post('/api/debug/fix-user/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  console.log(`🔧 FORCE FIX: Updating user creation date for ${deviceId}`);
+  
+  // Update existing user's creation date to 2025-01-01
+  db.run("UPDATE users SET created_at = '2025-01-01 00:00:00' WHERE device_id = ?", [deviceId], (err) => {
+    if (err) {
+      console.error('Error updating user:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    console.log(`✅ User creation date fixed for ${deviceId}`);
+    res.json({ 
+      success: true, 
+      message: 'User creation date updated to 2025-01-01',
+      deviceId: deviceId 
+    });
+  });
+});
