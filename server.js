@@ -1180,6 +1180,8 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
       
       console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
       console.log(`🎯 Current date: ${today.toISOString().split('T')[0]}`);
+      console.log(`🎯 Account creation full date: ${accountCreationDate.toISOString()}`);
+      console.log(`🎯 Account creation date string for comparison: ${accountCreationDate.toISOString().split('T')[0]}`);
       
       // Step 2: Get all activity dates (used openers + completed challenges)
       const activityQuery = `
@@ -1235,7 +1237,8 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           }
           
           weekBar.push(color);
-          console.log(`🎯 Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, activityDates: [${activityDates.join(', ')}])`);
+          const accountDateStr = accountCreationDate.toISOString().split('T')[0];
+          console.log(`🎯 Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
         }
         
         // Step 4: Calculate current streak
