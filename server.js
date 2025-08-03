@@ -1052,8 +1052,20 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           }
           
           // Enhanced Communication is calculated separately and includes module progress
+          // Module contribution scales based on number of completed modules
+          const completedModules = stats.completed_modules || 0;
           const moduleProgressScore = Math.min(100, stats.avg_progress || 0);
-          enhancedCommunication = Math.round((overallSuccessRate * 0.7) + (moduleProgressScore * 0.3));
+          
+          // Base contribution from modules is 30%, but increases with more modules completed
+          // 1 module = 30%, 2 modules = 40%, 3 modules = 50%, 4+ modules = 60%
+          const moduleContribution = Math.min(60, 30 + (completedModules - 1) * 10);
+          const activityContribution = 100 - moduleContribution;
+          
+          // Calculate enhanced communication with dynamic weighting
+          enhancedCommunication = Math.round(
+            (overallSuccessRate * (activityContribution / 100)) + 
+            (moduleProgressScore * (moduleContribution / 100))
+          );
 
           // Cap all benefits at 100
           improvedConfidence = Math.min(100, Math.round(improvedConfidence));
