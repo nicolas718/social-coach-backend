@@ -2493,12 +2493,12 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
 
             const response = {
               successRate: successRate,
-              totalConversations: stats.used_openers,
+              totalConversations: stats.used_openers || 0,
               successfulOpeners: formattedSuccessfulOpeners,
               recentHistory: formattedRecentHistory,
               successByPurpose: successByPurpose,
-              totalOpeners: stats.total_openers,
-              totalSuccessful: stats.successful_openers
+              totalOpeners: stats.total_openers || 0,
+              totalSuccessful: stats.successful_openers || 0
             };
 
             console.log(`📚 OPENER LIBRARY: Returning data with ${formattedSuccessfulOpeners.length} successful, ${formattedRecentHistory.length} history, ${successByPurpose.length} purposes`);
