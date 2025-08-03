@@ -1031,7 +1031,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
           let increasedSocialEnergy = 0, betterRelationships = 0;
 
-          if (currentStreak > 0 || stats.total_challenges > 0 || stats.total_openers > 0) {
+          if (currentStreak > 0 || stats.total_challenges > 0 || stats.total_openers > 0 || stats.total_modules_started > 0) {
             // Improved Confidence
             improvedConfidence = 30 + Math.min(40, currentStreak * 2);
             
@@ -1299,7 +1299,7 @@ function calculateConsecutiveStreak(activityDates, today) {
     if (sortedDates.includes(dateString)) {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);
-    } else {
+                    } else {
       break;
     }
   }
