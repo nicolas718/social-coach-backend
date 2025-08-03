@@ -2661,9 +2661,15 @@ app.get('/api/data/development-progress/:deviceId', (req, res) => {
       
       console.log(`✅ Found ${modules ? modules.length : 0} module records`);
       
+      // Convert SQLite integer to boolean for isCompleted
+      const formattedModules = (modules || []).map(module => ({
+        ...module,
+        isCompleted: module.isCompleted === 1
+      }));
+      
       res.json({
-        modules: modules || [],
-        totalModules: modules ? modules.length : 0
+        modules: formattedModules,
+        totalModules: formattedModules.length
       });
     }
   );
