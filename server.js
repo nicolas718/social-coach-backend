@@ -1031,7 +1031,8 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
           let increasedSocialEnergy = 0, betterRelationships = 0;
 
-          if (currentStreak > 0 || stats.total_challenges > 0 || stats.total_openers > 0 || stats.total_modules_started > 0) {
+          // Only calculate benefits based on actual activities
+          if (currentStreak > 0 || stats.total_challenges > 0 || stats.total_openers > 0) {
             // Improved Confidence
             improvedConfidence = 30 + Math.min(40, currentStreak * 2);
             
@@ -1041,10 +1042,6 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               reducedSocialAnxiety += Math.round((overallSuccessRate - 60) * 0.5);
             }
             
-            // Enhanced Communication
-            const moduleProgressScore = Math.min(100, stats.avg_progress || 0);
-            enhancedCommunication = Math.round((overallSuccessRate * 0.7) + (moduleProgressScore * 0.3));
-            
             // Increased Social Energy
             increasedSocialEnergy = 20 + (currentStreak >= 5 ? 20 : 0);
             
@@ -1053,6 +1050,10 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               Math.round((stats.successful_openers / stats.total_openers) * 100) : 0;
             betterRelationships = 25 + Math.round(openerSuccessRate * 0.4) + Math.min(20, currentStreak * 1.5);
           }
+          
+          // Enhanced Communication is calculated separately and includes module progress
+          const moduleProgressScore = Math.min(100, stats.avg_progress || 0);
+          enhancedCommunication = Math.round((overallSuccessRate * 0.7) + (moduleProgressScore * 0.3));
 
           // Cap all benefits at 100
           improvedConfidence = Math.min(100, Math.round(improvedConfidence));
