@@ -481,8 +481,8 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     'Warming Up': 0,
     'Breaking Through': 3,
     'Coming Alive': 4,
-    'Charming': 7,
-    'Socialite': 10
+    'Charming': 6,
+    'Socialite': 6
   };
 
   // Calculate level based on current streak
