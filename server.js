@@ -466,6 +466,12 @@ const updateUserStreakWithCallback = (deviceId, actionDate, callback) => {
 
 // Helper function to calculate Social Zone level with grace period logic
 const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLevelAchieved, allTimeMaxStreak) => {
+  console.log(`🔧 GRACE DEBUG: calculateSocialZoneLevel called with:`, {
+    currentStreak,
+    daysWithoutActivity,
+    highestLevelAchieved,
+    allTimeMaxStreak
+  });
   // Base level requirements (days needed to reach each level)
   const baseLevelRequirements = {
     'Warming Up': 0,
@@ -492,8 +498,12 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   else if (currentStreak >= 21) currentLevel = 'Coming Alive';
   else if (currentStreak >= 7) currentLevel = 'Breaking Through';
 
+  console.log(`🔧 GRACE DEBUG: Current level based on streak (${currentStreak}): ${currentLevel}`);
+
   // If streak is broken (currentStreak = 0), check grace period logic
   if (currentStreak === 0 && daysWithoutActivity > 0) {
+    console.log(`🔧 GRACE DEBUG: Streak is broken, checking grace period logic`);
+    
     // Determine the last achieved level before the miss.
     // Prefer explicit highestLevelAchieved (caller may pass last-run level),
     // otherwise derive from all-time max streak as a fallback.
@@ -505,9 +515,14 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
       else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
     }
 
+    console.log(`🔧 GRACE DEBUG: Previous level based on highestLevelAchieved(${highestLevelAchieved}) and allTimeMaxStreak(${allTimeMaxStreak}): ${previousLevel}`);
+
     // Check if still within grace period
     const gracePeriod = gracePeriods[previousLevel];
+    console.log(`🔧 GRACE DEBUG: Grace period for ${previousLevel}: ${gracePeriod} days, daysWithoutActivity: ${daysWithoutActivity}`);
+    
     if (daysWithoutActivity <= gracePeriod && gracePeriod > 0) {
+      console.log(`🔧 GRACE DEBUG: ✅ WITHIN GRACE PERIOD - staying at ${previousLevel} (${daysWithoutActivity}/${gracePeriod} days used)`);
       return {
         level: previousLevel,
         isInGracePeriod: true,
@@ -518,6 +533,7 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
       const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
       const previousIndex = levels.indexOf(previousLevel);
       const droppedLevel = previousIndex > 0 ? levels[previousIndex - 1] : 'Warming Up';
+      console.log(`🔧 GRACE DEBUG: ❌ GRACE PERIOD EXPIRED - dropping from ${previousLevel} to ${droppedLevel} (${daysWithoutActivity}>${gracePeriod})`);
       return {
         level: droppedLevel,
         isInGracePeriod: false,
@@ -525,6 +541,8 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
       };
     }
   }
+
+  console.log(`🔧 GRACE DEBUG: No grace period needed, returning current level: ${currentLevel}`);
 
   // Apply streak recovery boost (25% faster if they've been at this level before)
   const hasBeenAtHigherLevel = highestLevelAchieved && 
@@ -1389,7 +1407,19 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
                 ? 'Breaking Through'
                 : 'Warming Up';
 
+        console.log(`🔧 CLEAN HOME DEBUG: About to call calculateSocialZoneLevel with:`, {
+          currentStreak,
+          daysSinceActivity,
+          lastAchievedLevel,
+          allTimeMaxStreak,
+          derivedBestStreak,
+          lastRun,
+          user_all_time_best_streak: user?.all_time_best_streak
+        });
+
         const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
+
+        console.log(`🔧 CLEAN HOME DEBUG: calculateSocialZoneLevel returned:`, zone);
 
         // Use zone level directly (no softening) so grace/window behavior is exact
         const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
