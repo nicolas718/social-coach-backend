@@ -1358,12 +1358,9 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
         const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
 
-        // Slight overall weight to dampen sudden drops/jumps
-        const stabilityWeight = Math.min(1, Math.log2((currentStreak || 0) + 2) / 4); // 0..~1
+        // Use zone level directly (no softening) so grace/window behavior is exact
         const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
-        const baseIndex = ordered.indexOf(zone.level);
-        const softenedIndex = Math.round(baseIndex * (0.85 + 0.15 * stabilityWeight));
-        const softenedLevel = ordered[Math.max(0, Math.min(ordered.length - 1, softenedIndex))];
+        const softenedLevel = zone.level;
 
         res.json({
           currentStreak: currentStreak,
