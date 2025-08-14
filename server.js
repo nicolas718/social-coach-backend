@@ -656,8 +656,9 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Social Coach Backend API is running!',
-    version: 'v1.0.1-grace-fix',
-    timestamp: new Date().toISOString()
+    version: 'v1.0.2-force-redeploy',
+    timestamp: new Date().toISOString(),
+    build: 'railway-retry-001'
   });
 });
 
