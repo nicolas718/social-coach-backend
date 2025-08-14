@@ -656,9 +656,10 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Social Coach Backend API is running!',
-    version: 'v1.0.2-force-redeploy',
+    version: 'v1.0.3-GRACE-FIX-DEBUG',
     timestamp: new Date().toISOString(),
-    build: 'railway-retry-001'
+    build: 'analytics-debug-002',
+    graceFixActive: true
   });
 });
 
@@ -990,6 +991,8 @@ app.delete('/api/data/clear/:deviceId', (req, res) => {
 
 // Get User Analytics - ORGANIZED AND CLEAN
 app.get('/api/data/analytics/:deviceId', (req, res) => {
+  console.log('!!!!! URGENT DEBUG: Analytics endpoint hit - NEW VERSION RUNNING !!!!');
+  console.log('!!!!! If you see this message, my changes are working !!!!');
   try {
     const { deviceId } = req.params;
     const { currentDate, completed } = req.query;
@@ -1261,8 +1264,10 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
+            _DEBUG_NEW_VERSION: 'v1.0.3-GRACE-FIX-ACTIVE',
+            _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
-            allTimeBestStreak: user.all_time_best_streak || 0,
+            allTimeBestStreak: allTimeMaxStreak,
             socialConfidencePercentage: socialConfidencePercentage,
             weeklyActivity: weeklyActivityArray,
             overallSuccessRate: overallSuccessRate,
