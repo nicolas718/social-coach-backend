@@ -1049,20 +1049,30 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
           const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
           // STRICT mapping: Social Confidence always matches Social Zone level
-          const zoneConfidenceMap = {
-            'Warming Up': 18,
-            'Breaking Through': 32,
-            'Coming Alive': 52,
-            'Charming': 72,
-            'Socialite': 90
-          };
-          const zoneBaseConfidence = zoneConfidenceMap[zoneInfo.level] ?? 2; // global minimum 2%
-          // Decay model: always linked to Social Zone; decays daily since last activity
+          // Zone start/end mapping (strict per-zone band), plus within-zone progression by streak
+          const zoneStart = [4, 20, 40, 60, 80]; // entry confidence for each zone
+          const zoneEnd   = [18, 32, 52, 72, 90]; // cap within each zone
+          const zoneBaseRequirements = [0, 7, 21, 46, 90];
+          const nextRequirements = [7, 21, 46, 90, 120]; // last one effectively "infinity"
+
+          const startPct = zoneStart[zoneIndex] ?? 2;
+          const endPct   = zoneEnd[zoneIndex] ?? 90;
+          const zoneStartStreak = zoneBaseRequirements[zoneIndex] ?? 0;
+          const zoneEndStreak = nextRequirements[zoneIndex] ?? (zoneStartStreak + 30);
+          const zoneSpan = Math.max(1, zoneEndStreak - zoneStartStreak);
+          const streakWithinZone = Math.max(0, Math.min(zoneSpan, currentStreak - zoneStartStreak));
+          // Conservative easing so early days move a little
+          const linearProgress = streakWithinZone / zoneSpan;
+          const easedProgress = Math.pow(linearProgress, 0.6); // faster than linear early? actually larger; use 0.6 gives higher; we want smaller early: use 1.6
+          const progress = Math.pow(linearProgress, 1.6);
+          let socialConfidencePercentage = Math.round(startPct + (endPct - startPct) * progress);
+
+          // Apply decay by days since last activity (still anchored to current zone)
           const daysMissed = Math.max(0, daysSinceActivityForZone);
-          const decayPerDayInGrace = 0.5;  // gentler decay during grace
-          const decayPerDayAfterGrace = 1.5; // faster decay after grace expires
+          const decayPerDayInGrace = 0.4;  // gentler decay during grace
+          const decayPerDayAfterGrace = 1.2; // faster decay after grace expires
           const decayRate = zoneInfo.isInGracePeriod ? decayPerDayInGrace : decayPerDayAfterGrace;
-          let socialConfidencePercentage = Math.max(2, Math.round(zoneBaseConfidence - decayRate * daysMissed));
+          socialConfidencePercentage = Math.max(2, Math.round(socialConfidencePercentage - decayRate * daysMissed));
 
           // Damping weights to avoid volatility with very few actions
           // Logarithmic ramp up – reaches ~1 around 16+ actions
