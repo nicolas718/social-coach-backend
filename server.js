@@ -656,13 +656,14 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Social Coach Backend API is running!',
-    version: 'v1.0.6-ZONE-IN-ANALYTICS',
+    version: 'v1.0.7-FORCE-RAILWAY-REBUILD',
     timestamp: new Date().toISOString(),
-    build: 'analytics-zone-001',
+    build: 'force-rebuild-002',
     graceFixActive: true,
     homeEndpointFixed: true,
     streakCalculationFixed: true,
-    analyticsReturnsZone: true
+    analyticsReturnsZone: true,
+    rebuild: Date.now()
   });
 });
 
