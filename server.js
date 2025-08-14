@@ -654,7 +654,11 @@ const calculateCurrentStreak = (deviceId, callback) => {
 };
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Social Coach Backend API is running!' });
+  res.json({ 
+    message: 'Social Coach Backend API is running!',
+    version: 'v1.0.1-grace-fix',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Save Daily Challenge Data - CHALLENGES ALWAYS UPDATE STREAK
@@ -988,6 +992,8 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate, completed } = req.query;
+
+    console.log(`🚀 ANALYTICS V2 START: Device ${deviceId}, currentDate: ${currentDate}`);
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
