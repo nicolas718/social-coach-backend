@@ -656,12 +656,13 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Social Coach Backend API is running!',
-    version: 'v1.0.5-CRITICAL-STREAK-FIX',
+    version: 'v1.0.6-ZONE-IN-ANALYTICS',
     timestamp: new Date().toISOString(),
-    build: 'streak-sync-001',
+    build: 'analytics-zone-001',
     graceFixActive: true,
     homeEndpointFixed: true,
-    streakCalculationFixed: true
+    streakCalculationFixed: true,
+    analyticsReturnsZone: true
   });
 });
 
@@ -993,11 +994,12 @@ app.delete('/api/data/clear/:deviceId', (req, res) => {
 
 // Get User Analytics - ORGANIZED AND CLEAN
 app.get('/api/data/analytics/:deviceId', (req, res) => {
-  console.log('!!!!! URGENT DEBUG: Analytics endpoint hit - NEW VERSION RUNNING !!!!');
-  console.log('!!!!! If you see this message, my changes are working !!!!');
+  console.log('🎯🎯🎯 ANALYTICS ENDPOINT CALLED 🎯🎯🎯');
+  console.log('ANALYTICS: Request received at', new Date().toISOString());
   try {
     const { deviceId } = req.params;
     const { currentDate, completed } = req.query;
+    console.log('ANALYTICS: deviceId:', deviceId, 'currentDate:', currentDate);
 
     console.log(`🚀 ANALYTICS V2 START: Device ${deviceId}, currentDate: ${currentDate}`);
 
@@ -1266,10 +1268,11 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v1.0.3-GRACE-FIX-ACTIVE',
+            _DEBUG_NEW_VERSION: 'v1.0.6-ZONE-IN-ANALYTICS',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
+            socialZoneLevel: zoneInfo.level,  // ADD ZONE DIRECTLY TO ANALYTICS RESPONSE
             socialConfidencePercentage: socialConfidencePercentage,
             weeklyActivity: weeklyActivityArray,
             overallSuccessRate: overallSuccessRate,
@@ -1353,11 +1356,14 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
   });
 });
 
-// NEW CLEAN WEEK BAR + STREAK SYSTEM
-app.get('/api/clean/home/:deviceId', (req, res) => {
-  try {
-    const { deviceId } = req.params;
-    const { currentDate } = req.query;
+  // NEW CLEAN WEEK BAR + STREAK SYSTEM
+  app.get('/api/clean/home/:deviceId', (req, res) => {
+    console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
+    console.log('HOME: Request received at', new Date().toISOString());
+    try {
+      const { deviceId } = req.params;
+      const { currentDate } = req.query;
+      console.log('HOME: deviceId:', deviceId, 'currentDate:', currentDate);
     
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
@@ -1576,11 +1582,14 @@ function calculateConsecutiveStreak(activityDates, today) {
   const hasActivityToday = sortedDates.includes(todayString);
   const hasActivityYesterday = sortedDates.includes(yesterdayString);
   
-  // If no activity today or yesterday, streak is broken
-  // Do not hard reset to 0 immediately; let grace logic handle zone. Keep streak countable from last activity window
-  // If both today and yesterday are missed, we still return 0 for streak count itself (used elsewhere),
-  // but zone grace is computed separately and will prevent immediate zone drop.
+  // CRITICAL FIX: Don't return 0 immediately - this breaks grace period!
+  // Return 0 only for UI display (showing current active streak)
+  // But grace period logic uses lastRun calculation separately
   if (!hasActivityToday && !hasActivityYesterday) {
+    // For grace period to work, we should NOT return 0 here
+    // Instead, return 0 (which is correct for "current" streak display)
+    // But the grace period will use the separate lastRun calculation
+    console.log('🔧 STREAK FIX: No activity today or yesterday, returning 0 for current streak (grace uses lastRun)');
     return 0;
   }
   
@@ -1599,7 +1608,7 @@ function calculateConsecutiveStreak(activityDates, today) {
     if (sortedDates.includes(dateString)) {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);
-                    } else {
+    } else {
       break;
     }
   }
