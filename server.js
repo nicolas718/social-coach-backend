@@ -1125,41 +1125,41 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
             // Calculate core metrics (add stability by damping low-volume data)
             const totalSuccessfulActions = (stats.successful_challenges || 0) + (stats.successful_openers || 0);
-          const totalActions = (stats.total_challenges || 0) + (stats.total_openers || 0);
-          const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
-          // Bayesian smoothing for success rate to reduce volatility at low volume
-          const priorCount = 12; // neutral prior ~ two weeks of mixed activity
-          const priorMean = 0.5; // assume 50% success prior
-          const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
-          // Social Confidence = function of Social Zone and streak, with graceful trickle-down
-          // Compute zone from current context
-          const todayForZone = referenceDate || new Date();
-          const daysSinceActivityForZone = (() => {
-            const act = stats.most_recent_activity_date || null;
-            if (!act) return 999;
-            const d1 = new Date(String(act).split('T')[0] + 'T00:00:00Z');
-            const d2 = new Date(todayForZone);
-            return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
-          })();
-          console.log(`🔧 ANALYTICS DEBUG: About to call calculateSocialZoneLevel with:`, {
-            currentStreak,
-            daysSinceActivityForZone,
-            lastAchievedLevel,
-            allTimeMaxStreak,
-            'stats.highest_level_achieved': stats.highest_level_achieved,
-            'user.all_time_best_streak': user.all_time_best_streak,
-            'stats.most_recent_activity_date': stats.most_recent_activity_date,
-            'todayForZone': todayForZone.toISOString().split('T')[0]
-          });
+            const totalActions = (stats.total_challenges || 0) + (stats.total_openers || 0);
+            const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
+            // Bayesian smoothing for success rate to reduce volatility at low volume
+            const priorCount = 12; // neutral prior ~ two weeks of mixed activity
+            const priorMean = 0.5; // assume 50% success prior
+            const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
+            // Social Confidence = function of Social Zone and streak, with graceful trickle-down
+            // Compute zone from current context
+            const todayForZone = referenceDate || new Date();
+            const daysSinceActivityForZone = (() => {
+              const act = stats.most_recent_activity_date || null;
+              if (!act) return 999;
+              const d1 = new Date(String(act).split('T')[0] + 'T00:00:00Z');
+              const d2 = new Date(todayForZone);
+              return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+            })();
+            console.log(`🔧 ANALYTICS DEBUG: About to call calculateSocialZoneLevel with:`, {
+              currentStreak,
+              daysSinceActivityForZone,
+              lastAchievedLevel,
+              allTimeMaxStreak,
+              'stats.highest_level_achieved': stats.highest_level_achieved,
+              'user.all_time_best_streak': user.all_time_best_streak,
+              'stats.most_recent_activity_date': stats.most_recent_activity_date,
+              'todayForZone': todayForZone.toISOString().split('T')[0]
+            });
 
-          const zoneInfo = calculateSocialZoneLevel(
-            currentStreak,
-            daysSinceActivityForZone,
-            lastAchievedLevel,
-            allTimeMaxStreak
-          );
+            const zoneInfo = calculateSocialZoneLevel(
+              currentStreak,
+              daysSinceActivityForZone,
+              lastAchievedLevel,
+              allTimeMaxStreak
+            );
 
-          console.log(`🔧 ANALYTICS DEBUG: calculateSocialZoneLevel returned:`, zoneInfo);
+            console.log(`🔧 ANALYTICS DEBUG: calculateSocialZoneLevel returned:`, zoneInfo);
           const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
           const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
           // STRICT mapping: Social Confidence always matches Social Zone level
