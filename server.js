@@ -476,12 +476,13 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   };
 
   // Grace periods for each level
+  // Slightly more generous grace windows to make the zone feel steadier
   const gracePeriods = {
     'Warming Up': 0,
-    'Breaking Through': 2,
-    'Coming Alive': 3,
-    'Charming': 5,
-    'Socialite': 7
+    'Breaking Through': 3,
+    'Coming Alive': 4,
+    'Charming': 7,
+    'Socialite': 10
   };
 
   // Calculate level based on current streak
@@ -1287,11 +1288,32 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         console.log(`🎯 Current streak: ${currentStreak}`);
         console.log(`🎯 Week bar: [${weekBar.join(', ')}]`);
         
+        // Compute Social Zone with grace and slight global stability weighting
+        const daysSinceActivity = (() => {
+          const todayStr = today.toISOString().split('T')[0];
+          if (activityDates.length === 0) return 999;
+          const mostRecent = activityDates[activityDates.length - 1];
+          const d1 = new Date(mostRecent + 'T00:00:00Z');
+          const d2 = new Date(todayStr + 'T00:00:00Z');
+          return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+        })();
+
+        // Highest level ever achieved (approx from all-time max streak)
+        const allTimeMaxStreak = user?.all_time_best_streak || currentStreak;
+        const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
+
+        // Slight overall weight to dampen sudden drops/jumps
+        const stabilityWeight = Math.min(1, Math.log2((currentStreak || 0) + 2) / 4); // 0..~1
+        const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+        const baseIndex = ordered.indexOf(zone.level);
+        const softenedIndex = Math.round(baseIndex * (0.85 + 0.15 * stabilityWeight));
+        const softenedLevel = ordered[Math.max(0, Math.min(ordered.length - 1, softenedIndex))];
+
         res.json({
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
-          socialZoneLevel: "Warming Up"
+          socialZoneLevel: softenedLevel
         });
       });
     });
