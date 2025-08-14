@@ -1030,8 +1030,8 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           const priorCount = 12; // neutral prior ~ two weeks of mixed activity
           const priorMean = 0.5; // assume 50% success prior
           const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
-          // Link Social Confidence to Social Zone with fast early gains, slower later gains
-          // Compute zone from current context to weight confidence growth
+          // Social Confidence = function of Social Zone and streak, with graceful trickle-down
+          // Compute zone from current context
           const todayForZone = referenceDate || new Date();
           const daysSinceActivityForZone = (() => {
             const act = stats.most_recent_activity_date || null;
@@ -1048,17 +1048,17 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           );
           const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
           const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
-          // More generous beginnings; taper at higher zones
-          const zoneMultiplier = [1.25, 1.0, 0.8, 0.6, 0.5][zoneIndex] || 0.5;
-          const zoneFloor = [0, 8, 16, 24, 32][zoneIndex] || 0; // minimum based on zone
-          // Early boost curve so first few days feel rewarding
-          const earlyBoost = Math.min(8, Math.round(6 * (1 - Math.exp(-(currentStreak || 0) / 6))));
-          let socialConfidencePercentage = Math.round((currentStreak / 90) * 100 * zoneMultiplier + zoneFloor + earlyBoost);
-          // If within grace and streak dropped to 0, do not dip below the zone floor
+          // Direct mapping by zone with quick early gains and taper
+          const zoneBase = [2, 12, 28, 45, 60][zoneIndex] || 2;   // minimum baseline per zone (global floor=2)
+          const zoneCeil = [30, 45, 65, 82, 95][zoneIndex] || 95; // max typical confidence per zone
+          // Ease-in function: fast at start, slows later
+          const zoneProgress = Math.min(1, Math.log1p(Math.max(0, currentStreak)) / Math.log(1 + 21)); // ~level scale
+          let socialConfidencePercentage = Math.round(zoneBase + (zoneCeil - zoneBase) * zoneProgress);
+          // Trickle down during grace instead of snapping: reduce 1.5% per missed day while in grace, bounded by 2%
           if (zoneInfo.isInGracePeriod && currentStreak === 0) {
-            socialConfidencePercentage = Math.max(socialConfidencePercentage, zoneFloor);
+            const decay = Math.min(10, Math.ceil(daysSinceActivityForZone * 1.5));
+            socialConfidencePercentage = Math.max(2, socialConfidencePercentage - decay);
           }
-          socialConfidencePercentage = Math.min(100, socialConfidencePercentage);
 
           // Damping weights to avoid volatility with very few actions
           // Logarithmic ramp up – reaches ~1 around 16+ actions
@@ -2712,10 +2712,19 @@ function calculateAllAnalyticsStats(deviceId, callback) {
       -- Development stats
       (SELECT COUNT(*) FROM development_modules WHERE device_id = ?) as total_modules_started,
       (SELECT SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) FROM development_modules WHERE device_id = ?) as completed_modules,
-      (SELECT AVG(development_progress_percentage) FROM development_modules WHERE device_id = ?) as avg_progress
+      (SELECT AVG(development_progress_percentage) FROM development_modules WHERE device_id = ?) as avg_progress,
+
+      -- Most recent activity date (used for social zone/grace calculations)
+      (
+        SELECT MAX(activity_date) FROM (
+          SELECT DATE(challenge_date) as activity_date FROM daily_challenges WHERE device_id = ?
+          UNION ALL
+          SELECT DATE(opener_date) as activity_date FROM openers WHERE device_id = ? AND opener_was_used = 1
+        )
+      ) as most_recent_activity_date
   `;
   
-  db.get(analyticsQuery, [deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId], (err, stats) => {
+  db.get(analyticsQuery, [deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId], (err, stats) => {
     if (err) {
       return callback(err, null);
     }
