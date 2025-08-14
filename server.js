@@ -8,8 +8,13 @@ const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
-console.log('🚨🚨🚨 SERVER STARTING - VERSION 2.0.0 🚨🚨🚨');
+console.log('===============================================');
+console.log('🚨🚨🚨 SERVER STARTING - VERSION 3.0.0-FINAL 🚨🚨🚨');
 console.log('DEPLOYMENT TIME:', new Date().toISOString());
+console.log('GRACE PERIOD FIX: ACTIVE');
+console.log('daysSinceActivity calculation: FIXED');
+console.log('lastRun calculation: FIXED');
+console.log('===============================================');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -661,12 +666,12 @@ const calculateCurrentStreak = (deviceId, callback) => {
 
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'DEPLOYMENT WORKING - NEW CODE IS LIVE',
-    version: 'v2.0.0-COMPLETE-REWRITE',
+    message: 'GRACE PERIOD FIX DEPLOYED',
+    version: 'v3.0.0-FINAL-FIX',
     timestamp: new Date().toISOString(),
-    build: 'emergency-fix-' + Date.now(),
-    URGENT: 'IF YOU SEE THIS, NEW CODE IS DEPLOYED',
-    deploymentTime: '2025-08-14T22:30:00Z'
+    build: 'critical-' + Date.now(),
+    deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
+    fixApplied: 'daysSinceActivity-and-lastRun-calculation-fixed'
   });
 });
 
