@@ -1043,9 +1043,82 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             return res.status(500).json({ error: 'Database error' });
           }
 
-          // Calculate core metrics (add stability by damping low-volume data)
-          const currentStreak = user.current_streak || 0;
-          const totalSuccessfulActions = (stats.successful_challenges || 0) + (stats.successful_openers || 0);
+          // Get activity dates to calculate actual current streak (not stale DB value)
+          const activityQuery = `
+            SELECT DISTINCT substr(activity_date, 1, 10) as activity_date
+            FROM (
+              SELECT opener_date as activity_date FROM openers 
+              WHERE device_id = ? AND opener_was_used = 1
+              
+              UNION ALL
+              
+              SELECT challenge_date as activity_date FROM daily_challenges 
+              WHERE device_id = ?
+            ) activities
+            ORDER BY activity_date DESC
+          `;
+          
+          db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+            if (err) {
+              console.error('Error getting activity dates for analytics:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+
+            const activityDates = activityRows.map(row => row.activity_date);
+            console.log(`🔧 ANALYTICS DEBUG: Activity dates found:`, activityDates);
+            
+            // Calculate actual current streak from activity data (not stale DB value)
+            const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
+            console.log(`🔧 ANALYTICS DEBUG: Calculated currentStreak: ${currentStreak}, DB currentStreak: ${user.current_streak || 0}`);
+
+            // Calculate allTimeMaxStreak from activity data like clean home endpoint does
+            const computeMaxConsecutiveStreak = (dates) => {
+              if (!dates || dates.length === 0) return 0;
+              const sorted = [...dates].sort();
+              let maxRun = 1, run = 1;
+              for (let i = 1; i < sorted.length; i++) {
+                const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
+                const cur = new Date(sorted[i] + 'T00:00:00Z');
+                const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
+                if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
+                else if (diff > 1) { run = 1; }
+              }
+              return maxRun;
+            };
+            const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
+            const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
+
+            // Calculate lastAchievedLevel like clean home endpoint does
+            const toISO = (d) => d.toISOString().split('T')[0];
+            let lastRun = 0;
+            if (activityDates.length > 0) {
+              const recent = new Date(activityDates[0] + 'T00:00:00Z'); // activityDates is DESC ordered
+              let check = new Date(recent);
+              while (true) {
+                const ds = toISO(check);
+                if (activityDates.includes(ds)) {
+                  lastRun += 1;
+                  check.setDate(check.getDate() - 1);
+                } else {
+                  break;
+                }
+              }
+            }
+
+            const lastAchievedLevel = lastRun >= 90
+              ? 'Socialite'
+              : lastRun >= 46
+                ? 'Charming'
+                : lastRun >= 21
+                  ? 'Coming Alive'
+                  : lastRun >= 7
+                    ? 'Breaking Through'
+                    : 'Warming Up';
+
+            console.log(`🔧 ANALYTICS DEBUG: Derived stats - lastRun: ${lastRun}, lastAchievedLevel: ${lastAchievedLevel}, allTimeMaxStreak: ${allTimeMaxStreak}`);
+
+            // Calculate core metrics (add stability by damping low-volume data)
+            const totalSuccessfulActions = (stats.successful_challenges || 0) + (stats.successful_openers || 0);
           const totalActions = (stats.total_challenges || 0) + (stats.total_openers || 0);
           const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
           // Bayesian smoothing for success rate to reduce volatility at low volume
@@ -1062,12 +1135,25 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             const d2 = new Date(todayForZone);
             return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
           })();
+          console.log(`🔧 ANALYTICS DEBUG: About to call calculateSocialZoneLevel with:`, {
+            currentStreak,
+            daysSinceActivityForZone,
+            lastAchievedLevel,
+            allTimeMaxStreak,
+            'stats.highest_level_achieved': stats.highest_level_achieved,
+            'user.all_time_best_streak': user.all_time_best_streak,
+            'stats.most_recent_activity_date': stats.most_recent_activity_date,
+            'todayForZone': todayForZone.toISOString().split('T')[0]
+          });
+
           const zoneInfo = calculateSocialZoneLevel(
             currentStreak,
             daysSinceActivityForZone,
-            stats.highest_level_achieved || null,
-            user.all_time_best_streak || currentStreak
+            lastAchievedLevel,
+            allTimeMaxStreak
           );
+
+          console.log(`🔧 ANALYTICS DEBUG: calculateSocialZoneLevel returned:`, zoneInfo);
           const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
           const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
           // STRICT mapping: Social Confidence always matches Social Zone level
@@ -1187,6 +1273,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             completedModules: stats.completed_modules || 0,
             averageModuleProgress: Math.round((stats.avg_progress || 0) * 10) / 10
           });
+          }); // Close the new db.all callback
         });
       });
     });
