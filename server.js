@@ -1281,7 +1281,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v1.0.6-ZONE-IN-ANALYTICS',
+            _DEBUG_NEW_VERSION: 'v2.0.0-COMPLETE-REWRITE',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1566,7 +1566,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: softenedLevel,
-          _DEBUG_HOME_VERSION: 'v1.0.3-GRACE-HOME-FIX',
+          _DEBUG_HOME_VERSION: 'v2.0.0-COMPLETE-REWRITE',
           _DEBUG_HOME_ZONE: zone
         });
       });
