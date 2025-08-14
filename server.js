@@ -1354,7 +1354,19 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         };
         const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
         const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
-        const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
+        // Short-circuit: on the given currentDate if there are no missed days,
+        // map zone directly from currentStreak thresholds to avoid any grace edge cases
+        let zone;
+        if (daysSinceActivity <= 0) {
+          let level = 'Warming Up';
+          if (currentStreak >= 90) level = 'Socialite';
+          else if (currentStreak >= 46) level = 'Charming';
+          else if (currentStreak >= 21) level = 'Coming Alive';
+          else if (currentStreak >= 7) level = 'Breaking Through';
+          zone = { level, isInGracePeriod: false };
+        } else {
+          zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
+        }
 
         // Use zone level directly (no softening) so grace/window behavior is exact
         const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
