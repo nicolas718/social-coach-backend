@@ -485,40 +485,46 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     'Socialite': 6
   };
 
-  // Determine prior highest-achieved level based on allTimeMaxStreak
-  const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
-  let previousLevel = 'Warming Up';
-  if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
-  else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
-  else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
-  else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
-
-  // Grace applies whenever there are missed days, regardless of currentStreak
-  if (daysWithoutActivity > 0) {
-    const gracePeriod = gracePeriods[previousLevel] || 0;
-    if (gracePeriod > 0 && daysWithoutActivity <= gracePeriod) {
-      return {
-        level: previousLevel,
-        isInGracePeriod: true,
-        gracePeriodLeft: gracePeriod - daysWithoutActivity
-      };
-    }
-    // After grace expires, drop exactly one level from previous
-    const previousIndex = levels.indexOf(previousLevel);
-    const droppedLevel = previousIndex > 0 ? levels[previousIndex - 1] : 'Warming Up';
-    return {
-      level: droppedLevel,
-      isInGracePeriod: false,
-      droppedFrom: previousLevel
-    };
-  }
-
-  // No missed days: use current streak to compute current level normally
+  // Calculate level based on current streak
   let currentLevel = 'Warming Up';
   if (currentStreak >= 90) currentLevel = 'Socialite';
   else if (currentStreak >= 46) currentLevel = 'Charming';
   else if (currentStreak >= 21) currentLevel = 'Coming Alive';
   else if (currentStreak >= 7) currentLevel = 'Breaking Through';
+
+  // If streak is broken (currentStreak = 0), check grace period logic
+  if (currentStreak === 0 && daysWithoutActivity > 0) {
+    // Determine the last achieved level before the miss.
+    // Prefer explicit highestLevelAchieved (caller may pass last-run level),
+    // otherwise derive from all-time max streak as a fallback.
+    let previousLevel = highestLevelAchieved || 'Warming Up';
+    if (!highestLevelAchieved) {
+      if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
+      else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
+      else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
+      else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
+    }
+
+    // Check if still within grace period
+    const gracePeriod = gracePeriods[previousLevel];
+    if (daysWithoutActivity <= gracePeriod && gracePeriod > 0) {
+      return {
+        level: previousLevel,
+        isInGracePeriod: true,
+        gracePeriodLeft: gracePeriod - daysWithoutActivity
+      };
+    } else if (gracePeriod > 0) {
+      // Grace period expired, drop one level
+      const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+      const previousIndex = levels.indexOf(previousLevel);
+      const droppedLevel = previousIndex > 0 ? levels[previousIndex - 1] : 'Warming Up';
+      return {
+        level: droppedLevel,
+        isInGracePeriod: false,
+        droppedFrom: previousLevel
+      };
+    }
+  }
 
   // Apply streak recovery boost (25% faster if they've been at this level before)
   const hasBeenAtHigherLevel = highestLevelAchieved && 
@@ -1354,19 +1360,7 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         };
         const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
         const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
-        // Short-circuit: on the given currentDate if there are no missed days,
-        // map zone directly from currentStreak thresholds to avoid any grace edge cases
-        let zone;
-        if (daysSinceActivity <= 0) {
-          let level = 'Warming Up';
-          if (currentStreak >= 90) level = 'Socialite';
-          else if (currentStreak >= 46) level = 'Charming';
-          else if (currentStreak >= 21) level = 'Coming Alive';
-          else if (currentStreak >= 7) level = 'Breaking Through';
-          zone = { level, isInGracePeriod: false };
-        } else {
-          zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
-        }
+        const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
 
         // Use zone level directly (no softening) so grace/window behavior is exact
         const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
