@@ -656,11 +656,12 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Social Coach Backend API is running!',
-    version: 'v1.0.4-HOME-ENDPOINT-DEBUG',
+    version: 'v1.0.5-CRITICAL-STREAK-FIX',
     timestamp: new Date().toISOString(),
-    build: 'home-debug-001',
+    build: 'streak-sync-001',
     graceFixActive: true,
-    homeEndpointFixed: true
+    homeEndpointFixed: true,
+    streakCalculationFixed: true
   });
 });
 
@@ -1446,20 +1447,25 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           console.log(`🎯 Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
         }
         
-        // Step 4: Calculate current streak
-        currentStreak = calculateConsecutiveStreak(activityDates, today);
+        // Step 4: Calculate current streak (USE EXACT SAME LOGIC AS ANALYTICS)
+        const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+        console.log(`🔧 HOME FIX: Using referenceDate: ${referenceDate.toISOString()}, vs original today: ${today.toISOString()}`);
+        currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
+        console.log(`🔧 HOME FIX: calculateConsecutiveStreak returned: ${currentStreak}`);
         
         console.log(`🎯 Current streak: ${currentStreak}`);
         console.log(`🎯 Week bar: [${weekBar.join(', ')}]`);
         
         // Compute Social Zone with grace; derive best streak from activity if user record is stale
         const daysSinceActivity = (() => {
-          const todayStr = today.toISOString().split('T')[0];
+          const todayStr = referenceDate.toISOString().split('T')[0];  // USE SAME REFERENCE DATE
           if (activityDates.length === 0) return 999;
           const mostRecent = activityDates[activityDates.length - 1];
           const d1 = new Date(mostRecent + 'T00:00:00Z');
           const d2 = new Date(todayStr + 'T00:00:00Z');
-          return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+          const daysDiff = Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+          console.log(`🔧 HOME FIX: daysSinceActivity calculation - mostRecent: ${mostRecent}, referenceDate: ${todayStr}, daysDiff: ${daysDiff}`);
+          return daysDiff;
         })();
 
         // Recompute best streak from activity dates to ensure grace works even if DB best streak isn't updated
@@ -1507,8 +1513,8 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
                 ? 'Breaking Through'
                 : 'Warming Up';
 
-        console.log('!!!!! HOME ENDPOINT HIT - CHECKING GRACE LOGIC !!!!');
-        console.log(`🔧 CLEAN HOME DEBUG: About to call calculateSocialZoneLevel with:`, {
+        console.log('!!!!! HOME ENDPOINT HIT - STREAK FIX APPLIED !!!!');
+        console.log(`🔧 HOME CRITICAL: About to call calculateSocialZoneLevel with:`, {
           currentStreak,
           daysSinceActivity,
           lastAchievedLevel,
@@ -1517,6 +1523,7 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           lastRun,
           user_all_time_best_streak: user?.all_time_best_streak
         });
+        console.log(`🔧 HOME CRITICAL: This should now match analytics endpoint exactly!`);
 
         const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
 
