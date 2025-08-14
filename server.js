@@ -1048,17 +1048,15 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           );
           const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
           const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
-          // Direct mapping by zone with quick early gains and taper
-          const zoneBase = [2, 12, 28, 45, 60][zoneIndex] || 2;   // minimum baseline per zone (global floor=2)
-          const zoneCeil = [30, 45, 65, 82, 95][zoneIndex] || 95; // max typical confidence per zone
-          // Ease-in function: fast at start, slows later
-          const zoneProgress = Math.min(1, Math.log1p(Math.max(0, currentStreak)) / Math.log(1 + 21)); // ~level scale
-          let socialConfidencePercentage = Math.round(zoneBase + (zoneCeil - zoneBase) * zoneProgress);
-          // Trickle down during grace instead of snapping: reduce 1.5% per missed day while in grace, bounded by 2%
-          if (zoneInfo.isInGracePeriod && currentStreak === 0) {
-            const decay = Math.min(10, Math.ceil(daysSinceActivityForZone * 1.5));
-            socialConfidencePercentage = Math.max(2, socialConfidencePercentage - decay);
-          }
+          // STRICT mapping: Social Confidence always matches Social Zone level
+          const zoneConfidenceMap = {
+            'Warming Up': 18,
+            'Breaking Through': 32,
+            'Coming Alive': 52,
+            'Charming': 72,
+            'Socialite': 90
+          };
+          let socialConfidencePercentage = zoneConfidenceMap[zoneInfo.level] ?? 2; // global minimum 2%
 
           // Damping weights to avoid volatility with very few actions
           // Logarithmic ramp up – reaches ~1 around 16+ actions
