@@ -1,9 +1,15 @@
+// DEPLOYMENT VERSION: v2.0.0 - EMERGENCY FIX - 2025-08-14 22:30
+// IF THIS COMMENT IS NOT IN RAILWAY LOGS, THE DEPLOYMENT FAILED
+
 const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
+
+console.log('🚨🚨🚨 SERVER STARTING - VERSION 2.0.0 🚨🚨🚨');
+console.log('DEPLOYMENT TIME:', new Date().toISOString());
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -655,15 +661,21 @@ const calculateCurrentStreak = (deviceId, callback) => {
 
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'Social Coach Backend API is running!',
-    version: 'v1.0.7-FORCE-RAILWAY-REBUILD',
+    message: 'DEPLOYMENT WORKING - NEW CODE IS LIVE',
+    version: 'v2.0.0-COMPLETE-REWRITE',
     timestamp: new Date().toISOString(),
-    build: 'force-rebuild-002',
-    graceFixActive: true,
-    homeEndpointFixed: true,
-    streakCalculationFixed: true,
-    analyticsReturnsZone: true,
-    rebuild: Date.now()
+    build: 'emergency-fix-' + Date.now(),
+    URGENT: 'IF YOU SEE THIS, NEW CODE IS DEPLOYED',
+    deploymentTime: '2025-08-14T22:30:00Z'
+  });
+});
+
+// Test endpoint to verify deployment
+app.get('/test-deployment', (req, res) => {
+  res.json({
+    status: 'NEW CODE DEPLOYED SUCCESSFULLY',
+    version: 'v2.0.0',
+    message: 'If you see this, Railway has deployed the latest code'
   });
 });
 
