@@ -1030,7 +1030,27 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           const priorCount = 12; // neutral prior ~ two weeks of mixed activity
           const priorMean = 0.5; // assume 50% success prior
           const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
-          const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
+          // Link Social Confidence to Social Zone with fast early gains, slower later gains
+          // Compute zone from current context to weight confidence growth
+          const todayForZone = referenceDate || new Date();
+          const daysSinceActivityForZone = (() => {
+            const act = stats.most_recent_activity_date || null;
+            if (!act) return 999;
+            const d1 = new Date(String(act).split('T')[0] + 'T00:00:00Z');
+            const d2 = new Date(todayForZone);
+            return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+          })();
+          const zoneInfo = calculateSocialZoneLevel(
+            currentStreak,
+            daysSinceActivityForZone,
+            stats.highest_level_achieved || null,
+            user.all_time_best_streak || currentStreak
+          );
+          const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+          const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
+          // Zone multipliers: quicker at low zones, slower at high zones
+          const zoneMultiplier = [1.0, 0.85, 0.65, 0.5, 0.4][zoneIndex] || 0.4;
+          const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100 * zoneMultiplier + zoneIndex * 6));
 
           // Damping weights to avoid volatility with very few actions
           // Logarithmic ramp up – reaches ~1 around 16+ actions
