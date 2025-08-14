@@ -1048,9 +1048,17 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           );
           const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
           const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
-          // Zone multipliers: quicker at low zones, slower at high zones
-          const zoneMultiplier = [1.0, 0.85, 0.65, 0.5, 0.4][zoneIndex] || 0.4;
-          const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100 * zoneMultiplier + zoneIndex * 6));
+          // More generous beginnings; taper at higher zones
+          const zoneMultiplier = [1.25, 1.0, 0.8, 0.6, 0.5][zoneIndex] || 0.5;
+          const zoneFloor = [0, 8, 16, 24, 32][zoneIndex] || 0; // minimum based on zone
+          // Early boost curve so first few days feel rewarding
+          const earlyBoost = Math.min(8, Math.round(6 * (1 - Math.exp(-(currentStreak || 0) / 6))));
+          let socialConfidencePercentage = Math.round((currentStreak / 90) * 100 * zoneMultiplier + zoneFloor + earlyBoost);
+          // If within grace and streak dropped to 0, do not dip below the zone floor
+          if (zoneInfo.isInGracePeriod && currentStreak === 0) {
+            socialConfidencePercentage = Math.max(socialConfidencePercentage, zoneFloor);
+          }
+          socialConfidencePercentage = Math.min(100, socialConfidencePercentage);
 
           // Damping weights to avoid volatility with very few actions
           // Logarithmic ramp up – reaches ~1 around 16+ actions
