@@ -1056,7 +1056,13 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             'Charming': 72,
             'Socialite': 90
           };
-          let socialConfidencePercentage = zoneConfidenceMap[zoneInfo.level] ?? 2; // global minimum 2%
+          const zoneBaseConfidence = zoneConfidenceMap[zoneInfo.level] ?? 2; // global minimum 2%
+          // Decay model: always linked to Social Zone; decays daily since last activity
+          const daysMissed = Math.max(0, daysSinceActivityForZone);
+          const decayPerDayInGrace = 0.5;  // gentler decay during grace
+          const decayPerDayAfterGrace = 1.5; // faster decay after grace expires
+          const decayRate = zoneInfo.isInGracePeriod ? decayPerDayInGrace : decayPerDayAfterGrace;
+          let socialConfidencePercentage = Math.max(2, Math.round(zoneBaseConfidence - decayRate * daysMissed));
 
           // Damping weights to avoid volatility with very few actions
           // Logarithmic ramp up – reaches ~1 around 16+ actions
