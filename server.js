@@ -485,55 +485,40 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     'Socialite': 6
   };
 
-  // Special grace periods for users close to next level (to prevent frustration)
-  const getGracePeriodForStreak = (streak) => {
-    if (streak >= 80) return 6; // Close to Socialite (90) - give Socialite grace
-    if (streak >= 40) return 6; // Close to Charming (46) - give Charming grace
-    if (streak >= 18) return 4; // Close to Coming Alive (21) - give Coming Alive grace
-    if (streak >= 6) return 3;  // Almost at Breaking Through (7) - give Breaking Through grace
-    if (streak >= 3) return 1;  // Some activity - give minimal grace
-    return 0;                    // Very low streak - no grace
-  };
+  // Determine prior highest-achieved level based on allTimeMaxStreak
+  const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+  let previousLevel = 'Warming Up';
+  if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
+  else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
+  else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
+  else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
 
-  // Calculate level based on current streak
+  // Grace applies whenever there are missed days, regardless of currentStreak
+  if (daysWithoutActivity > 0) {
+    const gracePeriod = gracePeriods[previousLevel] || 0;
+    if (gracePeriod > 0 && daysWithoutActivity <= gracePeriod) {
+      return {
+        level: previousLevel,
+        isInGracePeriod: true,
+        gracePeriodLeft: gracePeriod - daysWithoutActivity
+      };
+    }
+    // After grace expires, drop exactly one level from previous
+    const previousIndex = levels.indexOf(previousLevel);
+    const droppedLevel = previousIndex > 0 ? levels[previousIndex - 1] : 'Warming Up';
+    return {
+      level: droppedLevel,
+      isInGracePeriod: false,
+      droppedFrom: previousLevel
+    };
+  }
+
+  // No missed days: use current streak to compute current level normally
   let currentLevel = 'Warming Up';
   if (currentStreak >= 90) currentLevel = 'Socialite';
   else if (currentStreak >= 46) currentLevel = 'Charming';
   else if (currentStreak >= 21) currentLevel = 'Coming Alive';
   else if (currentStreak >= 7) currentLevel = 'Breaking Through';
-
-  // If streak is broken (currentStreak = 0), check grace period logic
-  if (currentStreak === 0 && daysWithoutActivity > 0) {
-    // Determine what level they had before the break
-    let previousLevel = 'Warming Up';
-    if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
-    else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
-    else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
-    else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
-
-    // Check if still within grace period
-    // Use the standard grace period for their achieved level, or streak-based grace if higher
-    const standardGracePeriod = gracePeriods[previousLevel];
-    const streakBasedGracePeriod = getGracePeriodForStreak(allTimeMaxStreak);
-    const effectiveGracePeriod = Math.max(standardGracePeriod, streakBasedGracePeriod);
-    if (daysWithoutActivity <= effectiveGracePeriod && effectiveGracePeriod > 0) {
-      return {
-        level: previousLevel,
-        isInGracePeriod: true,
-        gracePeriodLeft: effectiveGracePeriod - daysWithoutActivity
-      };
-    } else if (effectiveGracePeriod > 0) {
-      // Grace period expired, drop one level
-      const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
-      const previousIndex = levels.indexOf(previousLevel);
-      const droppedLevel = previousIndex > 0 ? levels[previousIndex - 1] : 'Warming Up';
-      return {
-        level: droppedLevel,
-        isInGracePeriod: false,
-        droppedFrom: previousLevel
-      };
-    }
-  }
 
   // Apply streak recovery boost (25% faster if they've been at this level before)
   const hasBeenAtHigherLevel = highestLevelAchieved && 
