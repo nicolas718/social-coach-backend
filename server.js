@@ -1020,35 +1020,60 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             return res.status(500).json({ error: 'Database error' });
           }
 
-          // Calculate core metrics
+          // Calculate core metrics (add stability by damping low-volume data)
           const currentStreak = user.current_streak || 0;
           const totalSuccessfulActions = (stats.successful_challenges || 0) + (stats.successful_openers || 0);
           const totalActions = (stats.total_challenges || 0) + (stats.total_openers || 0);
           const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
+          // Bayesian smoothing for success rate to reduce volatility at low volume
+          const priorCount = 12; // neutral prior ~ two weeks of mixed activity
+          const priorMean = 0.5; // assume 50% success prior
+          const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
           const socialConfidencePercentage = Math.min(100, Math.round((currentStreak / 90) * 100));
+
+          // Damping weights to avoid volatility with very few actions
+          // Logarithmic ramp up – reaches ~1 around 16+ actions
+          const effectiveVolume = Math.min(1, Math.log2((totalActions || 0) + 1) / 4);
+          const openerEffectiveVolume = Math.min(1, Math.log2(((stats.total_openers || 0)) + 1) / 4);
 
           // Calculate personal benefits
           let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
           let increasedSocialEnergy = 0, betterRelationships = 0;
 
-          // Only calculate benefits based on actual activities
+          // Only calculate benefits based on actual activities (stabilized growth curves)
           if (currentStreak > 0 || stats.total_challenges > 0 || stats.total_openers > 0) {
-            // Improved Confidence
-            improvedConfidence = 30 + Math.min(40, currentStreak * 2);
-            
-            // Reduced Social Anxiety
-            reducedSocialAnxiety = 25 + (currentStreak >= 7 ? 20 : Math.round(currentStreak * 2.8));
-            if (overallSuccessRate > 60) {
-              reducedSocialAnxiety += Math.round((overallSuccessRate - 60) * 0.5);
-            }
-            
-            // Increased Social Energy
-            increasedSocialEnergy = 20 + (currentStreak >= 5 ? 20 : 0);
-            
-            // Better Relationships
-            const openerSuccessRate = stats.total_openers > 0 ? 
-              Math.round((stats.successful_openers / stats.total_openers) * 100) : 0;
-            betterRelationships = 25 + Math.round(openerSuccessRate * 0.4) + Math.min(20, currentStreak * 1.5);
+            // Helper functions for smooth, bounded growth
+            const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+            const logistic = (n, k, max) => max * (1 - Math.exp(-k * Math.max(0, n)));
+
+            const A = totalActions;              // total activity volume
+            const S = currentStreak;             // streak length
+
+            // Improved Confidence – small baseline, slow growth from streak + volume, light success influence
+            const confFromStreak = logistic(S, 0.18, 35);      // caps at 35
+            const confFromActivity = logistic(A, 0.08, 20);    // caps at 20
+            const confFromSuccess = ((smoothedSuccessRate - 50) / 100) * 10 * effectiveVolume; // ±5 at low volume
+            improvedConfidence = clamp(20 + confFromStreak + confFromActivity + confFromSuccess, 10, 85);
+
+            // Reduced Social Anxiety – similar scale, slightly different weights
+            const anxFromStreak = logistic(S, 0.15, 25);
+            const anxFromActivity = logistic(A, 0.06, 15);
+            const anxFromSuccess = ((smoothedSuccessRate - 50) / 100) * 8 * effectiveVolume;
+            reducedSocialAnxiety = clamp(20 + anxFromStreak + anxFromActivity + anxFromSuccess, 10, 85);
+
+            // Increased Social Energy – very gentle curve with streak only
+            increasedSocialEnergy = clamp(12 + logistic(S, 0.12, 25), 10, 70);
+
+            // Better Relationships – based on opener success with strong damping + small streak effect
+            const totalOpeners = stats.total_openers || 0;
+            const successfulOpeners = stats.successful_openers || 0;
+            const openerPriorCount = 8;
+            const openerSmoothedRate = totalOpeners > 0
+              ? ((successfulOpeners + priorMean * openerPriorCount) / (totalOpeners + openerPriorCount)) * 100
+              : priorMean * 100;
+            const relFromOpeners = (openerSmoothedRate * 0.18) * openerEffectiveVolume; // capped by effective volume
+            const relFromStreak = logistic(S, 0.08, 10);
+            betterRelationships = clamp(15 + relFromOpeners + relFromStreak, 10, 80);
           }
           
           // Enhanced Communication is calculated separately and includes module progress
@@ -1058,12 +1083,14 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           
           // Base contribution from modules is 30%, but increases with more modules completed
           // 1 module = 30%, 2 modules = 40%, 3 modules = 50%, 4+ modules = 60%
-          const moduleContribution = Math.min(60, 30 + (completedModules - 1) * 10);
-          const activityContribution = 100 - moduleContribution;
+          // Module weight grows with completed modules; keep low with none
+          const moduleContribution = Math.min(40, Math.max(5, completedModules * 10));
+          // Activity contribution is damped at low volume
+          const activityContribution = (100 - moduleContribution) * effectiveVolume;
           
           // Calculate enhanced communication with dynamic weighting
           enhancedCommunication = Math.round(
-            (overallSuccessRate * (activityContribution / 100)) + 
+            (smoothedSuccessRate * (activityContribution / 100)) +
             (moduleProgressScore * (moduleContribution / 100))
           );
 
