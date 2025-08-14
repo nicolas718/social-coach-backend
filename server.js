@@ -656,10 +656,11 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Social Coach Backend API is running!',
-    version: 'v1.0.3-GRACE-FIX-DEBUG',
+    version: 'v1.0.4-HOME-ENDPOINT-DEBUG',
     timestamp: new Date().toISOString(),
-    build: 'analytics-debug-002',
-    graceFixActive: true
+    build: 'home-debug-001',
+    graceFixActive: true,
+    homeEndpointFixed: true
   });
 });
 
@@ -1506,6 +1507,7 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
                 ? 'Breaking Through'
                 : 'Warming Up';
 
+        console.log('!!!!! HOME ENDPOINT HIT - CHECKING GRACE LOGIC !!!!');
         console.log(`🔧 CLEAN HOME DEBUG: About to call calculateSocialZoneLevel with:`, {
           currentStreak,
           daysSinceActivity,
@@ -1519,16 +1521,27 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
 
         console.log(`🔧 CLEAN HOME DEBUG: calculateSocialZoneLevel returned:`, zone);
+        console.log('!!!!! HOME ZONE RESULT:', zone);
 
         // Use zone level directly (no softening) so grace/window behavior is exact
         const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
         const softenedLevel = zone.level;
 
+        console.log('!!!!! HOME RESPONSE BEING SENT:', {
+          currentStreak: currentStreak,
+          weeklyActivity: weekBar,
+          hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
+          socialZoneLevel: softenedLevel,
+          zoneFromFunction: zone
+        });
+
         res.json({
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
-          socialZoneLevel: softenedLevel
+          socialZoneLevel: softenedLevel,
+          _DEBUG_HOME_VERSION: 'v1.0.3-GRACE-HOME-FIX',
+          _DEBUG_HOME_ZONE: zone
         });
       });
     });
