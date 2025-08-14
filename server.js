@@ -1395,6 +1395,9 @@ function calculateConsecutiveStreak(activityDates, today) {
   const hasActivityYesterday = sortedDates.includes(yesterdayString);
   
   // If no activity today or yesterday, streak is broken
+  // Do not hard reset to 0 immediately; let grace logic handle zone. Keep streak countable from last activity window
+  // If both today and yesterday are missed, we still return 0 for streak count itself (used elsewhere),
+  // but zone grace is computed separately and will prevent immediate zone drop.
   if (!hasActivityToday && !hasActivityYesterday) {
     return 0;
   }
