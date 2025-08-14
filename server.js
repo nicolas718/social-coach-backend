@@ -1330,7 +1330,7 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         console.log(`🎯 Current streak: ${currentStreak}`);
         console.log(`🎯 Week bar: [${weekBar.join(', ')}]`);
         
-        // Compute Social Zone with grace and slight global stability weighting
+        // Compute Social Zone with grace; derive best streak from activity if user record is stale
         const daysSinceActivity = (() => {
           const todayStr = today.toISOString().split('T')[0];
           if (activityDates.length === 0) return 999;
@@ -1340,8 +1340,22 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
           return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
         })();
 
-        // Highest level ever achieved (approx from all-time max streak)
-        const allTimeMaxStreak = user?.all_time_best_streak || currentStreak;
+        // Recompute best streak from activity dates to ensure grace works even if DB best streak isn't updated
+        const computeMaxConsecutiveStreak = (dates) => {
+          if (!dates || dates.length === 0) return 0;
+          const sorted = [...dates].sort();
+          let maxRun = 1, run = 1;
+          for (let i = 1; i < sorted.length; i++) {
+            const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
+            const cur = new Date(sorted[i] + 'T00:00:00Z');
+            const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
+            if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
+            else if (diff > 1) { run = 1; }
+          }
+          return maxRun;
+        };
+        const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
+        const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
         const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
 
         // Slight overall weight to dampen sudden drops/jumps
