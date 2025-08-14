@@ -485,6 +485,16 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     'Socialite': 6
   };
 
+  // Special grace periods for users close to next level (to prevent frustration)
+  const getGracePeriodForStreak = (streak) => {
+    if (streak >= 80) return 6; // Close to Socialite (90) - give Socialite grace
+    if (streak >= 40) return 6; // Close to Charming (46) - give Charming grace
+    if (streak >= 18) return 4; // Close to Coming Alive (21) - give Coming Alive grace
+    if (streak >= 6) return 3;  // Almost at Breaking Through (7) - give Breaking Through grace
+    if (streak >= 3) return 1;  // Some activity - give minimal grace
+    return 0;                    // Very low streak - no grace
+  };
+
   // Calculate level based on current streak
   let currentLevel = 'Warming Up';
   if (currentStreak >= 90) currentLevel = 'Socialite';
@@ -502,14 +512,17 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
 
     // Check if still within grace period
-    const gracePeriod = gracePeriods[previousLevel];
-    if (daysWithoutActivity <= gracePeriod && gracePeriod > 0) {
+    // Use the standard grace period for their achieved level, or streak-based grace if higher
+    const standardGracePeriod = gracePeriods[previousLevel];
+    const streakBasedGracePeriod = getGracePeriodForStreak(allTimeMaxStreak);
+    const effectiveGracePeriod = Math.max(standardGracePeriod, streakBasedGracePeriod);
+    if (daysWithoutActivity <= effectiveGracePeriod && effectiveGracePeriod > 0) {
       return {
         level: previousLevel,
         isInGracePeriod: true,
-        gracePeriodLeft: gracePeriod - daysWithoutActivity
+        gracePeriodLeft: effectiveGracePeriod - daysWithoutActivity
       };
-    } else if (gracePeriod > 0) {
+    } else if (effectiveGracePeriod > 0) {
       // Grace period expired, drop one level
       const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
       const previousIndex = levels.indexOf(previousLevel);
