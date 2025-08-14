@@ -1360,7 +1360,36 @@ app.get('/api/clean/home/:deviceId', (req, res) => {
         };
         const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
         const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
-        const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, user?.highest_level_achieved || null, allTimeMaxStreak);
+
+        // Determine the most recently achieved level based purely on the last uninterrupted run
+        const toISO = (d) => d.toISOString().split('T')[0];
+        let lastRun = 0;
+        if (activityDates.length > 0) {
+          const recent = new Date(activityDates[activityDates.length - 1] + 'T00:00:00Z');
+          // Walk backward from recent while dates are consecutive
+          let check = new Date(recent);
+          while (true) {
+            const ds = toISO(check);
+            if (activityDates.includes(ds)) {
+              lastRun += 1;
+              check.setDate(check.getDate() - 1);
+            } else {
+              break;
+            }
+          }
+        }
+
+        const lastAchievedLevel = lastRun >= 90
+          ? 'Socialite'
+          : lastRun >= 46
+            ? 'Charming'
+            : lastRun >= 21
+              ? 'Coming Alive'
+              : lastRun >= 7
+                ? 'Breaking Through'
+                : 'Warming Up';
+
+        const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
 
         // Use zone level directly (no softening) so grace/window behavior is exact
         const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
