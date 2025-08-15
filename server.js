@@ -1,4 +1,4 @@
-// DEPLOYMENT VERSION: v2.0.0 - EMERGENCY FIX - 2025-08-14 22:30
+// DEPLOYMENT VERSION: v8.1.0 - GRACE RECOVERY FIX - 2025-01-11
 // IF THIS COMMENT IS NOT IN RAILWAY LOGS, THE DEPLOYMENT FAILED
 
 const express = require('express');
@@ -9,7 +9,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
 console.log('===============================================');
-console.log('🚨🚨🚨 SERVER STARTING - VERSION 3.0.0-FINAL 🚨🚨🚨');
+console.log('🚨🚨🚨 SERVER STARTING - VERSION 8.1.0-GRACE-RECOVERY-FIX 🚨🚨🚨');
 console.log('DEPLOYMENT TIME:', new Date().toISOString());
 console.log('GRACE PERIOD FIX: ACTIVE');
 console.log('daysSinceActivity calculation: FIXED');
@@ -811,17 +811,10 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
       return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
     })();
     
-    // Determine last achieved level
-    const lastAchievedLevel = lastRun >= 90 ? 'Socialite'
-      : lastRun >= 46 ? 'Charming'
-      : lastRun >= 21 ? 'Coming Alive'
-      : lastRun >= 7 ? 'Breaking Through'
-      : 'Warming Up';
-    
     // Calculate current streak (now using global function)
     const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
     
-    // Calculate allTimeMaxStreak (like home endpoint does)
+    // Calculate allTimeMaxStreak first (needed for determining highest level achieved)
     const computeMaxConsecutiveStreak = (dates) => {
       if (!dates || dates.length === 0) return 0;
       const sorted = [...dates].sort();
@@ -836,6 +829,14 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
       return maxRun;
     };
     const allTimeMaxStreak = computeMaxConsecutiveStreak(activityDates);
+    
+    // Determine highest level ever achieved (based on all-time max, not last run)
+    // This ensures grace recovery works correctly when user resumes after a break
+    const lastAchievedLevel = allTimeMaxStreak >= 90 ? 'Socialite'
+      : allTimeMaxStreak >= 46 ? 'Charming'
+      : allTimeMaxStreak >= 21 ? 'Coming Alive'
+      : allTimeMaxStreak >= 7 ? 'Breaking Through'
+      : 'Warming Up';
     
     // Call the actual function (with allTimeMaxStreak, not lastRun)
     const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
@@ -1308,13 +1309,14 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               }
             }
 
-            const lastAchievedLevel = lastRun >= 90
+            // Use allTimeMaxStreak for highest level achieved (for grace recovery)
+            const lastAchievedLevel = allTimeMaxStreak >= 90
               ? 'Socialite'
-              : lastRun >= 46
+              : allTimeMaxStreak >= 46
                 ? 'Charming'
-                : lastRun >= 21
+                : allTimeMaxStreak >= 21
                   ? 'Coming Alive'
-                  : lastRun >= 7
+                  : allTimeMaxStreak >= 7
                     ? 'Breaking Through'
                     : 'Warming Up';
 
@@ -1478,7 +1480,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v8.0.0-GRACE-RECOVERY',
+            _DEBUG_NEW_VERSION: 'v8.1.0-GRACE-RECOVERY-FIX',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1719,13 +1721,14 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           }
         }
 
-        const lastAchievedLevel = lastRun >= 90
+        // Use allTimeMaxStreak for highest level achieved (for grace recovery)
+        const lastAchievedLevel = allTimeMaxStreak >= 90
           ? 'Socialite'
-          : lastRun >= 46
+          : allTimeMaxStreak >= 46
             ? 'Charming'
-            : lastRun >= 21
+            : allTimeMaxStreak >= 21
               ? 'Coming Alive'
-              : lastRun >= 7
+              : allTimeMaxStreak >= 7
                 ? 'Breaking Through'
                 : 'Warming Up';
 
@@ -1778,7 +1781,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-                      _DEBUG_HOME_VERSION: 'v8.0.0-GRACE-RECOVERY',
+                      _DEBUG_HOME_VERSION: 'v8.1.0-GRACE-RECOVERY-FIX',
           _DEBUG_HOME_ZONE: zone
         });
       });
