@@ -684,6 +684,27 @@ app.get('/test-deployment', (req, res) => {
   });
 });
 
+// Debug all activities for a device
+app.get('/api/debug/all-activities/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  const query = `
+    SELECT 'opener' as type, opener_date as date, opener_was_used as used 
+    FROM openers WHERE device_id = ?
+    UNION ALL
+    SELECT 'challenge' as type, challenge_date as date, 1 as used 
+    FROM daily_challenges WHERE device_id = ?
+    ORDER BY date
+  `;
+  
+  db.all(query, [deviceId, deviceId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ activities: rows });
+  });
+});
+
 // Debug endpoint to test grace period calculation
 app.get('/api/debug/grace/:deviceId', (req, res) => {
   const { deviceId } = req.params;
