@@ -692,7 +692,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD FIX DEPLOYED',
-    version: 'v6.0.0-GLOBAL-STREAK-FIX',
+    version: 'v6.0.1-CRASH-FIX',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -791,7 +791,7 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
       : lastRun >= 7 ? 'Breaking Through'
       : 'Warming Up';
     
-    // Calculate current streak using global function
+    // Calculate current streak (now using global function)
     const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
     
     // Calculate allTimeMaxStreak (like home endpoint does)
@@ -1430,7 +1430,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v6.0.0-GLOBAL-STREAK-FIX',
+            _DEBUG_NEW_VERSION: 'v6.0.1-CRASH-FIX',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1730,7 +1730,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-          _DEBUG_HOME_VERSION: 'v6.0.0-GLOBAL-STREAK-FIX',
+          _DEBUG_HOME_VERSION: 'v6.0.1-CRASH-FIX',
           _DEBUG_HOME_ZONE: zone
         });
       });
@@ -1741,57 +1741,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
   }
 });
 
-function calculateConsecutiveStreak(activityDates, today) {
-  if (activityDates.length === 0) return 0;
-  
-  // Sort dates in descending order (most recent first)
-  const sortedDates = activityDates.sort((a, b) => b.localeCompare(a));
-  
-  // Get today's date string
-  const todayString = today.toISOString().split('T')[0];
-  
-  // Get yesterday's date string
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayString = yesterday.toISOString().split('T')[0];
-  
-  // Check if there's activity today or yesterday
-  const hasActivityToday = sortedDates.includes(todayString);
-  const hasActivityYesterday = sortedDates.includes(yesterdayString);
-  
-  // CRITICAL FIX: Don't return 0 immediately - this breaks grace period!
-  // Return 0 only for UI display (showing current active streak)
-  // But grace period logic uses lastRun calculation separately
-  if (!hasActivityToday && !hasActivityYesterday) {
-    // For grace period to work, we should NOT return 0 here
-    // Instead, return 0 (which is correct for "current" streak display)
-    // But the grace period will use the separate lastRun calculation
-    console.log('🔧 STREAK FIX: No activity today or yesterday, returning 0 for current streak (grace uses lastRun)');
-    return 0;
-  }
-  
-  // Count consecutive days backwards from today or yesterday
-  let streak = 0;
-  let checkDate = new Date(today);
-  
-  // If activity today, start from today; otherwise start from yesterday
-  if (!hasActivityToday && hasActivityYesterday) {
-    checkDate.setDate(checkDate.getDate() - 1);
-  }
-  
-  // Count consecutive days
-  while (true) {
-    const dateString = checkDate.toISOString().split('T')[0];
-    if (sortedDates.includes(dateString)) {
-      streak++;
-      checkDate.setDate(checkDate.getDate() - 1);
-    } else {
-      break;
-    }
-  }
-  
-  return streak;
-}
+// Removed duplicate calculateConsecutiveStreak function - now using global version
 
 // ORIGINAL SIMULATED ENDPOINT (BACKUP)
 app.get('/api/simulated/home/:deviceId', (req, res) => {
