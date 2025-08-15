@@ -553,6 +553,38 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     }
   }
 
+  // NEW: Check if user is rebuilding during grace period (currentStreak > 0 but below previous level)
+  if (currentStreak > 0 && daysWithoutActivity > 0) {
+    // Determine the last achieved level before the miss
+    let previousLevel = highestLevelAchieved || 'Warming Up';
+    if (!highestLevelAchieved) {
+      if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
+      else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
+      else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
+      else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
+    }
+
+    // Check if current level is lower than previous level (user is rebuilding)
+    const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+    const currentLevelIndex = levels.indexOf(currentLevel);
+    const previousLevelIndex = levels.indexOf(previousLevel);
+    
+    if (previousLevelIndex > currentLevelIndex) {
+      // User is rebuilding - check if still within grace period
+      const gracePeriod = gracePeriods[previousLevel];
+      
+      if (daysWithoutActivity <= gracePeriod && gracePeriod > 0) {
+        console.log(`🔧 GRACE DEBUG: ✅ REBUILDING DURING GRACE - staying at ${previousLevel} while rebuilding (${currentStreak} streak, ${daysWithoutActivity}/${gracePeriod} grace days used)`);
+        return {
+          level: previousLevel,
+          isInGracePeriod: true,
+          gracePeriodLeft: gracePeriod - daysWithoutActivity,
+          isRebuilding: true
+        };
+      }
+    }
+  }
+
   console.log(`🔧 GRACE DEBUG: No grace period needed, returning current level: ${currentLevel}`);
 
   // Apply streak recovery boost (25% faster if they've been at this level before)
@@ -692,7 +724,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'SOCIAL CONFIDENCE CALCULATION IMPROVED',
-    version: 'v7.0.0-CONFIDENCE-DEBUG',
+    version: 'v8.0.0-GRACE-PERIOD-REBUILD',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -1451,7 +1483,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v7.0.0-CONFIDENCE-DEBUG',
+            _DEBUG_NEW_VERSION: 'v8.0.0-GRACE-PERIOD-REBUILD',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1751,7 +1783,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-                      _DEBUG_HOME_VERSION: 'v7.0.0-CONFIDENCE-DEBUG',
+                      _DEBUG_HOME_VERSION: 'v8.0.0-GRACE-PERIOD-REBUILD',
           _DEBUG_HOME_ZONE: zone
         });
       });
