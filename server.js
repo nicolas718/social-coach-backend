@@ -667,7 +667,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD FIX DEPLOYED',
-    version: 'v4.1.0-DEBUG-LASTRUN',
+    version: 'v5.0.0-FIXED-SQL-QUERY',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -1429,7 +1429,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v4.1.0-DEBUG-LASTRUN',
+            _DEBUG_NEW_VERSION: 'v5.0.0-FIXED-SQL-QUERY',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1557,8 +1557,9 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
       console.log(`🎯 Account creation date string for comparison: ${accountCreationDate.toISOString().split('T')[0]}`);
       
       // Step 2: Get all activity dates (used openers + completed challenges)
+      // CRITICAL FIX: Use EXACT same query as debug endpoint (no COUNT, no GROUP BY)
       const activityQuery = `
-        SELECT DISTINCT substr(activity_date, 1, 10) as activity_date, COUNT(*) as activity_count
+        SELECT DISTINCT substr(activity_date, 1, 10) as activity_date
         FROM (
           SELECT opener_date as activity_date FROM openers 
           WHERE device_id = ? AND opener_was_used = 1
@@ -1568,7 +1569,6 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           SELECT challenge_date as activity_date FROM daily_challenges 
           WHERE device_id = ?
         ) activities
-        GROUP BY substr(activity_date, 1, 10)
         ORDER BY activity_date
       `;
       
@@ -1729,7 +1729,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-          _DEBUG_HOME_VERSION: 'v4.1.0-DEBUG-LASTRUN',
+          _DEBUG_HOME_VERSION: 'v5.0.0-FIXED-SQL-QUERY',
           _DEBUG_HOME_ZONE: zone
         });
       });
