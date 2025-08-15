@@ -691,17 +691,22 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
   
   const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
   
-  // Get activity dates
+  // Get activity dates (EXACTLY like home endpoint)
   const activityQuery = `
     SELECT DISTINCT substr(activity_date, 1, 10) as activity_date
     FROM (
+      SELECT opener_date as activity_date FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+      
+      UNION ALL
+      
       SELECT challenge_date as activity_date FROM daily_challenges 
       WHERE device_id = ?
     ) activities
     ORDER BY activity_date
   `;
   
-  db.all(activityQuery, [deviceId], (err, rows) => {
+  db.all(activityQuery, [deviceId, deviceId], (err, rows) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -767,8 +772,24 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
     
     const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
     
-    // Call the actual function
-    const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, lastRun);
+    // Calculate allTimeMaxStreak (like home endpoint does)
+    const computeMaxConsecutiveStreak = (dates) => {
+      if (!dates || dates.length === 0) return 0;
+      const sorted = [...dates].sort();
+      let maxRun = 1, run = 1;
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
+        const cur = new Date(sorted[i] + 'T00:00:00Z');
+        const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
+        if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
+        else if (diff > 1) { run = 1; }
+      }
+      return maxRun;
+    };
+    const allTimeMaxStreak = computeMaxConsecutiveStreak(activityDates);
+    
+    // Call the actual function (with allTimeMaxStreak, not lastRun)
+    const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
     
     res.json({
       activityDates,
@@ -776,6 +797,7 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
       daysSinceActivity,
       lastAchievedLevel,
       currentStreak,
+      allTimeMaxStreak,
       referenceDate: referenceDate.toISOString().split('T')[0],
       mostRecentActivity: activityDates[activityDates.length - 1] || null,
       calculatedZone: zone,
