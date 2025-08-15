@@ -1726,7 +1726,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
-          socialZoneLevel: softenedLevel,
+          socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
           _DEBUG_HOME_VERSION: 'v3.0.0-FINAL-FIX',
           _DEBUG_HOME_ZONE: zone
         });
