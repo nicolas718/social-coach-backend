@@ -516,15 +516,13 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     console.log(`🔧 GRACE DEBUG: Streak is broken, checking grace period logic`);
     
     // Determine the last achieved level before the miss.
-    // Prefer explicit highestLevelAchieved (caller may pass last-run level),
-    // otherwise derive from all-time max streak as a fallback.
-    let previousLevel = highestLevelAchieved || 'Warming Up';
-    if (!highestLevelAchieved) {
-      if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
-      else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
-      else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
-      else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
-    }
+    // Use allTimeMaxStreak to derive the true previous level, since highestLevelAchieved 
+    // might be calculated from current streak and not reflect their peak
+    let previousLevel = 'Warming Up';
+    if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
+    else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
+    else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
+    else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
 
     console.log(`🔧 GRACE DEBUG: Previous level based on highestLevelAchieved(${highestLevelAchieved}) and allTimeMaxStreak(${allTimeMaxStreak}): ${previousLevel}`);
 
@@ -556,13 +554,13 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   // NEW: Check if user is rebuilding during grace period (currentStreak > 0 but below previous level)
   if (currentStreak > 0 && allTimeMaxStreak > currentStreak) {
     // Determine the last achieved level before the miss
-    let previousLevel = highestLevelAchieved || 'Warming Up';
-    if (!highestLevelAchieved) {
-      if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
-      else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
-      else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
-      else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
-    }
+    // Use allTimeMaxStreak to derive the true previous level, since highestLevelAchieved 
+    // might be calculated from current streak and not reflect their peak
+    let previousLevel = 'Warming Up';
+    if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
+    else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
+    else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
+    else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
 
     // Check if current level is lower than previous level (user is rebuilding)
     const levels = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
@@ -730,7 +728,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD REBUILD FEATURE ADDED',
-    version: 'v8.1.0-GRACE-REBUILD-FIX',
+    version: 'v8.2.0-REBUILD-LOGIC-FIXED',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
