@@ -1659,7 +1659,12 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
                 ? 'Breaking Through'
                 : 'Warming Up';
 
-        console.log('!!!!! HOME ENDPOINT HIT - STREAK FIX APPLIED !!!!');
+        console.log('!!!!! HOME ENDPOINT HIT - DEVICE:', deviceId);
+        console.log('!!!!! HOME ACTIVITY DATES:', activityDates);
+        console.log('!!!!! HOME LASTRUN:', lastRun);
+        console.log('!!!!! HOME DAYS SINCE:', daysSinceActivity);
+        console.log('!!!!! HOME LAST ACHIEVED:', lastAchievedLevel);
+        console.log('!!!!! HOME ALL TIME MAX:', allTimeMaxStreak);
         console.log(`🔧 HOME CRITICAL: About to call calculateSocialZoneLevel with:`, {
           currentStreak,
           daysSinceActivity,
