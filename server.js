@@ -3221,3 +3221,4 @@ app.post('/api/debug/fix-user/:deviceId', (req, res) => {
 });
 // Force rebuild Thu Aug 14 16:21:28 PDT 2025
 // Force rebuild Thu Aug 14 18:08:08 PDT 2025
+// Force rebuild Thu Aug 14 19:18:46 PDT 2025 - Grace period critical fix
