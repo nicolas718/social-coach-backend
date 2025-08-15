@@ -667,7 +667,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD FIX DEPLOYED',
-    version: 'v3.1.0-LASTRUN-FIX',
+    version: 'v4.0.0-GRACE-PERIOD-FINAL-FIX',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -1429,7 +1429,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v3.1.0-LASTRUN-FIX',
+            _DEBUG_NEW_VERSION: 'v4.0.0-GRACE-PERIOD-FINAL-FIX',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1656,7 +1656,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         const toISO = (d) => d.toISOString().split('T')[0];
         let lastRun = 0;
         if (activityDates.length > 0) {
-          const recent = new Date(activityDates[0] + 'T00:00:00Z'); // FIX: activityDates[0] for most recent
+          const recent = new Date(activityDates[activityDates.length - 1] + 'T00:00:00Z'); // FIX: Use last element for most recent with ASC ordering
           // Walk backward from recent while dates are consecutive
           let check = new Date(recent);
           while (true) {
@@ -1727,7 +1727,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-          _DEBUG_HOME_VERSION: 'v3.1.0-LASTRUN-FIX',
+          _DEBUG_HOME_VERSION: 'v4.0.0-GRACE-PERIOD-FINAL-FIX',
           _DEBUG_HOME_ZONE: zone
         });
       });
