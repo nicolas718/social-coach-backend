@@ -1,7 +1,0 @@
-VERSION: 3.0.0-FINAL-FIX
-DEPLOYED: 2025-08-14 23:15:00
-FIX: Grace period calculation fixed
-- daysSinceActivity correctly calculated
-- lastRun correctly calculated from most recent activity
-- lastAchievedLevel correctly determined from historical streak
-CRITICAL: This version MUST be deployed for grace periods to work

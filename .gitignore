@@ -1,3 +1,8 @@
 node_modules/
 .env
 .DS_Store
+*.sqlite
+*.db
+DEPLOY_VERSION.txt
+populate_test_data.sql
+*.sql
