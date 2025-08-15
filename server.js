@@ -723,7 +723,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'SOCIAL CONFIDENCE CALCULATION IMPROVED',
+    message: 'GRACE PERIOD REBUILD FEATURE ADDED',
     version: 'v8.0.0-GRACE-PERIOD-REBUILD',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
