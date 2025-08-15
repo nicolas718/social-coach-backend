@@ -692,7 +692,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD FIX DEPLOYED',
-    version: 'v6.0.1-CRASH-FIX',
+    version: 'v7.0.0-CONFIDENCE-DEBUG',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -1345,18 +1345,39 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
           const zoneEndStreak = nextRequirements[zoneIndex] ?? (zoneStartStreak + 30);
           const zoneSpan = Math.max(1, zoneEndStreak - zoneStartStreak);
           const streakWithinZone = Math.max(0, Math.min(zoneSpan, currentStreak - zoneStartStreak));
-          // Conservative easing so early days move a little
+          // Calculate progress within the zone (0 to 1)
           const linearProgress = streakWithinZone / zoneSpan;
-          const easedProgress = Math.pow(linearProgress, 0.6); // faster than linear early? actually larger; use 0.6 gives higher; we want smaller early: use 1.6
+          // Apply conservative easing curve (^1.6) for smoother early progression
           const progress = Math.pow(linearProgress, 1.6);
           let socialConfidencePercentage = Math.round(startPct + (endPct - startPct) * progress);
+
+          console.log(`💫 CONFIDENCE DEBUG:`, {
+            zone: zoneInfo.level,
+            zoneIndex,
+            currentStreak,
+            streakWithinZone,
+            linearProgress: (linearProgress * 100).toFixed(1) + '%',
+            easedProgress: (progress * 100).toFixed(1) + '%',
+            startPct,
+            endPct,
+            baseConfidence: socialConfidencePercentage,
+            isInGracePeriod: zoneInfo.isInGracePeriod
+          });
 
           // Apply decay by days since last activity (still anchored to current zone)
           const daysMissed = Math.max(0, daysSinceActivityForZone);
           const decayPerDayInGrace = 0.4;  // gentler decay during grace
           const decayPerDayAfterGrace = 1.2; // faster decay after grace expires
           const decayRate = zoneInfo.isInGracePeriod ? decayPerDayInGrace : decayPerDayAfterGrace;
-          socialConfidencePercentage = Math.max(2, Math.round(socialConfidencePercentage - decayRate * daysMissed));
+          const decayAmount = decayRate * daysMissed;
+          socialConfidencePercentage = Math.max(2, Math.round(socialConfidencePercentage - decayAmount));
+
+          console.log(`💫 CONFIDENCE DECAY:`, {
+            daysMissed,
+            decayRate: decayRate + '%/day',
+            totalDecay: decayAmount + '%',
+            finalConfidence: socialConfidencePercentage + '%'
+          });
 
           // Damping weights to avoid volatility with very few actions
           // Logarithmic ramp up – reaches ~1 around 16+ actions
@@ -1430,7 +1451,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v6.0.1-CRASH-FIX',
+            _DEBUG_NEW_VERSION: 'v7.0.0-CONFIDENCE-DEBUG',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1730,7 +1751,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-          _DEBUG_HOME_VERSION: 'v6.0.1-CRASH-FIX',
+                      _DEBUG_HOME_VERSION: 'v7.0.0-CONFIDENCE-DEBUG',
           _DEBUG_HOME_ZONE: zone
         });
       });
