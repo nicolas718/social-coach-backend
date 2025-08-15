@@ -679,8 +679,108 @@ app.get('/', (req, res) => {
 app.get('/test-deployment', (req, res) => {
   res.json({
     status: 'NEW CODE DEPLOYED SUCCESSFULLY',
-    version: 'v2.0.0',
+    version: 'v3.0.0',
     message: 'If you see this, Railway has deployed the latest code'
+  });
+});
+
+// Debug endpoint to test grace period calculation
+app.get('/api/debug/grace/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  const { currentDate } = req.query;
+  
+  const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+  
+  // Get activity dates
+  const activityQuery = `
+    SELECT DISTINCT substr(activity_date, 1, 10) as activity_date
+    FROM (
+      SELECT challenge_date as activity_date FROM daily_challenges 
+      WHERE device_id = ?
+    ) activities
+    ORDER BY activity_date
+  `;
+  
+  db.all(activityQuery, [deviceId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    const activityDates = rows.map(r => r.activity_date);
+    
+    // Calculate lastRun
+    let lastRun = 0;
+    if (activityDates.length > 0) {
+      const recent = new Date(activityDates[activityDates.length - 1] + 'T00:00:00Z');
+      let check = new Date(recent);
+      while (true) {
+        const ds = check.toISOString().split('T')[0];
+        if (activityDates.includes(ds)) {
+          lastRun += 1;
+          check.setDate(check.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+    
+    // Calculate days since activity
+    const daysSinceActivity = (() => {
+      if (activityDates.length === 0) return 999;
+      const mostRecent = activityDates[activityDates.length - 1];
+      const d1 = new Date(mostRecent + 'T00:00:00Z');
+      const d2 = new Date(referenceDate);
+      return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+    })();
+    
+    // Determine last achieved level
+    const lastAchievedLevel = lastRun >= 90 ? 'Socialite'
+      : lastRun >= 46 ? 'Charming'
+      : lastRun >= 21 ? 'Coming Alive'
+      : lastRun >= 7 ? 'Breaking Through'
+      : 'Warming Up';
+    
+    // Calculate current streak
+    const calculateConsecutiveStreak = (dates, today) => {
+      if (!dates || dates.length === 0) return 0;
+      const todayStr = today.toISOString().split('T')[0];
+      const yesterdayStr = new Date(today.getTime() - 86400000).toISOString().split('T')[0];
+      
+      if (!dates.includes(todayStr) && !dates.includes(yesterdayStr)) {
+        return 0;
+      }
+      
+      let streak = 0;
+      let checkDate = new Date(today);
+      
+      if (!dates.includes(todayStr)) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      
+      while (dates.includes(checkDate.toISOString().split('T')[0])) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      
+      return streak;
+    };
+    
+    const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
+    
+    // Call the actual function
+    const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, lastRun);
+    
+    res.json({
+      activityDates,
+      lastRun,
+      daysSinceActivity,
+      lastAchievedLevel,
+      currentStreak,
+      referenceDate: referenceDate.toISOString().split('T')[0],
+      mostRecentActivity: activityDates[activityDates.length - 1] || null,
+      calculatedZone: zone,
+      shouldBe: lastRun >= 7 && daysSinceActivity <= 3 ? 'Breaking Through (in grace)' : 'Check calculation'
+    });
   });
 });
 
