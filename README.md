@@ -2,6 +2,9 @@
 
 Backend API for the Social Coach iOS app. Generates conversation openers and quick suggestions using Replicate AI.
 
+## Documentation
+- [Social Zone & Social Confidence Product Spec](./PRODUCT_SPEC.md) - Detailed specification for the streak and zone system
+
 ## Endpoints
 
 ### Generate Quick Suggestions
