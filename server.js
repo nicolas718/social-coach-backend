@@ -1667,9 +1667,17 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           allTimeMaxStreak,
           derivedBestStreak,
           lastRun,
-          user_all_time_best_streak: user?.all_time_best_streak
+          user_all_time_best_streak: user?.all_time_best_streak,
+          activityDates: activityDates
         });
         console.log(`🔧 HOME CRITICAL: This should now match analytics endpoint exactly!`);
+        
+        // EMERGENCY DEBUG - Log exact parameters
+        console.log('🚨🚨🚨 EXACT PARAMS BEING PASSED:');
+        console.log('- currentStreak:', currentStreak);
+        console.log('- daysSinceActivity:', daysSinceActivity);
+        console.log('- lastAchievedLevel:', lastAchievedLevel);
+        console.log('- allTimeMaxStreak:', allTimeMaxStreak);
 
         const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
 
