@@ -1,4 +1,4 @@
-// DEPLOYMENT VERSION: v8.1.0 - GRACE RECOVERY FIX - 2025-01-11
+// DEPLOYMENT VERSION: v8.2.0 - GRACE RECOVERY PROGRESSIVE - 2025-01-11
 // IF THIS COMMENT IS NOT IN RAILWAY LOGS, THE DEPLOYMENT FAILED
 
 const express = require('express');
@@ -9,7 +9,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
 console.log('===============================================');
-console.log('🚨🚨🚨 SERVER STARTING - VERSION 8.1.0-GRACE-RECOVERY-FIX 🚨🚨🚨');
+console.log('🚨🚨🚨 SERVER STARTING - VERSION 8.2.0-GRACE-RECOVERY-PROGRESSIVE 🚨🚨🚨');
 console.log('DEPLOYMENT TIME:', new Date().toISOString());
 console.log('GRACE PERIOD FIX: ACTIVE');
 console.log('daysSinceActivity calculation: FIXED');
@@ -554,9 +554,8 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   }
 
   // NEW: Check if user is rebuilding from a grace period break
-  // If they had a higher level before and are now rebuilding, keep them at their previous level
-  // until their streak naturally reaches that level's requirement
-  if (currentStreak > 0 && highestLevelAchieved) {
+  // When resuming after grace, add their previous achievement as "credit" toward next zone
+  if (currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up') {
     const levelRequirements = {
       'Warming Up': 0,
       'Breaking Through': 7,
@@ -567,17 +566,34 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     
     const previousLevelRequirement = levelRequirements[highestLevelAchieved] || 0;
     
-    // If current streak hasn't reached the requirement for their previous level,
-    // keep them at their previous level (they're recovering from a grace period break)
-    if (currentStreak < previousLevelRequirement) {
-      console.log(`🔧 GRACE DEBUG: User recovering from break - keeping at ${highestLevelAchieved} (streak ${currentStreak}/${previousLevelRequirement})`);
-      return {
-        level: highestLevelAchieved,
-        isInGracePeriod: false,
-        isRecovering: true,
-        streakNeededToMaintain: previousLevelRequirement - currentStreak
-      };
-    }
+    // Calculate effective streak: current streak + credit from previous achievement
+    // This allows users to continue from where they left off
+    const effectiveStreak = currentStreak + previousLevelRequirement;
+    
+    console.log(`🔧 GRACE DEBUG: Recovery calculation - current: ${currentStreak}, credit: ${previousLevelRequirement}, effective: ${effectiveStreak}`);
+    
+    // Determine zone based on effective streak (continuing from where they left off)
+    let recoveryZone = 'Warming Up';
+    if (effectiveStreak >= 90) recoveryZone = 'Socialite';
+    else if (effectiveStreak >= 46) recoveryZone = 'Charming';
+    else if (effectiveStreak >= 21) recoveryZone = 'Coming Alive';
+    else if (effectiveStreak >= 7) recoveryZone = 'Breaking Through';
+    
+    // Never drop below their highest achieved level
+    const levelOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+    const highestIndex = levelOrder.indexOf(highestLevelAchieved);
+    const recoveryIndex = levelOrder.indexOf(recoveryZone);
+    
+    const finalZone = recoveryIndex >= highestIndex ? recoveryZone : highestLevelAchieved;
+    
+    console.log(`🔧 GRACE DEBUG: Recovery zone: ${finalZone} (effective streak: ${effectiveStreak})`);
+    
+    return {
+      level: finalZone,
+      isInGracePeriod: false,
+      isRecovering: true,
+      effectiveStreak: effectiveStreak
+    };
   }
 
   console.log(`🔧 GRACE DEBUG: No grace period needed, returning current level: ${currentLevel}`);
@@ -1480,7 +1496,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v8.1.0-GRACE-RECOVERY-FIX',
+            _DEBUG_NEW_VERSION: 'v8.2.0-GRACE-RECOVERY-PROGRESSIVE',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1781,7 +1797,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-                      _DEBUG_HOME_VERSION: 'v8.1.0-GRACE-RECOVERY-FIX',
+                      _DEBUG_HOME_VERSION: 'v8.2.0-GRACE-RECOVERY-PROGRESSIVE',
           _DEBUG_HOME_ZONE: zone
         });
       });

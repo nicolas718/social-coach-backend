@@ -49,7 +49,7 @@ echo "Streak: $STREAK"
 echo ""
 
 # Check if grace recovery is working
-if [ "$ZONE" = "Breaking Through\"" ] && [ "$STREAK" = "1" ]; then
+if [[ "$ZONE" == *"Breaking Through"* ]] && [ "$STREAK" = "1" ]; then
   echo "✅ GRACE RECOVERY WORKS!"
   echo "   - Zone maintained at 'Breaking Through' (not dropped to 'Warming Up')"
   echo "   - Streak correctly shows as 1 (restarted counting)"
