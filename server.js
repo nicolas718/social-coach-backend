@@ -1360,6 +1360,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               'todayForZone': todayForZone.toISOString().split('T')[0]
             });
 
+            console.log(`🔧 REBUILD CHECK: currentStreak(${currentStreak}) > 0? ${currentStreak > 0}, allTimeMaxStreak(${allTimeMaxStreak}) > currentStreak? ${allTimeMaxStreak > currentStreak}`);
             const zoneInfo = calculateSocialZoneLevel(
               currentStreak,
               daysSinceActivityForZone,
