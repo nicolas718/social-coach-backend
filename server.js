@@ -554,7 +554,7 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   }
 
   // NEW: Check if user is rebuilding during grace period (currentStreak > 0 but below previous level)
-  if (currentStreak > 0 && daysWithoutActivity > 0) {
+  if (currentStreak > 0 && allTimeMaxStreak > currentStreak) {
     // Determine the last achieved level before the miss
     let previousLevel = highestLevelAchieved || 'Warming Up';
     if (!highestLevelAchieved) {
@@ -569,16 +569,22 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     const currentLevelIndex = levels.indexOf(currentLevel);
     const previousLevelIndex = levels.indexOf(previousLevel);
     
-    if (previousLevelIndex > currentLevelIndex) {
-      // User is rebuilding - check if still within grace period
+    console.log(`🔧 GRACE DEBUG: Checking rebuild - currentLevel: ${currentLevel}(${currentLevelIndex}), previousLevel: ${previousLevel}(${previousLevelIndex}), currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}`);
+    
+    if (previousLevelIndex > currentLevelIndex && previousLevel !== 'Warming Up') {
       const gracePeriod = gracePeriods[previousLevel];
       
-      if (daysWithoutActivity <= gracePeriod && gracePeriod > 0) {
-        console.log(`🔧 GRACE DEBUG: ✅ REBUILDING DURING GRACE - staying at ${previousLevel} while rebuilding (${currentStreak} streak, ${daysWithoutActivity}/${gracePeriod} grace days used)`);
+      // For rebuilding: if they recently had a higher level and are building back up,
+      // protect them during grace period. Use a generous approach since they're actively rebuilding.
+      console.log(`🔧 GRACE DEBUG: User is rebuilding from ${previousLevel} to ${currentLevel}, grace period: ${gracePeriod} days`);
+      
+      // Grant grace period protection while rebuilding (simplified check)
+      if (gracePeriod > 0) {
+        console.log(`🔧 GRACE DEBUG: ✅ REBUILDING DURING GRACE - staying at ${previousLevel} while rebuilding (${currentStreak} current streak, ${allTimeMaxStreak} all-time max)`);
         return {
           level: previousLevel,
           isInGracePeriod: true,
-          gracePeriodLeft: gracePeriod - daysWithoutActivity,
+          gracePeriodLeft: gracePeriod,
           isRebuilding: true
         };
       }
@@ -724,7 +730,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD REBUILD FEATURE ADDED',
-    version: 'v8.0.0-GRACE-PERIOD-REBUILD',
+    version: 'v8.1.0-GRACE-REBUILD-FIX',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -1483,7 +1489,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v8.0.0-GRACE-PERIOD-REBUILD',
+            _DEBUG_NEW_VERSION: 'v8.1.0-GRACE-REBUILD-FIX',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1783,7 +1789,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-                      _DEBUG_HOME_VERSION: 'v8.0.0-GRACE-PERIOD-REBUILD',
+                      _DEBUG_HOME_VERSION: 'v8.1.0-GRACE-REBUILD-FIX',
           _DEBUG_HOME_ZONE: zone
         });
       });
