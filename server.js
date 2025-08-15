@@ -586,6 +586,31 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   };
 };
 
+// Helper function to calculate consecutive streak - MOVED TO GLOBAL SCOPE
+const calculateConsecutiveStreak = (dates, today) => {
+  if (!dates || dates.length === 0) return 0;
+  const todayStr = today.toISOString().split('T')[0];
+  const yesterdayStr = new Date(today.getTime() - 86400000).toISOString().split('T')[0];
+  
+  if (!dates.includes(todayStr) && !dates.includes(yesterdayStr)) {
+    return 0;
+  }
+  
+  let streak = 0;
+  let checkDate = new Date(today);
+  
+  if (!dates.includes(todayStr)) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  
+  while (dates.includes(checkDate.toISOString().split('T')[0])) {
+    streak++;
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  
+  return streak;
+};
+
 // Helper function to calculate days without activity
 const calculateDaysWithoutActivity = (lastActivityDate) => {
   if (!lastActivityDate) return 999; // No activity recorded
@@ -667,7 +692,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD FIX DEPLOYED',
-    version: 'v5.0.0-FIXED-SQL-QUERY',
+    version: 'v6.0.0-GLOBAL-STREAK-FIX',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -766,31 +791,7 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
       : lastRun >= 7 ? 'Breaking Through'
       : 'Warming Up';
     
-    // Calculate current streak
-    const calculateConsecutiveStreak = (dates, today) => {
-      if (!dates || dates.length === 0) return 0;
-      const todayStr = today.toISOString().split('T')[0];
-      const yesterdayStr = new Date(today.getTime() - 86400000).toISOString().split('T')[0];
-      
-      if (!dates.includes(todayStr) && !dates.includes(yesterdayStr)) {
-        return 0;
-      }
-      
-      let streak = 0;
-      let checkDate = new Date(today);
-      
-      if (!dates.includes(todayStr)) {
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
-      
-      while (dates.includes(checkDate.toISOString().split('T')[0])) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
-      
-      return streak;
-    };
-    
+    // Calculate current streak using global function
     const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
     
     // Calculate allTimeMaxStreak (like home endpoint does)
@@ -1429,7 +1430,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v5.0.0-FIXED-SQL-QUERY',
+            _DEBUG_NEW_VERSION: 'v6.0.0-GLOBAL-STREAK-FIX',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1729,7 +1730,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-          _DEBUG_HOME_VERSION: 'v5.0.0-FIXED-SQL-QUERY',
+          _DEBUG_HOME_VERSION: 'v6.0.0-GLOBAL-STREAK-FIX',
           _DEBUG_HOME_ZONE: zone
         });
       });
