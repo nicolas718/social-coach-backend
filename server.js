@@ -667,7 +667,7 @@ const calculateCurrentStreak = (deviceId, callback) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'GRACE PERIOD FIX DEPLOYED',
-    version: 'v4.0.0-GRACE-PERIOD-FINAL-FIX',
+    version: 'v4.1.0-DEBUG-LASTRUN',
     timestamp: new Date().toISOString(),
     build: 'critical-' + Date.now(),
     deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'local',
@@ -1429,7 +1429,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
 
           // Return complete analytics data
           res.json({
-            _DEBUG_NEW_VERSION: 'v4.0.0-GRACE-PERIOD-FINAL-FIX',
+            _DEBUG_NEW_VERSION: 'v4.1.0-DEBUG-LASTRUN',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
@@ -1700,6 +1700,8 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         
         // EMERGENCY DEBUG - Log exact parameters
         console.log('🚨🚨🚨 EXACT PARAMS BEING PASSED:');
+        console.log('- activityDates:', activityDates);
+        console.log('- lastRun:', lastRun);
         console.log('- currentStreak:', currentStreak);
         console.log('- daysSinceActivity:', daysSinceActivity);
         console.log('- lastAchievedLevel:', lastAchievedLevel);
@@ -1727,7 +1729,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-          _DEBUG_HOME_VERSION: 'v4.0.0-GRACE-PERIOD-FINAL-FIX',
+          _DEBUG_HOME_VERSION: 'v4.1.0-DEBUG-LASTRUN',
           _DEBUG_HOME_ZONE: zone
         });
       });
