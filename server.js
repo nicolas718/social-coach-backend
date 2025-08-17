@@ -124,8 +124,8 @@ const aiRateLimit = rateLimit({
   }
 });
 
-// API Key Authentication Middleware for all API routes
-app.use(['/api/*', '/generate-opener', '/generate-daily-challenge'], (req, res, next) => {
+// API Key Authentication Middleware function
+function requireApiKey(req, res, next) {
   // Skip authentication if FRONTEND_API_KEY is not configured
   if (!process.env.FRONTEND_API_KEY) {
     console.warn('⚠️  API request received but FRONTEND_API_KEY not configured - allowing request');
@@ -146,9 +146,6 @@ app.use(['/api/*', '/generate-opener', '/generate-daily-challenge'], (req, res, 
   // Validate API key
   if (apiKey !== process.env.FRONTEND_API_KEY) {
     console.error('❌ API request rejected - invalid API key');
-    console.error('Received key:', apiKey);
-    console.error('Expected key:', process.env.FRONTEND_API_KEY);
-    console.error('Keys match:', apiKey === process.env.FRONTEND_API_KEY);
     return res.status(401).json({ 
       error: 'Unauthorized', 
       message: 'Invalid API key' 
@@ -157,9 +154,14 @@ app.use(['/api/*', '/generate-opener', '/generate-daily-challenge'], (req, res, 
   
   // API key is valid, continue to the route handler
   next();
-});
+}
 
-console.log('✅ API key authentication middleware configured for /api/* routes');
+// Apply authentication to all protected routes
+app.use('/api/*', requireApiKey);
+app.use('/generate-opener', requireApiKey);
+app.use('/generate-daily-challenge', requireApiKey);
+
+console.log('✅ API key authentication middleware configured for all protected routes');
 
 // Initialize SQLite Database
 const dbPath = path.join(__dirname, 'social_coach_data.sqlite');
