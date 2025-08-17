@@ -90,6 +90,10 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
   }
   
   const data = await response.json();
+  
+  // Log the response to debug format differences
+  console.log('🔍 Raw Bedrock response:', JSON.stringify(data, null, 2));
+  
   return data;
 }
 
@@ -2667,7 +2671,18 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
       "You create contextually perfect conversation guidance. Return only valid JSON."
     );
 
-    const result = message.content[0].text.trim();
+    // Handle AWS Bedrock response format
+    let result;
+    if (message.content && message.content[0] && message.content[0].text) {
+      result = message.content[0].text.trim();
+    } else if (message.text) {
+      result = message.text.trim();
+    } else if (typeof message === 'string') {
+      result = message.trim();
+    } else {
+      console.error('❌ Unexpected Bedrock response format:', message);
+      throw new Error('Unexpected response format from Bedrock API');
+    }
     console.log('Raw Bedrock Response:', result);
     
     // Clean up the response before parsing
@@ -2773,7 +2788,18 @@ Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters
       }
     }
 
-    const result = message.content[0].text.trim();
+    // Handle AWS Bedrock response format
+    let result;
+    if (message.content && message.content[0] && message.content[0].text) {
+      result = message.content[0].text.trim();
+    } else if (message.text) {
+      result = message.text.trim();
+    } else if (typeof message === 'string') {
+      result = message.trim();
+    } else {
+      console.error('❌ Unexpected Bedrock response format:', message);
+      throw new Error('Unexpected response format from Bedrock API');
+    }
     console.log('Raw Bedrock Daily Challenge Response:', result);
     
     // Clean up the response before parsing
@@ -2865,7 +2891,18 @@ Return ONLY a plain text response, no JSON formatting.`;
       "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available."
     );
 
-    const response = aiMessage.content[0].text.trim();
+    // Handle AWS Bedrock response format
+    let response;
+    if (aiMessage.content && aiMessage.content[0] && aiMessage.content[0].text) {
+      response = aiMessage.content[0].text.trim();
+    } else if (aiMessage.text) {
+      response = aiMessage.text.trim();
+    } else if (typeof aiMessage === 'string') {
+      response = aiMessage.trim();
+    } else {
+      console.error('❌ Unexpected Bedrock response format:', aiMessage);
+      throw new Error('Unexpected response format from Bedrock API');
+    }
     console.log('AI Coach Response:', response);
     
     // Generate messageId and timestamp
@@ -2998,7 +3035,7 @@ app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
       hasEndpoint: true,
       hasModelId: true,
       modelId: process.env.MODEL_ID,
-      testResponse: testMessage.content[0].text,
+      testResponse: testMessage.content && testMessage.content[0] ? testMessage.content[0].text : (testMessage.text || 'Unknown format'),
       timestamp: new Date().toISOString()
     });
     
