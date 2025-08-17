@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 // Removed Anthropic SDK - using AWS Bedrock API instead
 require('dotenv').config();
 
@@ -83,6 +84,30 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
 
 app.use(cors());
 app.use(express.json());
+
+// Rate limiting for AI endpoints (150 requests per hour per IP)
+const aiRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 150, // limit each IP to 150 requests per windowMs
+  message: {
+    error: 'Too Many AI Requests',
+    message: 'You have exceeded the AI request limit of 150 requests per hour. Please try again later.',
+    retryAfter: 3600 // seconds until reset (1 hour)
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Only count requests that result in success or client errors (4xx)
+  // Don't count server errors (5xx)
+  skip: (req, res) => res.statusCode >= 500,
+  handler: (req, res) => {
+    console.log(`🚫 Rate limit exceeded for IP: ${req.ip} on AI endpoint: ${req.path}`);
+    res.status(429).json({
+      error: 'Too Many AI Requests',
+      message: 'You have exceeded the AI request limit of 150 requests per hour. Please try again later.',
+      retryAfter: 3600
+    });
+  }
+});
 
 // API Key Authentication Middleware for all /api/* routes
 app.use('/api/*', (req, res, next) => {
@@ -2551,7 +2576,7 @@ app.get('/api/debug/raw-data/:deviceId', (req, res) => {
   });
 });
 
-app.post('/generate-suggestions', async (req, res) => {
+app.post('/generate-suggestions', aiRateLimit, async (req, res) => {
   try {
     const { purpose, setting } = req.body;
     console.log('Received suggestions request:', { purpose, setting });
@@ -2571,7 +2596,7 @@ app.post('/generate-suggestions', async (req, res) => {
   }
 });
 
-app.post('/generate-opener', async (req, res) => {
+app.post('/generate-opener', aiRateLimit, async (req, res) => {
   try {
     const { purpose, setting, context } = req.body;
     console.log('Received opener request:', { purpose, setting, context });
@@ -2642,7 +2667,7 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
   }
 });
 
-app.post('/generate-daily-challenge', async (req, res) => {
+app.post('/generate-daily-challenge', aiRateLimit, async (req, res) => {
   try {
     const { level = "beginner", date } = req.body;
     
@@ -2754,7 +2779,7 @@ Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters
   }
 });
 
-app.post('/api/ai-coach/chat', async (req, res) => {
+app.post('/api/ai-coach/chat', aiRateLimit, async (req, res) => {
   try {
     const { message, context = {} } = req.body;
     console.log('Received AI coach chat request:', { message, context });
@@ -2910,7 +2935,7 @@ app.post('/api/debug/reset-user/:deviceId', (req, res) => {
 });
 
 // AWS Bedrock API health check endpoint
-app.get('/api/bedrock/health', async (req, res) => {
+app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
   try {
     console.log('🔍 Testing AWS Bedrock API connection...');
     
