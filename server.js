@@ -1345,19 +1345,19 @@ const conversationPracticeScenarios = [
         id: 1,
         text: "\"This place always takes forever, doesn't it?\"",
         rating: "poor",
-        feedback: "Starting with complaints creates negative energy. Try positive observations instead."
+        feedback: "Negative opening creates bad energy."
       },
       {
         id: 2,
         text: "\"Have you tried their pastries? I'm debating getting one\"",
         rating: "good",
-        feedback: "Good approach - positive and gives them something specific to respond to."
+        feedback: "Positive and specific question."
       },
       {
         id: 3,
         text: "\"I love how cozy this place is\"",
         rating: "best",
-        feedback: "Perfect! Positive observation that creates a shared moment and easy to agree with."
+        feedback: "Creates shared positive moment."
       }
     ]
   },
@@ -1371,19 +1371,19 @@ const conversationPracticeScenarios = [
         id: 1,
         text: "\"Are you a psychology major too?\"",
         rating: "poor",
-        feedback: "Assumes too much about them and could feel intrusive. Use more open observations."
+        feedback: "Too presumptuous and intrusive."
       },
       {
         id: 2,
         text: "\"I'm trying to find something good in this section. Any recommendations?\"",
         rating: "best",
-        feedback: "Perfect! Acknowledges shared interest and asks for their expertise."
+        feedback: "Shows shared interest, asks expertise."
       },
       {
         id: 3,
         text: "\"Do you know if this book is any good?\" *holds up random book*",
         rating: "good",
-        feedback: "Good approach - asking for their opinion on something specific."
+        feedback: "Asks opinion on specific item."
       }
     ]
   },
@@ -1397,19 +1397,19 @@ const conversationPracticeScenarios = [
         id: 1,
         text: "\"This gym gets so crowded during peak hours\"",
         rating: "good",
-        feedback: "This is a neutral observation that most people can relate to. It's safe and opens the door for them to agree or share their experience."
+        feedback: "Safe, relatable observation."
       },
       {
         id: 2,
         text: "\"How long have you been coming here?\"",
         rating: "best",
-        feedback: "Great choice! This shows genuine interest and gives them multiple ways to respond - they could talk about their routine, their experience with the gym, or how they like it."
+        feedback: "Shows genuine interest."
       },
       {
         id: 3,
         text: "\"You look like you know what you're doing. Any tips for this machine?\"",
         rating: "poor",
-        feedback: "While asking for advice can work, commenting on someone's appearance first thing can make them uncomfortable. It's better to focus on the shared activity or environment."
+        feedback: "Commenting on appearance feels awkward."
       }
     ]
   },
