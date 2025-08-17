@@ -125,7 +125,7 @@ const aiRateLimit = rateLimit({
 });
 
 // API Key Authentication Middleware for all API routes
-app.use(['/api/*', '/generate-*'], (req, res, next) => {
+app.use(['/api/*', '/generate-opener', '/generate-daily-challenge'], (req, res, next) => {
   // Skip authentication if FRONTEND_API_KEY is not configured
   if (!process.env.FRONTEND_API_KEY) {
     console.warn('⚠️  API request received but FRONTEND_API_KEY not configured - allowing request');
