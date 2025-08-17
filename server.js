@@ -107,11 +107,14 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
       
       // Try different API key header formats
       if (process.env.BEDROCK_API_KEY) {
-        // Try x-api-key header first (common for API gateways)
+        // Try multiple authentication methods
         headers['x-api-key'] = process.env.BEDROCK_API_KEY;
-        // Also include Authorization header as backup
-        headers['Authorization'] = `Bearer ${process.env.BEDROCK_API_KEY}`;
+        headers['Authorization'] = process.env.BEDROCK_API_KEY; // Without Bearer prefix
+        headers['Api-Key'] = process.env.BEDROCK_API_KEY; // Alternative capitalization
       }
+      
+      console.log('🔍 Calling Bedrock endpoint:', endpoint);
+      console.log('🔑 Using API key (first 20 chars):', process.env.BEDROCK_API_KEY?.substring(0, 20));
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -122,6 +125,7 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ AWS Bedrock API Error:', response.status, errorText);
+        console.error('📋 Request headers sent:', headers);
         throw new Error(`AWS Bedrock API error: ${response.status} - ${errorText}`);
       }
       
