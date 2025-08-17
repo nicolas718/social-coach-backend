@@ -156,10 +156,8 @@ function requireApiKey(req, res, next) {
   next();
 }
 
-// Apply authentication to all protected routes
+// Apply authentication to all /api/* routes
 app.use('/api/*', requireApiKey);
-app.use('/generate-opener', requireApiKey);
-app.use('/generate-daily-challenge', requireApiKey);
 
 console.log('✅ API key authentication middleware configured for all protected routes');
 
@@ -2639,7 +2637,7 @@ app.post('/generate-suggestions', aiRateLimit, async (req, res) => {
   }
 });
 
-app.post('/generate-opener', aiRateLimit, async (req, res) => {
+app.post('/generate-opener', requireApiKey, aiRateLimit, async (req, res) => {
   try {
     const { purpose, setting, context } = req.body;
     console.log('Received opener request:', { purpose, setting, context });
@@ -2721,7 +2719,7 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
   }
 });
 
-app.post('/generate-daily-challenge', aiRateLimit, async (req, res) => {
+app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, res) => {
   try {
     const { level = "beginner", date } = req.body;
     
