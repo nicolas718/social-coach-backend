@@ -63,9 +63,17 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
   }
   
   // AWS Bedrock API Key uses Bearer token authentication
+  const apiKey = process.env.BEDROCK_API_KEY;
+  
+  // Debug: Check for whitespace issues
+  console.log('🔍 API Key length:', apiKey ? apiKey.length : 0);
+  console.log('🔍 API Key starts with:', apiKey ? apiKey.substring(0, 20) : 'NOT SET');
+  console.log('🔍 API Key ends with:', apiKey ? apiKey.slice(-20) : 'NOT SET');
+  console.log('🔍 Endpoint:', endpoint);
+  
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${process.env.BEDROCK_API_KEY}`
+    'Authorization': `Bearer ${apiKey}`
   };
   
   const response = await fetch(endpoint, {
@@ -77,6 +85,8 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
   if (!response.ok) {
     const errorText = await response.text();
     console.error('❌ AWS Bedrock API Error:', response.status, errorText);
+    console.error('📋 Full endpoint called:', endpoint);
+    console.error('📋 Authorization header:', headers.Authorization.substring(0, 30) + '...');
     throw new Error(`AWS Bedrock API error: ${response.status} - ${errorText}`);
   }
   
