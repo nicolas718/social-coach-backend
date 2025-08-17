@@ -63,12 +63,11 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
   }
   
   // AWS Bedrock API Key uses Bearer token authentication
-  // TEMPORARY: Using hardcoded key to bypass Railway environment variable issues
-  const apiKey = "ABSKQmVkcm9ja0FQSUtleS14ZHdlLWF0LTk3NTY3ODk0NTgwNzp2eWxwZUpEWDZBV1VwbVk2b3lYVEdqSkw1QzkxL3JwZEQySjVpRmRqM3FHQ2w1NlRUZU11OEVNQVJ0ST0=";
+  const apiKey = process.env.BEDROCK_API_KEY;
   
   // Debug: Check for whitespace issues
-  console.log('🔍 Using HARDCODED API Key');
-  console.log('🔍 API Key length:', apiKey ? apiKey.length : 0);
+  console.log('🔍 API Key from environment');
+  console.log('🔍 API Key configured:', !!apiKey);
   console.log('🔍 Endpoint:', endpoint);
   
   const headers = {
