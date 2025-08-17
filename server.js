@@ -62,9 +62,10 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
     requestBody.system = systemPrompt;
   }
   
+  // AWS Bedrock API Key uses Bearer token authentication
   const headers = {
     'Content-Type': 'application/json',
-    'x-api-key': process.env.BEDROCK_API_KEY
+    'Authorization': `Bearer ${process.env.BEDROCK_API_KEY}`
   };
   
   const response = await fetch(endpoint, {
