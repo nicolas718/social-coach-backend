@@ -889,6 +889,32 @@ app.get('/debug/env-check', (req, res) => {
   });
 });
 
+// Debug endpoint for AWS Bedrock configuration (NO AUTH REQUIRED)
+app.get('/debug/bedrock-config', (req, res) => {
+  const bedrockKeySet = !!process.env.BEDROCK_API_KEY;
+  const bedrockKeyPreview = process.env.BEDROCK_API_KEY ? 
+    `${process.env.BEDROCK_API_KEY.substring(0, 10)}...${process.env.BEDROCK_API_KEY.slice(-10)}` : 'NOT_SET';
+  const endpointSet = !!process.env.BEDROCK_ENDPOINT;
+  const modelIdSet = !!process.env.MODEL_ID;
+  
+  // Construct the full endpoint URL
+  const fullEndpoint = process.env.BEDROCK_ENDPOINT && process.env.MODEL_ID ? 
+    `${process.env.BEDROCK_ENDPOINT}/model/${process.env.MODEL_ID}/invoke` : 'NOT_CONFIGURED';
+  
+  res.json({
+    status: 'debug',
+    bedrock_api_key_configured: bedrockKeySet,
+    bedrock_key_preview: bedrockKeyPreview,
+    bedrock_key_length: process.env.BEDROCK_API_KEY ? process.env.BEDROCK_API_KEY.length : 0,
+    bedrock_endpoint_configured: endpointSet,
+    bedrock_endpoint: process.env.BEDROCK_ENDPOINT || 'NOT_SET',
+    model_id_configured: modelIdSet,
+    model_id: process.env.MODEL_ID || 'NOT_SET',
+    full_endpoint_url: fullEndpoint,
+    deployment_time: new Date().toISOString()
+  });
+});
+
 // Debug all activities for a device
 app.get('/api/debug/all-activities/:deviceId', (req, res) => {
   const { deviceId } = req.params;
