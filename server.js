@@ -106,6 +106,9 @@ app.use('/api/*', (req, res, next) => {
   // Validate API key
   if (apiKey !== process.env.FRONTEND_API_KEY) {
     console.error('❌ API request rejected - invalid API key');
+    console.error('Received key:', apiKey);
+    console.error('Expected key:', process.env.FRONTEND_API_KEY);
+    console.error('Keys match:', apiKey === process.env.FRONTEND_API_KEY);
     return res.status(401).json({ 
       error: 'Unauthorized', 
       message: 'Invalid API key' 
