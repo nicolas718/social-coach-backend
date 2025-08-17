@@ -6,7 +6,7 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-// Removed Anthropic SDK - using AWS Bedrock API instead
+const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 require('dotenv').config();
 
 console.log('===============================================');
@@ -50,36 +50,88 @@ if (!process.env.FRONTEND_API_KEY) {
 
 // Helper function to call AWS Bedrock API
 async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
-  const endpoint = `${process.env.BEDROCK_ENDPOINT}/model/${process.env.MODEL_ID}/invoke`;
-  
-  // Format request body to match Claude's expected format
-  const requestBody = {
-    messages: messages,
-    max_tokens: maxTokens,
-    anthropic_version: "bedrock-2023-05-31"
-  };
-  
-  if (systemPrompt) {
-    requestBody.system = systemPrompt;
+  try {
+    // Check if we're using AWS SDK credentials or a simple API key
+    const useAWSSDK = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY;
+    
+    if (useAWSSDK) {
+      // Use AWS SDK for proper AWS Bedrock authentication
+      const client = new BedrockRuntimeClient({
+        region: process.env.AWS_REGION || 'us-east-2',
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+          sessionToken: process.env.AWS_SESSION_TOKEN // Optional for temporary credentials
+        }
+      });
+      
+      const requestBody = {
+        messages: messages,
+        max_tokens: maxTokens,
+        anthropic_version: "bedrock-2023-05-31"
+      };
+      
+      if (systemPrompt) {
+        requestBody.system = systemPrompt;
+      }
+      
+      const command = new InvokeModelCommand({
+        modelId: process.env.MODEL_ID,
+        contentType: "application/json",
+        accept: "application/json",
+        body: JSON.stringify(requestBody)
+      });
+      
+      const response = await client.send(command);
+      const responseBody = new TextDecoder().decode(response.body);
+      return JSON.parse(responseBody);
+      
+    } else {
+      // Fallback to API key authentication (for Bedrock-compatible services)
+      const endpoint = `${process.env.BEDROCK_ENDPOINT}/model/${process.env.MODEL_ID}/invoke`;
+      
+      const requestBody = {
+        messages: messages,
+        max_tokens: maxTokens,
+        anthropic_version: "bedrock-2023-05-31"
+      };
+      
+      if (systemPrompt) {
+        requestBody.system = systemPrompt;
+      }
+      
+      // Try different authentication header formats
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Try different API key header formats
+      if (process.env.BEDROCK_API_KEY) {
+        // Try x-api-key header first (common for API gateways)
+        headers['x-api-key'] = process.env.BEDROCK_API_KEY;
+        // Also include Authorization header as backup
+        headers['Authorization'] = `Bearer ${process.env.BEDROCK_API_KEY}`;
+      }
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ AWS Bedrock API Error:', response.status, errorText);
+        throw new Error(`AWS Bedrock API error: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    }
+  } catch (error) {
+    console.error('❌ Error calling Bedrock API:', error);
+    throw error;
   }
-  
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.BEDROCK_API_KEY}`
-    },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ AWS Bedrock API Error:', response.status, errorText);
-    throw new Error(`AWS Bedrock API error: ${response.status} - ${errorText}`);
-  }
-  
-  const data = await response.json();
-  return data;
 }
 
 app.use(cors());
