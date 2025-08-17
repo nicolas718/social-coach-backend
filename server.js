@@ -5,7 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
+// Removed Anthropic SDK - using AWS Bedrock API instead
 require('dotenv').config();
 
 console.log('===============================================');
@@ -19,20 +19,104 @@ console.log('===============================================');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Check if Anthropic API key is configured
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('❌ ANTHROPIC_API_KEY environment variable is not set');
-  console.log('🔧 Anthropic-dependent endpoints will fail');
+// Check if AWS Bedrock configuration is set
+if (!process.env.BEDROCK_API_KEY) {
+  console.error('❌ BEDROCK_API_KEY environment variable is not set');
+  console.log('🔧 AWS Bedrock-dependent endpoints will fail');
 } else {
-  console.log('✅ Anthropic API key is configured');
+  console.log('✅ AWS Bedrock API key is configured');
 }
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+if (!process.env.BEDROCK_ENDPOINT) {
+  console.error('❌ BEDROCK_ENDPOINT environment variable is not set');
+} else {
+  console.log('✅ AWS Bedrock endpoint is configured:', process.env.BEDROCK_ENDPOINT);
+}
+
+if (!process.env.MODEL_ID) {
+  console.error('❌ MODEL_ID environment variable is not set');
+} else {
+  console.log('✅ Model ID is configured:', process.env.MODEL_ID);
+}
+
+// Check if Frontend API key is configured
+if (!process.env.FRONTEND_API_KEY) {
+  console.error('❌ FRONTEND_API_KEY environment variable is not set');
+  console.log('⚠️  API routes will be unprotected!');
+} else {
+  console.log('✅ Frontend API key is configured');
+}
+
+// Helper function to call AWS Bedrock API
+async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
+  const endpoint = `${process.env.BEDROCK_ENDPOINT}/model/${process.env.MODEL_ID}/invoke`;
+  
+  // Format request body to match Claude's expected format
+  const requestBody = {
+    messages: messages,
+    max_tokens: maxTokens,
+    anthropic_version: "bedrock-2023-05-31"
+  };
+  
+  if (systemPrompt) {
+    requestBody.system = systemPrompt;
+  }
+  
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.BEDROCK_API_KEY}`
+    },
+    body: JSON.stringify(requestBody)
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ AWS Bedrock API Error:', response.status, errorText);
+    throw new Error(`AWS Bedrock API error: ${response.status} - ${errorText}`);
+  }
+  
+  const data = await response.json();
+  return data;
+}
 
 app.use(cors());
 app.use(express.json());
+
+// API Key Authentication Middleware for all /api/* routes
+app.use('/api/*', (req, res, next) => {
+  // Skip authentication if FRONTEND_API_KEY is not configured
+  if (!process.env.FRONTEND_API_KEY) {
+    console.warn('⚠️  API request received but FRONTEND_API_KEY not configured - allowing request');
+    return next();
+  }
+  
+  const apiKey = req.headers['x-api-key'];
+  
+  // Check if API key is provided
+  if (!apiKey) {
+    console.error('❌ API request rejected - missing x-api-key header');
+    return res.status(401).json({ 
+      error: 'Unauthorized', 
+      message: 'Missing API key in x-api-key header' 
+    });
+  }
+  
+  // Validate API key
+  if (apiKey !== process.env.FRONTEND_API_KEY) {
+    console.error('❌ API request rejected - invalid API key');
+    return res.status(401).json({ 
+      error: 'Unauthorized', 
+      message: 'Invalid API key' 
+    });
+  }
+  
+  // API key is valid, continue to the route handler
+  next();
+});
+
+console.log('✅ API key authentication middleware configured for /api/* routes');
 
 // Initialize SQLite Database
 const dbPath = path.join(__dirname, 'social_coach_data.sqlite');
@@ -749,6 +833,15 @@ app.get('/test-deployment', (req, res) => {
     status: 'NEW CODE DEPLOYED SUCCESSFULLY',
     version: 'v3.0.0',
     message: 'If you see this, Railway has deployed the latest code'
+  });
+});
+
+// Test endpoint for API key authentication
+app.get('/api/test/auth', (req, res) => {
+  res.json({ 
+    status: 'authenticated', 
+    message: 'API key is valid',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -2482,20 +2575,19 @@ Generate:
 
 Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 400,
-      system: "You create contextually perfect conversation guidance. Return only valid JSON.",
-      messages: [
+    const message = await callBedrockAPI(
+      [
         {
           role: "user",
           content: prompt
         }
-      ]
-    });
+      ],
+      400,
+      "You create contextually perfect conversation guidance. Return only valid JSON."
+    );
 
     const result = message.content[0].text.trim();
-    console.log('Raw Claude Response:', result);
+    console.log('Raw Bedrock Response:', result);
     
     // Clean up the response before parsing
     let cleanResult = result;
@@ -2535,9 +2627,9 @@ app.post('/generate-daily-challenge', async (req, res) => {
   try {
     const { level = "beginner", date } = req.body;
     
-    // Check if Anthropic API key is available
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('❌ Cannot generate challenge: ANTHROPIC_API_KEY not configured');
+    // Check if AWS Bedrock configuration is available
+    if (!process.env.BEDROCK_API_KEY || !process.env.BEDROCK_ENDPOINT || !process.env.MODEL_ID) {
+      console.error('❌ Cannot generate challenge: AWS Bedrock not properly configured');
       return res.status(500).json({ 
         error: 'Service configuration error', 
         details: 'AI service not properly configured on server' 
@@ -2574,36 +2666,34 @@ Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters
 
     let message;
     try {
-      message = await anthropic.messages.create({
-        model: "claude-3-5-haiku-20241022",
-        max_tokens: 500,
-        messages: [
+      message = await callBedrockAPI(
+        [
           {
             role: "user",
             content: prompt
           }
-        ]
-      });
-    } catch (anthropicError) {
-      console.error('❌ Anthropic API Error:', anthropicError);
-      console.error('❌ Error type:', anthropicError.constructor.name);
-      console.error('❌ Error status:', anthropicError.status);
-      console.error('❌ Error message:', anthropicError.message);
+        ],
+        500
+      );
+    } catch (bedrockError) {
+      console.error('❌ AWS Bedrock API Error:', bedrockError);
+      console.error('❌ Error type:', bedrockError.constructor.name);
+      console.error('❌ Error message:', bedrockError.message);
       
       // Provide specific error based on the type
-      if (anthropicError.status === 401) {
+      if (bedrockError.message.includes('401')) {
         throw new Error('Invalid API key configuration');
-      } else if (anthropicError.status === 404) {
-        throw new Error('Anthropic service not found - check model name or endpoint');
-      } else if (anthropicError.status === 429) {
+      } else if (bedrockError.message.includes('404')) {
+        throw new Error('AWS Bedrock service not found - check model ID or endpoint');
+      } else if (bedrockError.message.includes('429')) {
         throw new Error('API rate limit exceeded - try again later');
       } else {
-        throw new Error(`Anthropic API error: ${anthropicError.message}`);
+        throw new Error(`AWS Bedrock API error: ${bedrockError.message}`);
       }
     }
 
     const result = message.content[0].text.trim();
-    console.log('Raw Claude Daily Challenge Response:', result);
+    console.log('Raw Bedrock Daily Challenge Response:', result);
     
     // Clean up the response before parsing
     let cleanResult = result;
@@ -2683,17 +2773,16 @@ Provide a supportive coaching response that:
 
 Return ONLY a plain text response, no JSON formatting.`;
 
-    const aiMessage = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 150,
-      system: "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available.",
-      messages: [
+    const aiMessage = await callBedrockAPI(
+      [
         {
           role: "user",
           content: prompt
         }
-      ]
-    });
+      ],
+      150,
+      "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available."
+    );
 
     const response = aiMessage.content[0].text.trim();
     console.log('AI Coach Response:', response);
@@ -2801,41 +2890,46 @@ app.post('/api/debug/reset-user/:deviceId', (req, res) => {
   }
 });
 
-// Anthropic API health check endpoint
-app.get('/api/anthropic/health', async (req, res) => {
+// AWS Bedrock API health check endpoint
+app.get('/api/bedrock/health', async (req, res) => {
   try {
-    console.log('🔍 Testing Anthropic API connection...');
+    console.log('🔍 Testing AWS Bedrock API connection...');
     
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.BEDROCK_API_KEY || !process.env.BEDROCK_ENDPOINT || !process.env.MODEL_ID) {
       return res.status(500).json({ 
         status: 'error',
-        error: 'ANTHROPIC_API_KEY environment variable not set',
-        hasApiKey: false
+        error: 'AWS Bedrock configuration incomplete',
+        hasApiKey: !!process.env.BEDROCK_API_KEY,
+        hasEndpoint: !!process.env.BEDROCK_ENDPOINT,
+        hasModelId: !!process.env.MODEL_ID
       });
     }
     
     // Try a simple API call to test connection
-    const testMessage = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 10,
-      messages: [{ role: "user", content: "Say hello" }]
-    });
+    const testMessage = await callBedrockAPI(
+      [{ role: "user", content: "Say hello" }],
+      10
+    );
     
     res.json({ 
       status: 'healthy',
       hasApiKey: true,
+      hasEndpoint: true,
+      hasModelId: true,
+      modelId: process.env.MODEL_ID,
       testResponse: testMessage.content[0].text,
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('❌ Anthropic health check failed:', error);
+    console.error('❌ AWS Bedrock health check failed:', error);
     res.status(500).json({ 
       status: 'error',
       error: error.message,
       errorType: error.constructor.name,
-      errorStatus: error.status,
-      hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+      hasApiKey: !!process.env.BEDROCK_API_KEY,
+      hasEndpoint: !!process.env.BEDROCK_ENDPOINT,
+      hasModelId: !!process.env.MODEL_ID,
       timestamp: new Date().toISOString()
     });
   }
