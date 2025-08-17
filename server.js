@@ -1345,19 +1345,19 @@ const conversationPracticeScenarios = [
         id: 1,
         text: "\"This place always takes forever, doesn't it?\"",
         rating: "poor",
-        feedback: "Starting with a complaint creates negative energy. Even if it's true, it's not the best way to begin a conversation. Try option C instead - positive observations about your shared environment work much better for opening conversations."
+        feedback: "Starting with complaints creates negative energy. Try positive observations instead."
       },
       {
         id: 2,
         text: "\"Have you tried their pastries? I'm debating getting one\"",
         rating: "good",
-        feedback: "This is solid! You're being positive and giving them something specific to respond to. Shows you're genuinely curious about their experience."
+        feedback: "Good approach - positive and gives them something specific to respond to."
       },
       {
         id: 3,
         text: "\"I love how cozy this place is\"",
         rating: "best",
-        feedback: "Perfect choice! This is a positive observation that creates a shared moment. It's easy to agree with and opens the door for them to share their own thoughts about the space."
+        feedback: "Perfect! Positive observation that creates a shared moment and easy to agree with."
       }
     ]
   },
@@ -1371,19 +1371,19 @@ const conversationPracticeScenarios = [
         id: 1,
         text: "\"Are you a psychology major too?\"",
         rating: "poor",
-        feedback: "This assumes too much about them and could feel intrusive. They might not be a student at all. Better to start with a more open observation."
+        feedback: "Assumes too much about them and could feel intrusive. Use more open observations."
       },
       {
         id: 2,
         text: "\"I'm trying to find something good in this section. Any recommendations?\"",
         rating: "best",
-        feedback: "Excellent! You're acknowledging your shared interest, asking for their expertise, and making it easy for them to help you. This creates a natural conversation flow."
+        feedback: "Perfect! Acknowledges shared interest and asks for their expertise."
       },
       {
         id: 3,
         text: "\"Do you know if this book is any good?\" *holds up random book*",
         rating: "good",
-        feedback: "This works well! You're asking for their opinion on something specific, which people generally enjoy giving. Just make sure you're actually interested in their answer."
+        feedback: "Good approach - asking for their opinion on something specific."
       }
     ]
   },
