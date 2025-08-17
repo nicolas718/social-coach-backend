@@ -848,6 +848,22 @@ app.get('/api/test/auth', (req, res) => {
   });
 });
 
+// Debug endpoint to check environment (NO AUTH REQUIRED)
+app.get('/debug/env-check', (req, res) => {
+  const apiKeySet = !!process.env.FRONTEND_API_KEY;
+  const keyLength = process.env.FRONTEND_API_KEY ? process.env.FRONTEND_API_KEY.length : 0;
+  const firstChars = process.env.FRONTEND_API_KEY ? process.env.FRONTEND_API_KEY.substring(0, 10) : 'NOT_SET';
+  const lastChars = process.env.FRONTEND_API_KEY ? process.env.FRONTEND_API_KEY.slice(-10) : 'NOT_SET';
+  
+  res.json({
+    status: 'debug',
+    frontend_api_key_configured: apiKeySet,
+    key_length: keyLength,
+    key_preview: `${firstChars}...${lastChars}`,
+    deployment_time: new Date().toISOString()
+  });
+});
+
 // Debug all activities for a device
 app.get('/api/debug/all-activities/:deviceId', (req, res) => {
   const { deviceId } = req.params;
