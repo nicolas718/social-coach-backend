@@ -270,21 +270,6 @@ db.serialize(() => {
       FOREIGN KEY (device_id) REFERENCES users (device_id)
     )
   `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS conversation_practice (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      device_id TEXT,
-      practice_date TEXT,
-      scenarios_completed INTEGER DEFAULT 0,
-      total_scenarios INTEGER DEFAULT 5,
-      average_score REAL,
-      practice_data TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (device_id) REFERENCES users (device_id)
-    )
-  `);
 });
 
 // Hardcoded suggestion rotations for each purpose + setting combination
@@ -1327,430 +1312,6 @@ app.post('/api/data/development', (req, res) => {
     });
   } catch (error) {
     console.error('Error in development endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// CONVERSATION PRACTICE ENDPOINTS
-
-// Conversation Practice Scenarios Data
-const conversationPracticeScenarios = [
-  {
-    id: 1,
-    title: "Coffee Shop Scenario",
-    setting: "Coffee shop, you're waiting for your order",
-    situation: "Someone next to you is also waiting and seems friendly. They smile when you make eye contact.",
-    options: [
-      {
-        id: 1,
-        text: "\"This place always takes forever, doesn't it?\"",
-        rating: "poor",
-        feedback: "Negative opening creates bad energy."
-      },
-      {
-        id: 2,
-        text: "\"Have you tried their pastries? I'm debating getting one\"",
-        rating: "good",
-        feedback: "Positive and specific question."
-      },
-      {
-        id: 3,
-        text: "\"I love how cozy this place is\"",
-        rating: "best",
-        feedback: "Creates shared positive moment."
-      }
-    ]
-  },
-  {
-    id: 2,
-    title: "Bookstore Scenario",
-    setting: "Local bookstore, browsing the same section",
-    situation: "You notice someone has been looking at books in the psychology section for a while, just like you.",
-    options: [
-      {
-        id: 1,
-        text: "\"Are you a psychology major too?\"",
-        rating: "poor",
-        feedback: "Too presumptuous and intrusive."
-      },
-      {
-        id: 2,
-        text: "\"I'm trying to find something good in this section. Any recommendations?\"",
-        rating: "best",
-        feedback: "Shows shared interest, asks expertise."
-      },
-      {
-        id: 3,
-        text: "\"Do you know if this book is any good?\" *holds up random book*",
-        rating: "good",
-        feedback: "Asks opinion on specific item."
-      }
-    ]
-  },
-  {
-    id: 3,
-    title: "Gym Scenario",
-    setting: "Fitness center, both using nearby equipment",
-    situation: "You're at the gym and someone is using the machine next to yours. You finish your set at the same time.",
-    options: [
-      {
-        id: 1,
-        text: "\"This gym gets so crowded during peak hours\"",
-        rating: "good",
-        feedback: "Safe, relatable observation."
-      },
-      {
-        id: 2,
-        text: "\"How long have you been coming here?\"",
-        rating: "best",
-        feedback: "Shows genuine interest."
-      },
-      {
-        id: 3,
-        text: "\"You look like you know what you're doing. Any tips for this machine?\"",
-        rating: "poor",
-        feedback: "Commenting on appearance feels awkward."
-      }
-    ]
-  },
-  {
-    id: 4,
-    title: "Dog Park Scenario",
-    setting: "Local dog park, both watching your dogs play",
-    situation: "Your dogs are playing together and seem to be getting along well. The other owner is smiling and watching.",
-    options: [
-      {
-        id: 1,
-        text: "\"They seem to be best friends already!\"",
-        rating: "best",
-        feedback: "Perfect! You're commenting on the obvious shared moment that you're both experiencing. It's positive, natural, and gives them an easy way to respond about their dog."
-      },
-      {
-        id: 2,
-        text: "\"What breed is yours? They're beautiful.\"",
-        rating: "good",
-        feedback: "This is solid! Dog owners usually love talking about their pets. The compliment is nice, and asking about the breed gives them something specific to discuss."
-      },
-      {
-        id: 3,
-        text: "\"Is your dog always this energetic?\"",
-        rating: "poor",
-        feedback: "This could come across as slightly judgmental, even if you don't mean it that way. It's better to focus on positive observations about the dogs playing together."
-      }
-    ]
-  },
-  {
-    id: 5,
-    title: "Waiting in Line Scenario",
-    setting: "Grocery store checkout line, busy evening",
-    situation: "You're both in line with similar items - looks like you're both shopping for dinner ingredients.",
-    options: [
-      {
-        id: 1,
-        text: "\"Looks like we both had the same dinner idea!\"",
-        rating: "best",
-        feedback: "Excellent observation! You're pointing out something you genuinely have in common right now. It's light, positive, and opens the door for them to share about their cooking plans."
-      },
-      {
-        id: 2,
-        text: "\"This line is moving so slowly tonight\"",
-        rating: "poor",
-        feedback: "Starting with a complaint, even a mild one, sets a negative tone. Most people are already aware the line is slow - pointing it out doesn't add value to their experience."
-      },
-      {
-        id: 3,
-        text: "\"Have you tried cooking with these before?\" *gestures to similar ingredient*",
-        rating: "good",
-        feedback: "This works well! You're asking about their experience with something you both have, showing genuine interest in learning from them."
-      }
-    ]
-  },
-  {
-    id: 6,
-    title: "Library Study Area",
-    setting: "University library, quiet study section",
-    situation: "You're at a table next to someone who's studying similar materials. They look up and stretch, taking a break.",
-    options: [
-      {
-        id: 1,
-        text: "\"Preparing for the same exam as me?\"",
-        rating: "poor",
-        feedback: "This assumes they're in the same class or program. It might not be true and could feel presumptuous. Better to make a more general observation."
-      },
-      {
-        id: 2,
-        text: "\"Good idea to take a break. My brain needed it too\"",
-        rating: "best",
-        feedback: "Perfect! You're acknowledging the shared experience of studying hard and validating their choice to take a break. It's relatable and opens conversation naturally."
-      },
-      {
-        id: 3,
-        text: "\"How's the studying going?\"",
-        rating: "good",
-        feedback: "This is friendly and shows interest in their experience. It's a safe opener that gives them room to share as much or as little as they want."
-      }
-    ]
-  },
-  {
-    id: 7,
-    title: "Farmers Market Scenario",
-    setting: "Weekend farmers market, sunny morning",
-    situation: "You're both examining the same vendor's produce. They're picking up the same type of fruit you're considering.",
-    options: [
-      {
-        id: 1,
-        text: "\"Those look perfect! Have you had good luck with this vendor before?\"",
-        rating: "best",
-        feedback: "Excellent! You're making a positive comment and asking for their experience/advice. This shows you value their judgment and creates an easy conversation starter."
-      },
-      {
-        id: 2,
-        text: "\"The prices here seem a bit high today\"",
-        rating: "poor",
-        feedback: "Starting with a complaint about cost creates negative energy. Even if true, it's not the best conversation opener - focus on positive observations instead."
-      },
-      {
-        id: 3,
-        text: "\"Do you know if these are locally grown?\"",
-        rating: "good",
-        feedback: "This is a practical question that shows you care about the produce's origin. It's informative and gives them a chance to share knowledge."
-      }
-    ]
-  },
-  {
-    id: 8,
-    title: "Museum Gallery",
-    setting: "Art museum, contemporary art section",
-    situation: "You're both looking at the same painting. They seem genuinely interested and have been studying it for a while.",
-    options: [
-      {
-        id: 1,
-        text: "\"I'm trying to figure out what this piece means to me. What's your take on it?\"",
-        rating: "best",
-        feedback: "Wonderful approach! You're being vulnerable about your own experience while genuinely asking for their perspective. This creates meaningful dialogue about shared interests."
-      },
-      {
-        id: 2,
-        text: "\"Modern art is so confusing, isn't it?\"",
-        rating: "poor",
-        feedback: "This dismissive comment might offend someone who appreciates the art. It's better to express curiosity rather than confusion or dismissal."
-      },
-      {
-        id: 3,
-        text: "\"This artist has some interesting techniques\"",
-        rating: "good",
-        feedback: "This shows you're paying attention to the craft and opens the door for them to share their observations about the technique or style."
-      }
-    ]
-  },
-  {
-    id: 9,
-    title: "Food Truck Line",
-    setting: "Popular food truck, lunch rush",
-    situation: "You're both waiting in line for the same highly-rated food truck. The person in front of you is checking out the menu on their phone.",
-    options: [
-      {
-        id: 1,
-        text: "\"Have you tried this place before? I'm trying to decide what to get\"",
-        rating: "best",
-        feedback: "Perfect! You're asking for their experience while sharing your own situation. This creates an immediate connection and gives them a chance to be helpful."
-      },
-      {
-        id: 2,
-        text: "\"This line is taking forever\"",
-        rating: "poor",
-        feedback: "Complaining about the wait creates negative energy. Everyone knows there's a line - pointing it out doesn't improve anyone's experience."
-      },
-      {
-        id: 3,
-        text: "\"That smells amazing from here\"",
-        rating: "good",
-        feedback: "This is a positive observation about the shared sensory experience. It's safe and easy to agree with, creating a good foundation for conversation."
-      }
-    ]
-  },
-  {
-    id: 10,
-    title: "Elevator Moment",
-    setting: "Office building elevator, mid-afternoon",
-    situation: "You're in an elevator with one other person going to higher floors. They're holding coffee and seem relaxed.",
-    options: [
-      {
-        id: 1,
-        text: "\"Afternoon coffee run - I totally get it\"",
-        rating: "best",
-        feedback: "Great observation! You're relating to their experience and showing you understand the afternoon energy dip. It's relatable and friendly."
-      },
-      {
-        id: 2,
-        text: "\"Which floor?\" *even though they already pressed a button*",
-        rating: "poor",
-        feedback: "This is awkward since they've already selected their floor. It shows you weren't paying attention and creates an uncomfortable moment."
-      },
-      {
-        id: 3,
-        text: "\"Nice day outside today\"",
-        rating: "good",
-        feedback: "Weather is a safe, universal topic. While not the most creative opener, it's friendly and gives them an easy way to respond positively."
-      }
-    ]
-  }
-];
-
-// Get Daily Conversation Practice Scenarios
-app.get('/api/conversation-practice/daily/:deviceId', (req, res) => {
-  try {
-    const { deviceId } = req.params;
-    
-    if (!deviceId) {
-      return res.status(400).json({ error: 'deviceId is required' });
-    }
-
-    // Get current date string (YYYY-MM-DD) for consistent daily selection
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Create a simple hash from deviceId + date to ensure consistent daily selection per user
-    let hash = 0;
-    const str = deviceId + today;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    
-    // Use absolute value and ensure we have a positive number
-    hash = Math.abs(hash);
-    
-    // Select 5 unique scenarios for today based on the hash
-    const scenarioIndices = [];
-    const totalScenarios = conversationPracticeScenarios.length;
-    
-    for (let i = 0; i < 5; i++) {
-      let index = (hash + i) % totalScenarios;
-      // Ensure uniqueness within the day
-      while (scenarioIndices.includes(index)) {
-        index = (index + 1) % totalScenarios;
-      }
-      scenarioIndices.push(index);
-    }
-    
-    // Get the selected scenarios
-    const dailyScenarios = scenarioIndices.map(index => conversationPracticeScenarios[index]);
-    
-    console.log(`Generated daily conversation practice scenarios for ${deviceId} on ${today}: scenarios ${scenarioIndices.join(', ')}`);
-    
-    res.json({
-      success: true,
-      scenarios: dailyScenarios,
-      date: today,
-      message: 'Daily conversation practice scenarios retrieved successfully'
-    });
-    
-  } catch (error) {
-    console.error('Error in conversation practice daily endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Save Conversation Practice Completion Data
-app.post('/api/conversation-practice/complete', (req, res) => {
-  try {
-    const {
-      deviceId,
-      completionDate,
-      scenariosCompleted,
-      totalScenarios,
-      averageScore,
-      practiceData // Array of scenario results
-    } = req.body;
-
-    if (!deviceId) {
-      return res.status(400).json({ error: 'deviceId is required' });
-    }
-
-    console.log('Conversation practice completion data received:', { 
-      deviceId, completionDate, scenariosCompleted, totalScenarios, averageScore
-    });
-
-    ensureUserExists(deviceId, (err) => {
-      if (err) {
-        console.error('Error ensuring user exists:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-
-      // Check if completion already exists for this date
-      db.get(
-        "SELECT * FROM conversation_practice WHERE device_id = ? AND practice_date = ?",
-        [deviceId, completionDate],
-        (err, existingRecord) => {
-          if (err) {
-            console.error('Error checking existing practice completion:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-
-          if (existingRecord) {
-            // Update if new completion has more scenarios completed
-            if (scenariosCompleted > existingRecord.scenarios_completed) {
-              db.run(
-                `UPDATE conversation_practice 
-                 SET scenarios_completed = ?, total_scenarios = ?, average_score = ?, 
-                     practice_data = ?, updated_at = CURRENT_TIMESTAMP
-                 WHERE device_id = ? AND practice_date = ?`,
-                [scenariosCompleted, totalScenarios, averageScore, 
-                 JSON.stringify(practiceData), deviceId, completionDate],
-                function(err) {
-                  if (err) {
-                    console.error('Error updating conversation practice:', err);
-                    return res.status(500).json({ error: 'Failed to update practice data' });
-                  }
-
-                  console.log(`Updated conversation practice for ${deviceId} on ${completionDate}: ${scenariosCompleted}/${totalScenarios} completed`);
-
-                  res.json({ 
-                    success: true, 
-                    practiceId: existingRecord.id,
-                    message: 'Conversation practice data updated successfully' 
-                  });
-                }
-              );
-            } else {
-              // No update needed
-              res.json({ 
-                success: true, 
-                practiceId: existingRecord.id,
-                message: 'Conversation practice data already up to date' 
-              });
-            }
-          } else {
-            // Insert new record
-            db.run(
-              `INSERT INTO conversation_practice 
-               (device_id, practice_date, scenarios_completed, total_scenarios, 
-                average_score, practice_data, created_at) 
-               VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-              [deviceId, completionDate, scenariosCompleted, totalScenarios, 
-               averageScore, JSON.stringify(practiceData)],
-              function(err) {
-                if (err) {
-                  console.error('Error saving conversation practice:', err);
-                  return res.status(500).json({ error: 'Failed to save practice data' });
-                }
-
-                console.log(`Saved conversation practice for ${deviceId} on ${completionDate}: ${scenariosCompleted}/${totalScenarios} completed`);
-
-                res.json({ 
-                  success: true, 
-                  practiceId: this.lastID,
-                  message: 'Conversation practice data saved successfully' 
-                });
-              }
-            );
-          }
-        }
-      );
-    });
-  } catch (error) {
-    console.error('Error in conversation practice complete endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -3278,6 +2839,121 @@ Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters
       error: 'Failed to generate daily challenge', 
       details: error.message 
     });
+  }
+});
+
+// Generate Conversation Practice Scenarios
+app.post('/generate-conversation-practice', requireApiKey, aiRateLimit, async (req, res) => {
+  try {
+    // Check if AWS Bedrock configuration is available
+    if (!process.env.BEDROCK_API_KEY || !process.env.BEDROCK_ENDPOINT || !process.env.MODEL_ID) {
+      console.error('❌ Cannot generate conversation practice: AWS Bedrock not properly configured');
+      return res.status(500).json({ 
+        error: 'Service configuration error', 
+        details: 'AI service not properly configured on server' 
+      });
+    }
+    
+    console.log('Received conversation practice request');
+    
+    const prompt = `You are a social skills coach creating conversation practice scenarios. Generate exactly 5 different conversation practice scenarios that help people practice natural conversation skills in everyday situations.
+
+Each scenario should:
+- Be realistic and relatable
+- Take place in common social settings
+- Present a clear social situation where conversation is appropriate
+- Include 3 multiple choice response options (A, B, C)
+- Have options that range from poor to excellent choices
+- Include detailed feedback for each option explaining why it's effective or ineffective
+
+For each scenario, provide:
+1. title: A brief title for the scenario
+2. setting: The physical location/environment
+3. situation: Description of what's happening and the social context
+4. options: Array of 3 response options, each with:
+   - text: The response option
+   - rating: "best", "good", or "poor" 
+   - feedback: Detailed explanation of why this choice works or doesn't work
+
+Create diverse scenarios covering different social situations like:
+- Meeting new people
+- Workplace interactions
+- Social gatherings
+- Casual encounters
+- Community settings
+
+Return ONLY valid JSON with a "scenarios" array containing exactly 5 scenario objects. No markdown formatting, no extra text, just the JSON object.`;
+
+    let message;
+    try {
+      message = await callBedrockAPI(
+        [
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        2000 // More tokens needed for 5 scenarios
+      );
+    } catch (bedrockError) {
+      console.error('❌ AWS Bedrock API Error:', bedrockError);
+      
+      if (bedrockError.message.includes('401')) {
+        throw new Error('Invalid API key configuration');
+      } else if (bedrockError.message.includes('404')) {
+        throw new Error('AWS Bedrock service not found - check model ID or endpoint');
+      } else if (bedrockError.message.includes('429')) {
+        throw new Error('API rate limit exceeded - try again later');
+      } else {
+        throw new Error(`AWS Bedrock API error: ${bedrockError.message}`);
+      }
+    }
+
+    // Handle AWS Bedrock response format
+    let result;
+    if (message.content && message.content[0] && message.content[0].text) {
+      result = message.content[0].text.trim();
+    } else if (message.text) {
+      result = message.text.trim();
+    } else if (typeof message === 'string') {
+      result = message.trim();
+    } else {
+      console.error('❌ Unexpected Bedrock response format:', message);
+      throw new Error('Unexpected response format from Bedrock API');
+    }
+    
+    console.log('Raw Bedrock Conversation Practice Response:', result);
+    
+    // Clean up the response before parsing
+    let cleanResult = result;
+    
+    // Remove markdown code blocks if present
+    cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Find JSON object in the response
+    const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanResult = jsonMatch[0];
+    }
+    
+    console.log('Cleaned Conversation Practice Response:', cleanResult);
+    
+    // Parse the JSON
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(cleanResult);
+    } catch (parseError) {
+      console.error('❌ Failed to parse conversation practice JSON:', parseError);
+      console.error('❌ Raw response that failed to parse:', cleanResult);
+      throw new Error('Invalid response format from AI service');
+    }
+
+    console.log('✅ Successfully generated conversation practice scenarios');
+    res.json(parsedResponse);
+
+  } catch (error) {
+    console.error('❌ Error generating conversation practice:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate conversation practice scenarios' });
   }
 });
 
