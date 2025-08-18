@@ -279,11 +279,21 @@ db.serialize(() => {
       practice_date TEXT NOT NULL,
       scenarios_json TEXT NOT NULL,
       completed BOOLEAN DEFAULT 0,
+      score INTEGER DEFAULT NULL,
       created_at TEXT NOT NULL,
       completed_at TEXT,
       UNIQUE(device_id, practice_date)
     )
   `);
+  
+  // Add score column to existing tables
+  db.run(`
+    ALTER TABLE conversation_practice_scenarios ADD COLUMN score INTEGER DEFAULT NULL;
+  `, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding score column to conversation_practice_scenarios:', err);
+    }
+  });
 });
 
 // Hardcoded suggestion rotations for each purpose + setting combination
@@ -3311,10 +3321,11 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
         }
         
         if (existing) {
-          // Return existing scenarios with completion status
+          // Return existing scenarios with completion status and score
           console.log(`🎭 CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
           const scenariosData = JSON.parse(existing.scenarios_json);
           scenariosData.isCompleted = !!existing.completed;
+          scenariosData.score = existing.score || 0;
           return res.json(scenariosData);
         }
         
@@ -3540,30 +3551,30 @@ Return ONLY valid JSON in this exact format:
 app.post('/api/conversation-practice/:deviceId/complete', (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { currentDate } = req.body;
+    const { currentDate, score } = req.body;
     
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}`);
+    console.log(`🎭 CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
     
     // Use current date or simulated date
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
-    // Mark as completed in database
+    // Mark as completed in database and store score
     db.run(
-      "UPDATE conversation_practice_scenarios SET completed = 1, completed_at = ? WHERE device_id = ? AND practice_date = ?",
-      [new Date().toISOString(), deviceId, dateKey],
+      "UPDATE conversation_practice_scenarios SET completed = 1, completed_at = ?, score = ? WHERE device_id = ? AND practice_date = ?",
+      [new Date().toISOString(), score, deviceId, dateKey],
       function(err) {
         if (err) {
           console.error('Error marking conversation practice complete:', err);
           return res.status(500).json({ error: 'Database error' });
         }
         
-        console.log(`🎭 CONVERSATION PRACTICE: Marked complete for ${dateKey}`);
-        res.json({ success: true, message: 'Conversation practice completed!' });
+        console.log(`🎭 CONVERSATION PRACTICE: Marked complete for ${dateKey} with score ${score}%`);
+        res.json({ success: true, message: 'Conversation practice completed!', score: score });
       }
     );
   } catch (error) {
