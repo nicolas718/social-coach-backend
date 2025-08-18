@@ -3342,29 +3342,37 @@ Each scenario should include:
   - rating: "best", "good", or "poor" (use each rating exactly once)
   - feedback: Detailed explanation of why this choice works or doesn't work
 
+CRITICAL: Randomize the position of the "best" answer across all scenarios. Do NOT always put the best answer first. Vary it - sometimes first, sometimes second, sometimes third option. This is essential for realistic practice.
+
 Make scenarios realistic, diverse (different settings like coffee shops, bookstore, gym, dog park, grocery store, etc.), and focus on everyday social interactions. Each scenario should teach something valuable about starting conversations.
+
+Examples of proper randomization:
+- Scenario 1: best=option 2, good=option 1, poor=option 3
+- Scenario 2: best=option 3, good=option 2, poor=option 1  
+- Scenario 3: best=option 1, good=option 3, poor=option 2
+- Continue varying positions randomly
 
 Return ONLY valid JSON in this exact format:
 {
   "scenarios": [
     {
-      "setting": "Coffee shop during morning rush",
-      "situation": "You're waiting for your drink and notice someone reading an interesting book cover",
+      "setting": "Bookstore fiction section",
+      "situation": "Someone is browsing the same shelf as you and picks up a book you've read",
       "options": [
         {
-          "text": "That book looks interesting, how are you finding it?",
+          "text": "I haven't read that one yet, any good?",
+          "rating": "good",
+          "feedback": "Shows interest but could be more engaging with specific knowledge."
+        },
+        {
+          "text": "Oh, that's a fantastic book! I loved the plot twist about halfway through - no spoilers though!",
           "rating": "best",
-          "feedback": "Perfect opener! Shows genuine interest, gives them something specific to talk about, and is easy to respond to."
+          "feedback": "Perfect! Shows you've read it, creates intrigue, and demonstrates consideration by avoiding spoilers."
         },
         {
-          "text": "Nice book choice!",
-          "rating": "good", 
-          "feedback": "Positive but lacks a question or follow-up to continue the conversation."
-        },
-        {
-          "text": "Reading in a coffee shop? That's so cliché",
+          "text": "That book is terrible, don't waste your time",
           "rating": "poor",
-          "feedback": "Negative and judgmental. This will shut down conversation and make them defensive."
+          "feedback": "Negative and dismissive. Shuts down conversation and shows poor social judgment."
         }
       ]
     }
@@ -3453,6 +3461,11 @@ Return ONLY valid JSON in this exact format:
                 situation: "Someone near you picks up a book, reads the back cover, then puts it back with interest",
                 options: [
                   {
+                    text: "You have good taste in books",
+                    rating: "poor",
+                    feedback: "While meant as a compliment, this can come across as presumptuous since you don't know their actual taste or reading habits."
+                  },
+                  {
                     text: "I was looking at that one too - what did you think of the description?",
                     rating: "best",
                     feedback: "Excellent approach! You're acknowledging shared interest and asking for their opinion, which people love to give."
@@ -3461,11 +3474,6 @@ Return ONLY valid JSON in this exact format:
                     text: "Is it any good?",
                     rating: "good", 
                     feedback: "Direct and to the point, but they haven't read it yet. Shows you weren't really observing the situation."
-                  },
-                  {
-                    text: "You have good taste in books",
-                    rating: "poor",
-                    feedback: "While meant as a compliment, this can come across as presumptuous since you don't know their actual taste or reading habits."
                   }
                 ]
               },
@@ -3474,9 +3482,9 @@ Return ONLY valid JSON in this exact format:
                 situation: "You finish using a machine at the same time someone nearby finishes theirs, and you both reach for your water bottles",
                 options: [
                   {
-                    text: "Good workout! This evening crowd is usually pretty motivated",
-                    rating: "best",
-                    feedback: "Perfect timing and context! You're acknowledging the shared experience and making a positive observation about the environment you both share."
+                    text: "You're really going hard on those weights",
+                    rating: "poor",
+                    feedback: "Comments about someone's workout intensity can make them self-conscious. Focus on shared experiences rather than observations about their performance."
                   },
                   {
                     text: "Do you come here often?",
@@ -3484,9 +3492,9 @@ Return ONLY valid JSON in this exact format:
                     feedback: "A classic conversation starter that works in this context, though it's somewhat predictable."
                   },
                   {
-                    text: "You're really going hard on those weights",
-                    rating: "poor",
-                    feedback: "Comments about someone's workout intensity can make them self-conscious. Focus on shared experiences rather than observations about their performance."
+                    text: "Good workout! This evening crowd is usually pretty motivated",
+                    rating: "best",
+                    feedback: "Perfect timing and context! You're acknowledging the shared experience and making a positive observation about the environment you both share."
                   }
                 ]
               },
@@ -3494,6 +3502,11 @@ Return ONLY valid JSON in this exact format:
                 setting: "Dog park on a sunny weekend morning",
                 situation: "Your dog and another person's dog start playing together while you both watch",
                 options: [
+                  {
+                    text: "I hope your dog doesn't have any behavioral issues",
+                    rating: "poor",
+                    feedback: "This implies concern about their dog's behavior right from the start, which will make them defensive rather than friendly."
+                  },
                   {
                     text: "They seem to be having a great time together! How old is yours?",
                     rating: "best",
@@ -3503,11 +3516,6 @@ Return ONLY valid JSON in this exact format:
                     text: "Your dog is so friendly!",
                     rating: "good",
                     feedback: "A nice compliment that most dog owners appreciate, though it could be more interactive."
-                  },
-                  {
-                    text: "I hope your dog doesn't have any behavioral issues",
-                    rating: "poor",
-                    feedback: "This implies concern about their dog's behavior right from the start, which will make them defensive rather than friendly."
                   }
                 ]
               },
@@ -3516,9 +3524,9 @@ Return ONLY valid JSON in this exact format:
                 situation: "You notice the person ahead of you has ingredients that look like they're making the same dish you're planning",
                 options: [
                   {
-                    text: "Are you making stir-fry too? I'm attempting the same thing tonight",
-                    rating: "best",
-                    feedback: "Excellent! You're making a specific observation that creates instant common ground and sharing something about yourself to balance the conversation."
+                    text: "You must be really into healthy eating",
+                    rating: "poor",
+                    feedback: "Makes assumptions about their lifestyle choices, which can feel judgmental even when meant positively."
                   },
                   {
                     text: "Those vegetables look fresh",
@@ -3526,9 +3534,9 @@ Return ONLY valid JSON in this exact format:
                     feedback: "A safe, positive comment but doesn't create much conversation momentum."
                   },
                   {
-                    text: "You must be really into healthy eating",
-                    rating: "poor",
-                    feedback: "Makes assumptions about their lifestyle choices, which can feel judgmental even when meant positively."
+                    text: "Are you making stir-fry too? I'm attempting the same thing tonight",
+                    rating: "best",
+                    feedback: "Excellent! You're making a specific observation that creates instant common ground and sharing something about yourself to balance the conversation."
                   }
                 ]
               }
