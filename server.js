@@ -3326,9 +3326,9 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
 Each scenario should include:
 - setting: A brief description of the location/environment
 - situation: What's happening in that moment that creates a conversation opportunity
-- options: Exactly 4 multiple choice responses with:
+- options: Exactly 3 multiple choice responses with:
   - text: The response option
-  - rating: "best", "good", or "poor" 
+  - rating: "best", "good", or "poor" (use each rating exactly once)
   - feedback: Detailed explanation of why this choice works or doesn't work
 
 Make scenarios realistic, diverse (different settings like coffee shops, bookstore, gym, dog park, grocery store, etc.), and focus on everyday social interactions. Each scenario should teach something valuable about starting conversations.
@@ -3349,11 +3349,6 @@ Return ONLY valid JSON in this exact format:
           "text": "Nice book choice!",
           "rating": "good", 
           "feedback": "Positive but lacks a question or follow-up to continue the conversation."
-        },
-        {
-          "text": "I've been meaning to read that one too",
-          "rating": "good",
-          "feedback": "Creates common ground but doesn't invite much response. Better to add a question."
         },
         {
           "text": "Reading in a coffee shop? That's so cliché",
@@ -3436,11 +3431,6 @@ Return ONLY valid JSON in this exact format:
                     feedback: "A solid conversation starter that shows interest, though it could be more specific to what you observed."
                   },
                   {
-                    text: "The menu is pretty overwhelming, isn't it?",
-                    rating: "good",
-                    feedback: "Acknowledges a shared experience, but starts with a slight negative. Better to be more positive."
-                  },
-                  {
                     text: "You should hurry up, there's a line behind you",
                     rating: "poor",
                     feedback: "This is impatient and rude. It will make them feel pressured and embarrassed, definitely not a good conversation starter."
@@ -3460,11 +3450,6 @@ Return ONLY valid JSON in this exact format:
                     text: "Is it any good?",
                     rating: "good", 
                     feedback: "Direct and to the point, but they haven't read it yet. Shows you weren't really observing the situation."
-                  },
-                  {
-                    text: "I love this author's work",
-                    rating: "good",
-                    feedback: "Shows enthusiasm but doesn't invite much response. Better to make it more interactive."
                   },
                   {
                     text: "You have good taste in books",
@@ -3488,11 +3473,6 @@ Return ONLY valid JSON in this exact format:
                     feedback: "A classic conversation starter that works in this context, though it's somewhat predictable."
                   },
                   {
-                    text: "That machine is such a killer",
-                    rating: "good",
-                    feedback: "Relatable comment about the shared gym experience, though could invite more response with a question."
-                  },
-                  {
                     text: "You're really going hard on those weights",
                     rating: "poor",
                     feedback: "Comments about someone's workout intensity can make them self-conscious. Focus on shared experiences rather than observations about their performance."
@@ -3514,11 +3494,6 @@ Return ONLY valid JSON in this exact format:
                     feedback: "A nice compliment that most dog owners appreciate, though it could be more interactive."
                   },
                   {
-                    text: "What breed is that?",
-                    rating: "good",
-                    feedback: "Shows genuine interest, though jumping straight to questions without acknowledging the moment can feel abrupt."
-                  },
-                  {
                     text: "I hope your dog doesn't have any behavioral issues",
                     rating: "poor",
                     feedback: "This implies concern about their dog's behavior right from the start, which will make them defensive rather than friendly."
@@ -3538,11 +3513,6 @@ Return ONLY valid JSON in this exact format:
                     text: "Those vegetables look fresh",
                     rating: "good",
                     feedback: "A safe, positive comment but doesn't create much conversation momentum."
-                  },
-                  {
-                    text: "Cooking something special tonight?",
-                    rating: "good",
-                    feedback: "Shows interest in their plans but lacks the personal connection that sharing your own situation would create."
                   },
                   {
                     text: "You must be really into healthy eating",
