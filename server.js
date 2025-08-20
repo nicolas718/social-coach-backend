@@ -2895,29 +2895,15 @@ app.post('/api/ai-coach/chat', aiRateLimit, async (req, res) => {
       });
     }
 
-    // Build context string for the prompt
-    let contextInfo = "";
-    if (context.userStreak) {
-      contextInfo += `User has a ${context.userStreak}-day streak. `;
-    }
-    if (context.recentChallenges) {
-      contextInfo += `Completed ${context.recentChallenges} challenges recently. `;
-    }
-    if (context.successRate) {
-      contextInfo += `Success rate: ${context.successRate}%. `;
-    }
-
-    const prompt = `You are a supportive social confidence coach. A user says: "${message}"
-
-${contextInfo ? `Context: ${contextInfo}` : ''}
+    const prompt = `You are the Opner Coach, the supportive AI assistant within the "Opner: Social Coach" app. A user says: "${message}"
 
 Provide a supportive coaching response that:
 - Is 2-4 sentences maximum for chat-friendly conversation
 - Asks a follow-up question to continue the conversation
-- References their progress when available (streak/challenges/success rate)
-- Provides actionable next steps
+- Provides actionable next steps for social confidence
 - Uses a warm, encouraging but realistic tone
 - Sounds like a conversational mentor, not clinical
+- When relevant, you can reference being their Opner Coach in the Social Coach app
 
 Return ONLY a plain text response, no JSON formatting.`;
 
@@ -2929,7 +2915,7 @@ Return ONLY a plain text response, no JSON formatting.`;
         }
       ],
       150,
-      "You are a warm, supportive social confidence coach. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question. Reference user progress when available."
+      "You are the Opner Coach, the supportive AI assistant in the Social Coach app. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question."
     );
 
     // Handle AWS Bedrock response format
