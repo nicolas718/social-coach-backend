@@ -345,85 +345,51 @@ const breathworkAffirmations = [
   "You radiate calm confidence and genuine warmth"
 ];
 
-// Challenge templates for date-based generation
-const challengeTemplates = [
-  {
-    name: "eye_contact",
-    level: "beginner",
-    prompt: "Create a challenge about making eye contact and smiling at 3 different people today. Focus on noticing how they respond back and building confidence gradually."
+// Social Zone-based challenge templates
+const socialZoneTemplates = {
+  "Warming Up": {
+    name: "warming_up",
+    intent: "Build comfort with initiating light interactions. Very low barrier, short, easy to attempt.",
+    challengeType: "Simple icebreakers, noticing others, friendly interactions.",
+    prompt: "Generate a Daily Challenge that helps the user comfortably practice starting light, low-stakes interactions with people around them. Keep it short, positive, and easy to attempt. The tone should be friendly and approachable, avoiding pressure. Ensure it feels fresh and different from previous challenges."
   },
-  {
-    name: "small_talk",
-    level: "beginner", 
-    prompt: "Create a challenge about starting one genuine conversation with a stranger today, like a cashier or someone waiting in line."
+  "Breaking Through": {
+    name: "breaking_through", 
+    intent: "Move past hesitation and expand interactions beyond one-liners.",
+    challengeType: "Slightly longer exchanges, encouraging curiosity and follow-ups.",
+    prompt: "Generate a Daily Challenge that encourages the user to break past small comfort zones by initiating and continuing interactions. The challenge should invite a natural back-and-forth without being forced. Keep it neutral-to-positive, light, and never judgmental. Ensure variety in style and depth from previous challenges."
   },
-  {
-    name: "compliment",
-    level: "beginner",
-    prompt: "Create a challenge about giving two genuine compliments to different people today, focusing on choices they made rather than appearance."
+  "Coming Alive": {
+    name: "coming_alive",
+    intent: "Show more personality and presence in interactions.",
+    challengeType: "Add playfulness, humor, or personal expression while keeping the interaction natural.",
+    prompt: "Generate a Daily Challenge that helps the user express more of their personality during interactions. The challenge should encourage light humor, playfulness, or personal touches in conversation while staying natural and non-repetitive. The tone must remain friendly, curious, and positive."
   },
-  {
-    name: "question_asking",
-    level: "intermediate",
-    prompt: "Create a challenge about asking one thoughtful, curious question to someone new today and really listening to their answer."
+  "Charming": {
+    name: "charming",
+    intent: "Build attraction and social magnetism through engaging, fun interactions.",
+    challengeType: "Confident delivery, socially bold moves, smooth but still approachable.",
+    prompt: "Generate a Daily Challenge that encourages the user to interact with confidence and charm. The challenge should help them practice socially bold but light approaches that feel fun, inviting, and magnetic. Ensure phrasing avoids pressure or judgment, and keep variety by shifting interaction depth and style."
   },
-  {
-    name: "active_listening",
-    level: "intermediate",
-    prompt: "Create a challenge about practicing active listening in conversations today - asking follow-up questions and showing genuine interest."
-  },
-  {
-    name: "share_opinion",
-    level: "intermediate",
-    prompt: "Create a challenge about sharing one authentic opinion or perspective in a conversation today, even if it's different from others."
-  },
-  {
-    name: "group_interaction",
-    level: "advanced",
-    prompt: "Create a challenge about contributing meaningfully to a group conversation or joining a new group discussion today."
-  },
-  {
-    name: "vulnerability",
-    level: "advanced",
-    prompt: "Create a challenge about sharing something slightly personal or vulnerable with someone today to build deeper connection."
-  },
-  {
-    name: "leadership",
-    level: "advanced", 
-    prompt: "Create a challenge about taking initiative in a social situation today - suggesting plans, leading a conversation, or helping organize something."
-  },
-  {
-    name: "conflict_resolution",
-    level: "advanced",
-    prompt: "Create a challenge about addressing a minor disagreement or misunderstanding with someone constructively today."
+  "Socialite": {
+    name: "socialite",
+    intent: "Operate comfortably in dynamic, extroverted environments.",
+    challengeType: "Advanced social tasks — longer interactions, group dynamics, or socially leading moments.",
+    prompt: "Generate a Daily Challenge that helps the user act comfortably in dynamic social contexts. The challenge should involve engaging multiple people or sustaining interactions in an outgoing way. Keep it friendly, non-repetitive, and setting-agnostic. Avoid judgmental or evaluative framing, while ensuring challenges feel expansive and socially bold."
   }
-];
+};
 
-// Simple hash function to convert date string to consistent number
-function hashDate(dateString) {
-  let hash = 0;
-  for (let i = 0; i < dateString.length; i++) {
-    const char = dateString.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+// Get challenge template based on Social Zone level
+function getChallengeTemplateForSocialZone(socialZoneLevel) {
+  console.log(`🎯 Getting challenge template for Social Zone: ${socialZoneLevel}`);
+  
+  // Validate that the zone exists - crash if it doesn't
+  if (!socialZoneTemplates[socialZoneLevel]) {
+    const validZones = ["Warming Up", "Breaking Through", "Coming Alive", "Charming", "Socialite"];
+    throw new Error(`Invalid Social Zone "${socialZoneLevel}". Valid zones are: ${validZones.join(', ')}`);
   }
-  return Math.abs(hash);
-}
-
-// Get challenge template based on date
-function getChallengeTemplateForDate(dateString, level = "beginner") {
-  const hash = hashDate(dateString);
   
-  // Filter templates by level
-  const levelTemplates = challengeTemplates.filter(template => template.level === level);
-  
-  // If no templates for level, use beginner as fallback
-  const availableTemplates = levelTemplates.length > 0 ? levelTemplates : 
-    challengeTemplates.filter(template => template.level === "beginner");
-  
-  // Use hash to select consistent template for this date
-  const templateIndex = hash % availableTemplates.length;
-  return availableTemplates[templateIndex];
+  return socialZoneTemplates[socialZoneLevel];
 }
 
 // Helper function to ensure user exists
@@ -2872,7 +2838,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
 
 app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, res) => {
   try {
-    const { level = "beginner", date } = req.body;
+    const { socialZone = "Warming Up" } = req.body;
     
     // Check if AWS Bedrock configuration is available
     if (!process.env.BEDROCK_API_KEY || !process.env.BEDROCK_ENDPOINT || !process.env.MODEL_ID) {
@@ -2883,25 +2849,27 @@ app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, re
       });
     }
     
-    // Use provided date or current date
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    console.log('Received daily challenge request for Social Zone:', socialZone);
     
-    console.log('Received daily challenge request:', { level, date: targetDate });
-    
-    // Get consistent template for this date
-    const template = getChallengeTemplateForDate(targetDate, level);
+    // Get template for this Social Zone level
+    const template = getChallengeTemplateForSocialZone(socialZone);
     
     const prompt = `You are a social skills coach who creates progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions.
 
+Social Zone Context: ${socialZone}
+Zone Intent: ${template.intent}
+Challenge Type: ${template.challengeType}
+
 ${template.prompt}
 
-Create a challenge that:
-- Is achievable for someone at ${level} level
-- Builds social skills gradually  
-- Is specific and actionable
-- Can be completed in one day
-- Focuses on authentic connection, not scripted interactions
-- Builds confidence progressively
+Core Rules:
+- Never repetitive: Avoid repeating structure, tone, or style of past challenges
+- Setting-agnostic: Must work in any place where people are present, never tied to a specific environment
+- Tone: Always friendly, curious, and light
+- Use neutral-to-positive starting points that feel natural
+- No judgmental or nagging framing: Never evaluative, critical, or pressuring
+- Balance between shorter/light interactions and deeper/multi-step ones
+- Achieve freshness through shifts in tone, depth, and phrasing
 
 Generate:
 1. Challenge: The main task to complete (keep it concise, 1-2 sentences)
@@ -2977,9 +2945,11 @@ Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters
     
     // Add metadata for debugging
     challengeData.templateUsed = template.name;
-    challengeData.dateGenerated = targetDate;
+    challengeData.socialZone = socialZone;
+    challengeData.zoneIntent = template.intent;
+    challengeData.generatedAt = new Date().toISOString();
     
-    console.log(`Generated challenge for ${targetDate} using template: ${template.name}`);
+    console.log(`✅ Generated challenge for Social Zone "${socialZone}" using template: ${template.name}`);
     
     res.json(challengeData);
     
