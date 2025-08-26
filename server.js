@@ -2708,13 +2708,27 @@ Generate:
 6. ResponseFramework: A comprehensive guide as a SINGLE STRING that covers response handling. Format as one continuous text string (not nested objects):
 
 Include these key points in the responseFramework string:
-- Core Goals: Be non-threatening, positive/neutral, engaging, and situational
-- Formula: Friendly Approach + Neutral/Positive Observation + Light Curiosity Question  
-- Positive Response handling: Continue with follow-up questions, show genuine interest
-- Neutral Response handling: Keep it light, maybe one more attempt, then graceful transition
-- Negative Response handling: Respect boundaries immediately, polite exit
-- Delivery Rules: Keep tone friendly, curious, and light. Focus on neutral-to-positive observations about environment/activity/shared context. Avoid judgmental framing. If they seem busy/distracted, acknowledge it politely
-- Body Language Cues: Open posture + eye contact = green light to continue. Polite but closed posture = keep it brief and respectful. Looking away/phone/headphones = respect the boundary`;
+
+CORE GOALS:
+1. Be non-threatening — casual, approachable, friendly
+2. Be positive/neutral — never judgmental, naggy, or teasing  
+3. Be engaging — sparks curiosity and invites a reply
+4. Be situational — context-aware, relevant to environment/activity
+
+FORMULA: [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
+
+OPENER TYPES:
+- Situational Observation — comment on what's happening around you
+- Personal Observation (Tasteful) — notice a detail without judging  
+- Opinion Question — invite perspective on something light and relevant
+- Genuine Compliment + Follow-Up — compliment naturally tied to a question
+
+DELIVERY RULES:
+- Tone should be friendly, curious, and light
+- Avoid judgmental framing (Example to avoid: "Why are you on your phone?" Example recommended: "Do you usually train here, or just trying it out?")
+- Focus on neutral-to-positive hooks — environment, activity, shared context
+
+SUMMARY: Opener = [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]`;
 
       prompt += `
 
