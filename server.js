@@ -2703,36 +2703,35 @@ Generate:
     // Add response framework for romantic interest openers
     if (purpose.toLowerCase() === 'romantic') {
       prompt += `
-6. ResponseFramework: A structured guide for handling different types of responses using this framework:
+6. ResponseFramework: A structured guide for handling different types of responses. Keep this concise and practical:
 
-❤️ **Romantic Interest Response Framework**
-🎯 **Core Goals:** Be non-threatening, positive/neutral, engaging, and situational
+CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational.
 
-**Formula:** [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
+FORMULA: Friendly Approach + Neutral/Positive Observation + Light Curiosity Question
 
-**Response Handling:**
-• **Positive Response** (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
-• **Neutral Response** (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
-• **Negative Response** (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
+RESPONSE HANDLING:
+- Positive Response (smiles, engages): Continue with follow-up questions, show genuine interest
+- Neutral Response (brief but polite): Keep it light, maybe one more attempt, then graceful transition  
+- Negative Response (closed off, uninterested): Respect boundaries immediately, polite exit
 
-**Delivery Rules:**
+DELIVERY RULES:
 - Keep tone friendly, curious, and light
-- Focus on neutral-to-positive observations about environment/activity/shared context  
+- Focus on neutral-to-positive observations about environment/activity/shared context
 - Avoid judgmental framing
-- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
+- If they seem busy/distracted, acknowledge it politely
 
-**Body Language Cues:**
+BODY LANGUAGE CUES:
 - Open posture + eye contact = green light to continue
 - Polite but closed posture = keep it brief and respectful
 - Looking away/phone/headphones = respect the boundary`;
 
       prompt += `
 
-Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework`;
+Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework`;
     } else {
       prompt += `
 
-Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
+Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
     }
 
     const message = await callBedrockAPI(
@@ -2742,8 +2741,8 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
           content: prompt
         }
       ],
-      400,
-      "You create contextually perfect conversation guidance. Return only valid JSON."
+      600,
+"You are a social skills coach creating conversation guidance. You MUST return only valid JSON. For romantic openers, include all 6 fields. For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON."
     );
 
     // Handle AWS Bedrock response format
@@ -2774,8 +2773,16 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
     
     console.log('Cleaned Response:', cleanResult);
     
-    // Parse the JSON
-    const openerData = JSON.parse(cleanResult);
+    // Parse the JSON with better error handling
+    let openerData;
+    try {
+      openerData = JSON.parse(cleanResult);
+    } catch (parseError) {
+      console.error('❌ JSON Parse Error:', parseError.message);
+      console.error('❌ Raw response that failed to parse:', result);
+      console.error('❌ Cleaned response that failed to parse:', cleanResult);
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+    }
     
     // Validate the response has required fields
     if (!openerData.opener || !openerData.followUps || !openerData.exitStrategy || !openerData.tip || !openerData.confidenceBoost) {
