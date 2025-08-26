@@ -2703,31 +2703,20 @@ Generate:
     // Add response framework for romantic interest openers
     if (purpose.toLowerCase() === 'romantic') {
       prompt += `
-6. ResponseFramework: A structured guide for handling different types of responses. Keep this concise and practical:
+6. ResponseFramework: A comprehensive guide as a SINGLE STRING that covers response handling. Format as one continuous text string (not nested objects):
 
-CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational.
-
-FORMULA: Friendly Approach + Neutral/Positive Observation + Light Curiosity Question
-
-RESPONSE HANDLING:
-- Positive Response (smiles, engages): Continue with follow-up questions, show genuine interest
-- Neutral Response (brief but polite): Keep it light, maybe one more attempt, then graceful transition  
-- Negative Response (closed off, uninterested): Respect boundaries immediately, polite exit
-
-DELIVERY RULES:
-- Keep tone friendly, curious, and light
-- Focus on neutral-to-positive observations about environment/activity/shared context
-- Avoid judgmental framing
-- If they seem busy/distracted, acknowledge it politely
-
-BODY LANGUAGE CUES:
-- Open posture + eye contact = green light to continue
-- Polite but closed posture = keep it brief and respectful
-- Looking away/phone/headphones = respect the boundary`;
+Include these key points in the responseFramework string:
+- Core Goals: Be non-threatening, positive/neutral, engaging, and situational
+- Formula: Friendly Approach + Neutral/Positive Observation + Light Curiosity Question  
+- Positive Response handling: Continue with follow-up questions, show genuine interest
+- Neutral Response handling: Keep it light, maybe one more attempt, then graceful transition
+- Negative Response handling: Respect boundaries immediately, polite exit
+- Delivery Rules: Keep tone friendly, curious, and light. Focus on neutral-to-positive observations about environment/activity/shared context. Avoid judgmental framing. If they seem busy/distracted, acknowledge it politely
+- Body Language Cues: Open posture + eye contact = green light to continue. Polite but closed posture = keep it brief and respectful. Looking away/phone/headphones = respect the boundary`;
 
       prompt += `
 
-Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework`;
+Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework (MUST be a single string, not an object)`;
     } else {
       prompt += `
 
@@ -2742,7 +2731,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating conversation guidance. You MUST return only valid JSON. For romantic openers, include all 6 fields. For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON."
+"You are a social skills coach creating conversation guidance. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
@@ -2789,9 +2778,19 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
       throw new Error('Invalid response format from AI');
     }
     
-    // For romantic interest openers, validate responseFramework if present
-    if (purpose.toLowerCase() === 'romantic' && !openerData.responseFramework) {
-      console.warn('Warning: Romantic opener missing responseFramework field');
+    // For romantic interest openers, validate and fix responseFramework format
+    if (purpose.toLowerCase() === 'romantic') {
+      if (!openerData.responseFramework) {
+        console.warn('Warning: Romantic opener missing responseFramework field');
+      } else if (typeof openerData.responseFramework === 'object') {
+        // Convert object to string if AI returned nested object
+        console.log('🔧 Converting responseFramework object to string');
+        const framework = openerData.responseFramework;
+        openerData.responseFramework = Object.keys(framework)
+          .map(key => `${key}: ${framework[key]}`)
+          .join('. ');
+        console.log('🔧 Converted responseFramework:', openerData.responseFramework);
+      }
     }
     
     res.json(openerData);
