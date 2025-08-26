@@ -2696,7 +2696,8 @@ Context: ${contextText}
 CRITICAL ANTI-REPETITION RULES:
 - DO NOT use the same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
 - DO NOT start with similar phrases about "energy/vibe/atmosphere" every time
-- DO NOT assume specific details not mentioned in the context
+- DO NOT assume specific details not mentioned in the context (names, drinks, activities, etc.)
+- NEVER invent names - if name introduction is needed, use [Name] as placeholder (e.g., "I'm [Name], mind if I join you?")
 - NEVER generate the same opening structure twice in a row
 - VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
 
@@ -2707,6 +2708,7 @@ OPENER VARIETY EXAMPLES:
 - Observational: "You look like you know what you're doing here"
 - Question-focused: "Is this your usual spot?"
 - Time-based: "Perfect timing - just when it gets less crowded"
+- With name introduction: "I'm [Name], mind if I join you?" or "Hey, I'm [Name] - how's your workout going?"
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
@@ -2772,7 +2774,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. You MUST return only valid JSON. ALL openers (romantic, professional, casual) must include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). Adapt the responseFramework content to the specific purpose. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. ALL openers (romantic, professional, casual) must include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). Adapt the responseFramework content to the specific purpose. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
