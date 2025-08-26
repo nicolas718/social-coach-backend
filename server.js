@@ -2693,18 +2693,30 @@ Purpose: ${purpose}
 Setting: ${setting}  
 Context: ${contextText}
 
-IMPORTANT GUIDELINES:
-- DO NOT assume specific details not mentioned in the context (no drinks, food, books, clothes, activities unless specifically stated)
-- Keep openers authentic and varied - avoid formulaic patterns like "I noticed you..." every time
-- Base opener ONLY on the setting and general context provided
-- Use general observations about the environment/situation, not invented specifics
-- Make each opener feel natural and spontaneous, not scripted
-- Vary your approach: sometimes ask about the place, sometimes comment on the vibe, sometimes be direct
-- AVOID: "I noticed you ordered..." "I couldn't help but notice..." "That's a great [specific item]..."
-- PREFER: General environment comments, genuine questions about the place/experience, natural conversation starters
+CRITICAL ANTI-REPETITION RULES:
+- DO NOT use the same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
+- DO NOT start with similar phrases about "energy/vibe/atmosphere" every time
+- DO NOT assume specific details not mentioned in the context
+- NEVER generate the same opening structure twice in a row
+- VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
+
+OPENER VARIETY EXAMPLES:
+- Direct: "Mind if I ask you something?"
+- Situational: "This place gets busy around this time, doesn't it?"
+- Casual: "How's it going?"
+- Observational: "You look like you know what you're doing here"
+- Question-focused: "Is this your usual spot?"
+- Time-based: "Perfect timing - just when it gets less crowded"
+
+STRICT REQUIREMENTS:
+- Each opener must feel completely different from the last
+- Use varied sentence structures, different question types
+- Sometimes be brief, sometimes more conversational
+- Mix direct approaches with indirect observations
+- Never repeat the same energy/vibe/atmosphere comments
 
 Generate:
-1. Opener: Authentic conversation starter that feels natural and unscripted for ${purpose} intentions. Stay general - don't invent specific details not in the context.
+1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the purpose/setting
 3. ExitStrategy: Natural way to end the conversation gracefully
 4. Tip: Practical advice for this scenario that focuses on delivery and mindset
@@ -2719,26 +2731,29 @@ Generate:
 
 Include these key points in the responseFramework string:
 
-CORE GOALS:
-1. Be non-threatening — casual, approachable, friendly
-2. Be positive/neutral — never judgmental, naggy, or teasing  
-3. Be engaging — sparks curiosity and invites a reply
-4. Be situational — context-aware, relevant to environment/activity
+ROMANTIC APPROACH FUNDAMENTALS:
+- Be genuinely interested, not just trying to impress
+- Create connection through shared experience of the moment/place
+- Show confidence but not arrogance - you're equals having a conversation
+- Let attraction develop naturally through good conversation
 
-FORMULA: [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
+RESPONSE READING GUIDE:
+POSITIVE SIGNS: Smiles, maintains eye contact, asks questions back, turns body toward you, engaged tone
+→ Action: Continue the conversation, share something about yourself, ask follow-up questions
 
-OPENER TYPES:
-- Situational Observation — comment on what's happening around you
-- Personal Observation (Tasteful) — notice a detail without judging  
-- Opinion Question — invite perspective on something light and relevant
-- Genuine Compliment + Follow-Up — compliment naturally tied to a question
+NEUTRAL SIGNS: Polite but brief responses, distracted, checking phone occasionally  
+→ Action: One more genuine attempt with a different angle, then graceful transition if still neutral
 
-DELIVERY RULES:
-- Tone should be friendly, curious, and light
-- Avoid judgmental framing (Example to avoid: "Why are you on your phone?" Example recommended: "Do you usually train here, or just trying it out?")
-- Focus on neutral-to-positive hooks — environment, activity, shared context
+NEGATIVE SIGNS: Short answers, looking away, closed body language, "I'm busy" signals
+→ Action: Immediate respectful exit - "Well, have a great rest of your [workout/evening/etc]"
 
-SUMMARY: Opener = [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]`;
+ESCALATION PRINCIPLES:
+- Start with environment/situation, move to personal interests if they engage
+- Mirror their energy level - if they're quiet, stay calm; if animated, match it
+- Look for genuine common ground, not forced connections  
+- Quality conversation beats clever lines every time
+
+MINDSET: You're both here enjoying the same activity/place. That's already something in common. Focus on that shared experience rather than trying to be impressive.`;
 
       prompt += `
 
@@ -2759,7 +2774,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating authentic, varied conversation guidance. Create openers that feel natural and spontaneous - avoid repetitive formulas. Never invent specific details not mentioned in the context. Focus on genuine, relatable approaches that real people would actually use. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
