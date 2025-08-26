@@ -2693,22 +2693,31 @@ Purpose: ${purpose}
 Setting: ${setting}  
 Context: ${contextText}
 
-CRITICAL ANTI-REPETITION RULES:
+CRITICAL ANTI-ASSUMPTION RULES:
 - DO NOT use the same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
 - DO NOT start with similar phrases about "energy/vibe/atmosphere" every time
-- DO NOT assume specific details not mentioned in the context (names, drinks, activities, etc.)
-- NEVER invent names - if name introduction is needed, use [Name] as placeholder (e.g., "I'm [Name], mind if I join you?")
+- ABSOLUTELY NEVER assume specific details not mentioned in the context
+- FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture (couches, tables, etc.), activities (people-watching, reading, etc.), locations within venue (corner, bar area, etc.), what someone is doing, why they're there, their mood/state
+- NEVER invent names - if name introduction is needed, use [Name] as placeholder
 - NEVER generate the same opening structure twice in a row
 - VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
+- STAY COMPLETELY GENERAL - only reference the basic setting type, nothing more specific
 
-OPENER VARIETY EXAMPLES:
+OPENER VARIETY EXAMPLES (STAY GENERAL):
 - Direct: "Mind if I ask you something?"
 - Situational: "This place gets busy around this time, doesn't it?"
 - Casual: "How's it going?"
-- Observational: "You look like you know what you're doing here"
-- Question-focused: "Is this your usual spot?"
-- Time-based: "Perfect timing - just when it gets less crowded"
-- With name introduction: "I'm [Name], mind if I join you?" or "Hey, I'm [Name] - how's your workout going?"
+- Simple question: "Are you enjoying yourself?"
+- General observation: "Nice place, isn't it?"
+- Time-based: "Perfect timing to be here"
+- With name introduction: "I'm [Name], mind if I join you?"
+
+WRONG EXAMPLES (TOO SPECIFIC):
+❌ "Perfect spot to catch your breath" (assumes they need a break)
+❌ "The corner couches are great" (assumes specific furniture/location)
+❌ "Great for people-watching" (assumes specific activity)
+❌ "That drink looks good" (assumes what they're drinking)
+❌ "You look relaxed" (assumes their mood/state)
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
@@ -2724,47 +2733,49 @@ Generate:
 4. Tip: Practical advice for this scenario that focuses on delivery and mindset
 5. Confidence Boost: Encouraging message that builds genuine confidence`;
 
-    // Add response framework for ALL opener types
-    console.log(`🔍 OPENER DEBUG: purpose="${purpose}", adding universal response framework...`);
-    console.log('✅ UNIVERSAL FRAMEWORK: Adding response framework for all purposes');
-    
-    prompt += `
-6. ResponseFramework: A comprehensive guide as a SINGLE STRING that covers response handling for ${purpose} interactions. Format as one continuous text string (not nested objects):
+    // Add response framework for romantic interest openers only
+    console.log(`🔍 OPENER DEBUG: purpose="${purpose}", purpose.toLowerCase()="${purpose.toLowerCase()}", checking if romantic...`);
+    if (purpose.toLowerCase() === 'romantic') {
+      console.log('✅ ROMANTIC OPENER DETECTED - Adding response framework to prompt');
+      prompt += `
+6. ResponseFramework: A comprehensive guide as a SINGLE STRING that covers response handling. Format as one continuous text string (not nested objects):
 
-Include these key points adapted for ${purpose} context:
+Include these key points in the responseFramework string:
 
-APPROACH FUNDAMENTALS FOR ${purpose.toUpperCase()} INTERACTIONS:
-- Be genuinely interested and curious about them as a person
-- Create connection through shared experience of the moment/place/situation  
-- Show confidence but remain humble - you're equals having a conversation
-- Let natural rapport develop through quality conversation and active listening
-${purpose.toLowerCase() === 'romantic' ? '- Allow attraction to build naturally without pressure' : ''}
-${purpose.toLowerCase() === 'professional' ? '- Focus on mutual value and genuine professional interest' : ''}
-${purpose.toLowerCase() === 'casual' ? '- Keep things light, fun, and naturally social' : ''}
+ROMANTIC APPROACH FUNDAMENTALS:
+- Be genuinely interested, not just trying to impress
+- Create connection through shared experience of the moment/place
+- Show confidence but not arrogance - you're equals having a conversation
+- Let attraction develop naturally through good conversation
 
 RESPONSE READING GUIDE:
-POSITIVE SIGNS: Smiles, maintains eye contact, asks questions back, turns body toward you, engaged tone, builds on your comments
-→ Action: Continue the conversation, share something relevant about yourself, ask thoughtful follow-up questions
+POSITIVE SIGNS: Smiles, maintains eye contact, asks questions back, turns body toward you, engaged tone
+→ Action: Continue the conversation, share something about yourself, ask follow-up questions
 
-NEUTRAL SIGNS: Polite but brief responses, somewhat distracted, checking phone occasionally, giving basic answers
-→ Action: One more genuine attempt with a different angle or topic, then graceful transition if still neutral
+NEUTRAL SIGNS: Polite but brief responses, distracted, checking phone occasionally  
+→ Action: One more genuine attempt with a different angle, then graceful transition if still neutral
 
-NEGATIVE SIGNS: Very short answers, looking away consistently, closed body language, "I'm busy/tired" signals, stepping back
-→ Action: Immediate respectful exit with genuine well-wishes - "Well, have a great rest of your [workout/evening/day/etc]"
+NEGATIVE SIGNS: Short answers, looking away, closed body language, "I'm busy" signals
+→ Action: Immediate respectful exit - "Well, have a great rest of your [workout/evening/etc]"
 
-CONVERSATION DEVELOPMENT:
-- Start with environment/situation, gradually move to personal interests if they engage
-- Mirror their energy level - if they're quiet, stay calm; if animated, match their enthusiasm  
-- Look for genuine common ground rather than forced connections
-- Quality conversation and authentic interest beats clever lines or tactics every time
-- Use natural curiosity as your guide - ask about things you genuinely want to know
+ESCALATION PRINCIPLES:
+- Start with environment/situation, move to personal interests if they engage
+- Mirror their energy level - if they're quiet, stay calm; if animated, match it
+- Look for genuine common ground, not forced connections  
+- Quality conversation beats clever lines every time
 
-UNIVERSAL MINDSET: You're both here sharing the same space/activity/experience. That's already natural common ground. Focus on that shared experience and let genuine curiosity guide the conversation rather than trying to be impressive or achieve a specific outcome.`;
+MINDSET: You're both here enjoying the same activity/place. That's already something in common. Focus on that shared experience rather than trying to be impressive.`;
 
-    prompt += `
+      prompt += `
 
 Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework (MUST be a single string, not an object)`;
-    console.log('✅ UNIVERSAL PROMPT: Requesting 6 fields including responseFramework for all purposes');
+      console.log('✅ ROMANTIC PROMPT: Requesting 6 fields including responseFramework');
+    } else {
+      console.log('ℹ️  NON-ROMANTIC OPENER: Adding standard 5-field prompt (no responseFramework)');
+      prompt += `
+
+Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
+    }
 
     const message = await callBedrockAPI(
       [
@@ -2774,7 +2785,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. ALL openers (romantic, professional, casual) must include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). Adapt the responseFramework content to the specific purpose. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
@@ -2816,31 +2827,35 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
       throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
     }
     
-    // Validate the response has required fields (ALL openers now need 6 fields including responseFramework)
-    if (!openerData.opener || !openerData.followUps || !openerData.exitStrategy || !openerData.tip || !openerData.confidenceBoost || !openerData.responseFramework) {
-      throw new Error('Invalid response format from AI - missing required fields. Expected: opener, followUps, exitStrategy, tip, confidenceBoost, responseFramework');
+    // Validate the response has required fields
+    if (!openerData.opener || !openerData.followUps || !openerData.exitStrategy || !openerData.tip || !openerData.confidenceBoost) {
+      throw new Error('Invalid response format from AI - missing required fields');
     }
     
-    // For ALL openers, validate and fix responseFramework format
-    console.log(`🔍 UNIVERSAL VALIDATION: Checking for responseFramework field for ${purpose} purpose...`);
-    console.log('🔍 AI Response fields:', Object.keys(openerData));
-    console.log('🔍 responseFramework present:', !!openerData.responseFramework);
-    console.log('🔍 responseFramework type:', typeof openerData.responseFramework);
-    
-    if (!openerData.responseFramework) {
-      console.error(`❌ CRITICAL: ${purpose} opener missing responseFramework field!`);
-      console.error('❌ AI Response:', JSON.stringify(openerData, null, 2));
-    } else if (typeof openerData.responseFramework === 'object') {
-      // Convert object to string if AI returned nested object
-      console.log('🔧 Converting responseFramework object to string');
-      const framework = openerData.responseFramework;
-      openerData.responseFramework = Object.keys(framework)
-        .map(key => `${key}: ${framework[key]}`)
-        .join('. ');
-      console.log('🔧 Converted responseFramework:', openerData.responseFramework);
+    // For romantic interest openers, validate and fix responseFramework format
+    if (purpose.toLowerCase() === 'romantic') {
+      console.log('🔍 ROMANTIC VALIDATION: Checking for responseFramework field...');
+      console.log('🔍 AI Response fields:', Object.keys(openerData));
+      console.log('🔍 responseFramework present:', !!openerData.responseFramework);
+      console.log('🔍 responseFramework type:', typeof openerData.responseFramework);
+      
+      if (!openerData.responseFramework) {
+        console.error('❌ CRITICAL: Romantic opener missing responseFramework field!');
+        console.error('❌ AI Response:', JSON.stringify(openerData, null, 2));
+      } else if (typeof openerData.responseFramework === 'object') {
+        // Convert object to string if AI returned nested object
+        console.log('🔧 Converting responseFramework object to string');
+        const framework = openerData.responseFramework;
+        openerData.responseFramework = Object.keys(framework)
+          .map(key => `${key}: ${framework[key]}`)
+          .join('. ');
+        console.log('🔧 Converted responseFramework:', openerData.responseFramework);
+      } else {
+        console.log('✅ ROMANTIC FRAMEWORK SUCCESS: responseFramework is a string');
+        console.log('✅ responseFramework content:', openerData.responseFramework.substring(0, 100) + '...');
+      }
     } else {
-      console.log(`✅ UNIVERSAL FRAMEWORK SUCCESS: ${purpose} responseFramework is a string`);
-      console.log('✅ responseFramework content:', openerData.responseFramework.substring(0, 100) + '...');
+      console.log('ℹ️  NON-ROMANTIC: Skipping responseFramework validation');
     }
     
     res.json(openerData);
