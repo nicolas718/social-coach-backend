@@ -2701,7 +2701,9 @@ Generate:
 5. Confidence Boost: Encouraging message for this situation`;
 
     // Add response framework for romantic interest openers
+    console.log(`🔍 OPENER DEBUG: purpose="${purpose}", purpose.toLowerCase()="${purpose.toLowerCase()}", checking if romantic...`);
     if (purpose.toLowerCase() === 'romantic') {
+      console.log('✅ ROMANTIC OPENER DETECTED - Adding response framework to prompt');
       prompt += `
 6. ResponseFramework: A comprehensive guide as a SINGLE STRING that covers response handling. Format as one continuous text string (not nested objects):
 
@@ -2717,7 +2719,9 @@ Include these key points in the responseFramework string:
       prompt += `
 
 Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework (MUST be a single string, not an object)`;
+      console.log('✅ ROMANTIC PROMPT: Requesting 6 fields including responseFramework');
     } else {
+      console.log('ℹ️  NON-ROMANTIC OPENER: Adding standard 5-field prompt (no responseFramework)');
       prompt += `
 
 Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
@@ -2780,8 +2784,14 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
     
     // For romantic interest openers, validate and fix responseFramework format
     if (purpose.toLowerCase() === 'romantic') {
+      console.log('🔍 ROMANTIC VALIDATION: Checking for responseFramework field...');
+      console.log('🔍 AI Response fields:', Object.keys(openerData));
+      console.log('🔍 responseFramework present:', !!openerData.responseFramework);
+      console.log('🔍 responseFramework type:', typeof openerData.responseFramework);
+      
       if (!openerData.responseFramework) {
-        console.warn('Warning: Romantic opener missing responseFramework field');
+        console.error('❌ CRITICAL: Romantic opener missing responseFramework field!');
+        console.error('❌ AI Response:', JSON.stringify(openerData, null, 2));
       } else if (typeof openerData.responseFramework === 'object') {
         // Convert object to string if AI returned nested object
         console.log('🔧 Converting responseFramework object to string');
@@ -2790,7 +2800,12 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
           .map(key => `${key}: ${framework[key]}`)
           .join('. ');
         console.log('🔧 Converted responseFramework:', openerData.responseFramework);
+      } else {
+        console.log('✅ ROMANTIC FRAMEWORK SUCCESS: responseFramework is a string');
+        console.log('✅ responseFramework content:', openerData.responseFramework.substring(0, 100) + '...');
       }
+    } else {
+      console.log('ℹ️  NON-ROMANTIC: Skipping responseFramework validation');
     }
     
     res.json(openerData);
