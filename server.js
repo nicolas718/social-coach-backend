@@ -2693,12 +2693,22 @@ Purpose: ${purpose}
 Setting: ${setting}  
 Context: ${contextText}
 
+IMPORTANT GUIDELINES:
+- DO NOT assume specific details not mentioned in the context (no drinks, food, books, clothes, activities unless specifically stated)
+- Keep openers authentic and varied - avoid formulaic patterns like "I noticed you..." every time
+- Base opener ONLY on the setting and general context provided
+- Use general observations about the environment/situation, not invented specifics
+- Make each opener feel natural and spontaneous, not scripted
+- Vary your approach: sometimes ask about the place, sometimes comment on the vibe, sometimes be direct
+- AVOID: "I noticed you ordered..." "I couldn't help but notice..." "That's a great [specific item]..."
+- PREFER: General environment comments, genuine questions about the place/experience, natural conversation starters
+
 Generate:
-1. Opener: Natural conversation starter for ${purpose} intentions in this situation
-2. Follow-ups: 3 questions that match the purpose/setting/context
-3. ExitStrategy: Polite way to end the conversation
-4. Tip: Specific advice for this exact scenario
-5. Confidence Boost: Encouraging message for this situation`;
+1. Opener: Authentic conversation starter that feels natural and unscripted for ${purpose} intentions. Stay general - don't invent specific details not in the context.
+2. Follow-ups: 3 varied questions that flow naturally from the opener and match the purpose/setting
+3. ExitStrategy: Natural way to end the conversation gracefully
+4. Tip: Practical advice for this scenario that focuses on delivery and mindset
+5. Confidence Boost: Encouraging message that builds genuine confidence`;
 
     // Add response framework for romantic interest openers
     console.log(`🔍 OPENER DEBUG: purpose="${purpose}", purpose.toLowerCase()="${purpose.toLowerCase()}", checking if romantic...`);
@@ -2749,7 +2759,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating conversation guidance. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating authentic, varied conversation guidance. Create openers that feel natural and spontaneous - avoid repetitive formulas. Never invent specific details not mentioned in the context. Focus on genuine, relatable approaches that real people would actually use. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
