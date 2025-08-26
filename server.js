@@ -2838,7 +2838,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
 
 app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, res) => {
   try {
-    const { socialZone = "Warming Up" } = req.body;
+    const { socialZone = "Warming Up", date } = req.body;
     
     // Check if AWS Bedrock configuration is available
     if (!process.env.BEDROCK_API_KEY || !process.env.BEDROCK_ENDPOINT || !process.env.MODEL_ID) {
@@ -2849,9 +2849,12 @@ app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, re
       });
     }
     
-    console.log('Received daily challenge request for Social Zone:', socialZone);
+    // Use provided date or current date for daily rotation
+    const targetDate = date || new Date().toISOString().split('T')[0];
     
-    // Get template for this Social Zone level
+    console.log('Received daily challenge request:', { socialZone, date: targetDate });
+    
+    // Get template based on Social Zone level (content) - this is the only change from before
     const template = getChallengeTemplateForSocialZone(socialZone);
     
     const prompt = `You are a social skills coach who creates progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions.
@@ -2949,9 +2952,10 @@ No markdown formatting, no extra text, just the JSON object.`;
     challengeData.templateUsed = template.name;
     challengeData.socialZone = socialZone;
     challengeData.zoneIntent = template.intent;
+    challengeData.dateGenerated = targetDate; // Keep date for daily rotation
     challengeData.generatedAt = new Date().toISOString();
     
-    console.log(`✅ Generated challenge for Social Zone "${socialZone}" using template: ${template.name}`);
+    console.log(`✅ Generated challenge for date ${targetDate} with Social Zone "${socialZone}" using template: ${template.name}`);
     
     res.json(challengeData);
     
