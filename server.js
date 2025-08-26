@@ -386,11 +386,61 @@ function getChallengeTemplateForSocialZone(socialZoneLevel) {
   // Validate that the zone exists - crash if it doesn't
   if (!socialZoneTemplates[socialZoneLevel]) {
     const validZones = ["Warming Up", "Breaking Through", "Coming Alive", "Charming", "Socialite"];
+    console.error(`❌ TEMPLATE ERROR: Invalid Social Zone "${socialZoneLevel}"`);
+    console.error(`   Available zones: ${validZones.join(', ')}`);
+    console.error(`   Available templates: ${Object.keys(socialZoneTemplates).join(', ')}`);
     throw new Error(`Invalid Social Zone "${socialZoneLevel}". Valid zones are: ${validZones.join(', ')}`);
   }
   
-  return socialZoneTemplates[socialZoneLevel];
+  const template = socialZoneTemplates[socialZoneLevel];
+  console.log(`✅ Template found: ${template.name} for zone "${socialZoneLevel}"`);
+  
+  return template;
 }
+
+// Test endpoint to verify all Social Zone templates
+app.get('/api/test/social-zones', (req, res) => {
+  try {
+    console.log('🧪 TESTING ALL SOCIAL ZONE TEMPLATES:');
+    
+    const allZones = ["Warming Up", "Breaking Through", "Coming Alive", "Charming", "Socialite"];
+    const results = [];
+    
+    allZones.forEach((zone, index) => {
+      try {
+        const template = getChallengeTemplateForSocialZone(zone);
+        const result = {
+          zone: zone,
+          status: 'SUCCESS',
+          templateName: template.name,
+          intent: template.intent.substring(0, 50) + '...',
+          challengeType: template.challengeType,
+          hasPrompt: !!template.prompt
+        };
+        results.push(result);
+        console.log(`✅ ${index + 1}. ${zone} - Template: ${template.name}`);
+      } catch (error) {
+        const result = {
+          zone: zone,
+          status: 'ERROR',
+          error: error.message
+        };
+        results.push(result);
+        console.log(`❌ ${index + 1}. ${zone} - ERROR: ${error.message}`);
+      }
+    });
+    
+    res.json({
+      success: true,
+      totalZones: allZones.length,
+      successfulZones: results.filter(r => r.status === 'SUCCESS').length,
+      results: results
+    });
+  } catch (error) {
+    console.error('❌ Error testing social zones:', error);
+    res.status(500).json({ error: 'Test failed', details: error.message });
+  }
+});
 
 // Helper function to ensure user exists
 const ensureUserExists = (deviceId, callback, customDate = null) => {
@@ -2840,6 +2890,20 @@ app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, re
   try {
     const { socialZone = "Warming Up", date } = req.body;
     
+    // Comprehensive request validation and logging
+    console.log('🚀 DAILY CHALLENGE REQUEST RECEIVED:');
+    console.log('   📝 Raw socialZone:', typeof socialZone, '|', socialZone, '|');
+    console.log('   📅 Raw date:', typeof date, '|', date, '|');
+    console.log('   🎯 Request body:', JSON.stringify(req.body, null, 2));
+    
+    // Validate Social Zone before proceeding
+    const validZones = ["Warming Up", "Breaking Through", "Coming Alive", "Charming", "Socialite"];
+    const finalSocialZone = validZones.includes(socialZone) ? socialZone : "Warming Up";
+    
+    if (socialZone !== finalSocialZone) {
+      console.log(`⚠️ BACKEND: Invalid Social Zone '${socialZone}' received - using '${finalSocialZone}' instead`);
+    }
+    
     // Check if AWS Bedrock configuration is available
     if (!process.env.BEDROCK_API_KEY || !process.env.BEDROCK_ENDPOINT || !process.env.MODEL_ID) {
       console.error('❌ Cannot generate challenge: AWS Bedrock not properly configured');
@@ -2852,14 +2916,22 @@ app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, re
     // Use provided date or current date for daily rotation
     const targetDate = date || new Date().toISOString().split('T')[0];
     
-    console.log('Received daily challenge request:', { socialZone, date: targetDate });
+    console.log('✅ VALIDATED REQUEST:', { socialZone: finalSocialZone, date: targetDate });
     
-    // Get template based on Social Zone level (content) - this is the only change from before
-    const template = getChallengeTemplateForSocialZone(socialZone);
+    // Get template based on VALIDATED Social Zone level
+    const template = getChallengeTemplateForSocialZone(finalSocialZone);
+    
+    // Comprehensive logging to verify template selection
+    console.log(`📋 TEMPLATE VERIFICATION:`);
+    console.log(`   Final Social Zone: ${finalSocialZone}`);
+    console.log(`   Template Name: ${template.name}`);
+    console.log(`   Intent: ${template.intent}`);
+    console.log(`   Challenge Type: ${template.challengeType}`);
+    console.log(`   Date: ${targetDate}`);
     
     const prompt = `You are a social skills coach who creates progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions.
 
-Social Zone Context: ${socialZone}
+Social Zone Context: ${finalSocialZone}
 Zone Intent: ${template.intent}
 Challenge Type: ${template.challengeType}
 
@@ -2950,12 +3022,17 @@ No markdown formatting, no extra text, just the JSON object.`;
     
     // Add metadata for debugging
     challengeData.templateUsed = template.name;
-    challengeData.socialZone = socialZone;
+    challengeData.socialZone = finalSocialZone; // Use validated zone
     challengeData.zoneIntent = template.intent;
     challengeData.dateGenerated = targetDate; // Keep date for daily rotation
     challengeData.generatedAt = new Date().toISOString();
     
-    console.log(`✅ Generated challenge for date ${targetDate} with Social Zone "${socialZone}" using template: ${template.name}`);
+    console.log(`✅ CHALLENGE GENERATED SUCCESSFULLY:`);
+    console.log(`   📅 Date: ${targetDate}`);
+    console.log(`   🎯 Social Zone: "${finalSocialZone}"`);
+    console.log(`   📝 Template: ${template.name}`);
+    console.log(`   🎪 Challenge: "${challengeData.challenge}"`);
+    console.log(`   📊 Response Size: ${JSON.stringify(challengeData).length} bytes`);
     
     res.json(challengeData);
     
