@@ -2686,7 +2686,8 @@ app.post('/generate-opener', requireApiKey, aiRateLimit, async (req, res) => {
     // Handle optional context
     const contextText = context && context.trim() ? context : `a ${setting} environment`;
     
-    const prompt = `Create a conversation opener for:
+    // Create base prompt
+    let prompt = `Create a conversation opener for:
 
 Purpose: ${purpose}
 Setting: ${setting}  
@@ -2697,9 +2698,42 @@ Generate:
 2. Follow-ups: 3 questions that match the purpose/setting/context
 3. ExitStrategy: Polite way to end the conversation
 4. Tip: Specific advice for this exact scenario
-5. Confidence Boost: Encouraging message for this situation
+5. Confidence Boost: Encouraging message for this situation`;
+
+    // Add response framework for romantic interest openers
+    if (purpose.toLowerCase() === 'romantic') {
+      prompt += `
+6. ResponseFramework: A structured guide for handling different types of responses using this framework:
+
+❤️ **Romantic Interest Response Framework**
+🎯 **Core Goals:** Be non-threatening, positive/neutral, engaging, and situational
+
+**Formula:** [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
+
+**Response Handling:**
+• **Positive Response** (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
+• **Neutral Response** (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
+• **Negative Response** (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
+
+**Delivery Rules:**
+- Keep tone friendly, curious, and light
+- Focus on neutral-to-positive observations about environment/activity/shared context  
+- Avoid judgmental framing
+- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
+
+**Body Language Cues:**
+- Open posture + eye contact = green light to continue
+- Polite but closed posture = keep it brief and respectful
+- Looking away/phone/headphones = respect the boundary`;
+
+      prompt += `
+
+Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework`;
+    } else {
+      prompt += `
 
 Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
+    }
 
     const message = await callBedrockAPI(
       [
@@ -2746,6 +2780,11 @@ Return ONLY JSON with fields: opener, followUps (array of 3 strings), exitStrate
     // Validate the response has required fields
     if (!openerData.opener || !openerData.followUps || !openerData.exitStrategy || !openerData.tip || !openerData.confidenceBoost) {
       throw new Error('Invalid response format from AI');
+    }
+    
+    // For romantic interest openers, validate responseFramework if present
+    if (purpose.toLowerCase() === 'romantic' && !openerData.responseFramework) {
+      console.warn('Warning: Romantic opener missing responseFramework field');
     }
     
     res.json(openerData);
