@@ -1073,11 +1073,6 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
     };
     const allTimeMaxStreak = computeMaxConsecutiveStreak(activityDates);
     
-    console.log(`🔍 CLEAN DEBUG: allTimeMaxStreak calculation:`);
-    console.log(`   - activityDates.length: ${activityDates.length}`);
-    console.log(`   - activityDates: [${activityDates.join(', ')}]`);
-    console.log(`   - final allTimeMaxStreak: ${allTimeMaxStreak}`);
-    
     // Determine highest level ever achieved (based on all-time max, not last run)
     // This ensures grace recovery works correctly when user resumes after a break
     const lastAchievedLevel = allTimeMaxStreak >= 90 ? 'Socialite'
@@ -1547,13 +1542,6 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             };
             const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
             const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
-            
-            console.log(`🔍 ANALYTICS DEBUG: allTimeMaxStreak calculation:`);
-            console.log(`   - activityDates.length: ${activityDates.length}`);
-            console.log(`   - activityDates: [${activityDates.join(', ')}]`);
-            console.log(`   - user.all_time_best_streak: ${user?.all_time_best_streak}`);
-            console.log(`   - derivedBestStreak: ${derivedBestStreak}`);
-            console.log(`   - final allTimeMaxStreak: ${allTimeMaxStreak}`);
 
             // Calculate lastAchievedLevel like clean home endpoint does
             const toISO = (d) => d.toISOString().split('T')[0];
@@ -1614,12 +1602,6 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               'todayForZone': todayForZone.toISOString().split('T')[0]
             });
 
-            console.log(`🔍 ANALYTICS: About to call calculateSocialZoneLevel with:`);
-            console.log(`   - currentStreak: ${currentStreak}`);
-            console.log(`   - daysSinceActivityForZone: ${daysSinceActivityForZone}`);
-            console.log(`   - lastAchievedLevel: ${lastAchievedLevel}`);
-            console.log(`   - allTimeMaxStreak: ${allTimeMaxStreak}`);
-            
             const zoneInfo = calculateSocialZoneLevel(
               currentStreak,
               daysSinceActivityForZone,
@@ -1971,13 +1953,6 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         };
         const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
         const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
-        
-        console.log(`🔍 HOME DEBUG: allTimeMaxStreak calculation:`);
-        console.log(`   - activityDates.length: ${activityDates.length}`);
-        console.log(`   - activityDates: [${activityDates.join(', ')}]`);
-        console.log(`   - user.all_time_best_streak: ${user?.all_time_best_streak}`);
-        console.log(`   - derivedBestStreak: ${derivedBestStreak}`);
-        console.log(`   - final allTimeMaxStreak: ${allTimeMaxStreak}`);
 
         // Determine the most recently achieved level based purely on the last uninterrupted run
         const toISO = (d) => d.toISOString().split('T')[0];
