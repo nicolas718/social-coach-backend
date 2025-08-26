@@ -2874,10 +2874,12 @@ Core Rules:
 Generate:
 1. Challenge: The main task to complete (keep it concise, 1-2 sentences)
 2. Description: More detailed explanation of what to do (2-3 sentences)
-3. Tips: Practical advice for completing this challenge successfully
+3. Tips: Array of 2-3 practical tips for completing this challenge successfully
 4. WhyThisMatters: Explanation of the benefits and reasoning behind this challenge
 
-Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters. No markdown formatting, no extra text, just the JSON object.`;
+Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters. 
+Format tips as an array of strings: ["tip 1", "tip 2", "tip 3"]
+No markdown formatting, no extra text, just the JSON object.`;
 
     let message;
     try {
