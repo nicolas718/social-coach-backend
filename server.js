@@ -732,25 +732,26 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   // NEW: Check if user is rebuilding from a grace period break
   // When resuming after grace, add their previous achievement as "credit" toward next zone
   // BUT ONLY if they were recently in a grace period (not for fresh starts after resets)
-  // GRACE PERIOD CONTINUATION: Only apply when resuming within a legitimate grace period
+  // GRACE PERIOD CONTINUATION: Detect users resuming after recent grace periods
   // This fixes the case where users resume activity after missing days but within grace
-  if (currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && daysWithoutActivity > 0) {
-    // Only apply if they were recently in a grace period (reasonable recent gap)
-    const gracePeriod = gracePeriods[highestLevelAchieved] || 0;
-    const wasInRecentGracePeriod = daysWithoutActivity > 0 && daysWithoutActivity <= gracePeriod + 2; // small buffer
+  if (currentStreak > 0 && currentStreak <= 3 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && allTimeMaxStreak > currentStreak) {
+    // Check if this looks like a grace period recovery scenario:
+    // - Small current streak (1-3 days) suggests recent restart
+    // - Much higher allTimeMaxStreak suggests they had a higher level before
+    // - highestLevelAchieved suggests they recently achieved a higher level
+    const baseLevelRequirements = {
+      'Warming Up': 0,
+      'Breaking Through': 7,
+      'Coming Alive': 21,
+      'Charming': 46,
+      'Socialite': 90
+    };
     
-    if (wasInRecentGracePeriod) {
-      console.log(`🔧 GRACE CONTINUATION: User resuming after ${daysWithoutActivity} days gap, grace period was ${gracePeriod} days`);
-      
-      const levelRequirements = {
-        'Warming Up': 0,
-        'Breaking Through': 7,
-        'Coming Alive': 21,
-        'Charming': 46,
-        'Socialite': 90
-      };
-      
-      const previousLevelRequirement = levelRequirements[highestLevelAchieved] || 0;
+    const levelRequirement = baseLevelRequirements[highestLevelAchieved] || 0;
+    const isLikelyGraceRecovery = allTimeMaxStreak >= levelRequirement && currentStreak < levelRequirement;
+    
+    if (isLikelyGraceRecovery) {
+      console.log(`🔧 GRACE CONTINUATION: Detected grace recovery - currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}, previousLevel: ${highestLevelAchieved}`);
       
       // For grace period continuation, give them their previous level immediately
       // This allows users to continue where they left off after grace periods
