@@ -2709,13 +2709,17 @@ OPENER VARIETY EXAMPLES (STAY GENERAL):
 PURPOSE-SPECIFIC GUIDELINES:
 
 FOR CASUAL CONVERSATION:
-- Focus on actual CONVERSATION starters, not requests to join/sit/share space
+- Focus on actual CONVERSATION starters - not requests to join/sit/share space
 - AVOID openers that ask for permission to join them physically or share their space
+- NEVER ask "Can I sit here?" or "Mind if I share this space?" - these are space requests, not conversation starters
+- Examples of what NOT to do: asking permission to join, requesting to share tables/spaces, asking to sit somewhere
 
 FOR PROFESSIONAL NETWORKING:
-- ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - this is more professional and respectful
+- ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - more professional and respectful
 - CRITICAL: MUST end with a QUESTION or direct invitation for response - never just statements
 - Professional openers MUST follow format: "Greeting + [optional brief context] + QUESTION"
+- NEVER end with just a statement - every professional opener needs a conversational hook/question
+- Examples of what NOT to do: greetings followed by statements with no questions, being too direct about wanting insights
 
 WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Perfect spot to catch your breath" (assumes they need a break)
@@ -2723,17 +2727,20 @@ WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Great for people-watching" (assumes specific activity)
 ❌ "That drink looks good" (assumes what they're drinking)
 ❌ "You look relaxed" (assumes their mood/state)
-❌ "I'd love to hear your professional insights" (too direct/random for most settings)
+
 ❌ "Pardon the interruption - this seems like an ideal moment to introduce myself" (assumes interrupting something, assumes timing is good, assumes they want introduction)
 ❌ "This looks like the perfect time to..." (assumes timing assessment)
 ❌ "You seem like you could use..." (assumes their needs/state)
 ❌ "Hello - I've noticed the great setup they have here for training. Still exploring all the options myself." (greeting + statement with no conversational hook)
-❌ "Hello - impressed by the energy everyone brings to their training here. I find it really motivating to be around dedicated people." (greeting + statement, no question)
-❌ "Hello - great to see so many dedicated people here. I'm just getting familiar with this facility myself." (greeting + statement, no question)
-❌ "Pardon me - would you mind if I shared this quiet space for a bit?" (requesting to join/sit, not starting conversation)
-❌ "Mind if I sit here?" (asking permission to join, not conversation starter)
-❌ "Is it okay if I share this table?" (space request, not conversation opener)
+❌ "Can I sit here?" (asking permission to join, not conversation starter - CASUAL problem)
+❌ "Mind if I share this space?" (space request, not conversation opener - CASUAL problem)
+❌ "Pardon me - would you mind if I shared this quiet space for a bit?" (requesting to join/sit, not starting conversation - CASUAL problem)
+❌ "Is it okay if I share this table?" (space request, not conversation opener - CASUAL problem)
 ❌ "Mind if I share this quiet corner of tranquility?" (requesting to share space, not conversation starter - applies to casual/professional purposes)
+❌ "Hello - impressed by the energy everyone brings to their training here. I find it really motivating to be around dedicated people." (greeting + statement, no question - PROFESSIONAL problem)
+❌ "Hello - great to see so many dedicated people here. I'm just getting familiar with this facility myself." (greeting + statement, no question - PROFESSIONAL problem)
+❌ "I'd love to hear your professional insights" (too direct/random for most settings - PROFESSIONAL problem)
+❌ "Making connections in an active environment - I'd love to hear your professional insights." (too direct, assumes they want to share insights - PROFESSIONAL problem)
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
