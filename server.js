@@ -732,15 +732,9 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   // NEW: Check if user is rebuilding from a grace period break
   // When resuming after grace, add their previous achievement as "credit" toward next zone
   // BUT ONLY if they were recently in a grace period (not for fresh starts after resets)
-  // GRACE PERIOD CONTINUATION: Only for users who had gaps and are rebuilding
-  // This gives credit to users resuming after legitimate breaks, NOT continuous streaks
-  if (currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && allTimeMaxStreak > currentStreak && daysWithoutActivity === 0) {
-    // CRITICAL: Only apply when:
-    // 1. They previously achieved a higher level (highestLevelAchieved)
-    // 2. Their all-time max shows they had a better streak before (allTimeMaxStreak > currentStreak)  
-    // 3. They're currently active (daysWithoutActivity === 0) so this isn't during grace period
-    // 4. Current streak is much smaller than what they achieved before (indicates recovery)
-    
+  // GRACE PERIOD CONTINUATION: Give credit only when there's evidence of activity gaps
+  // This allows users to continue toward next level after grace periods
+  if (currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up') {
     const baseLevelRequirements = {
       'Warming Up': 0,
       'Breaking Through': 7,  
@@ -750,11 +744,20 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     };
     
     const levelRequirement = baseLevelRequirements[highestLevelAchieved] || 0;
-    const hadSignificantAchievement = allTimeMaxStreak >= levelRequirement;
-    const isSmallCurrentStreak = currentStreak < (levelRequirement * 0.5); // Less than half their previous achievement
-    const isLikelyGraceRecovery = hadSignificantAchievement && isSmallCurrentStreak;
     
-    if (isLikelyGraceRecovery) {
+    // Only give credit if:
+    // 1. They previously achieved a meaningful level (7+ days)
+    // 2. Their all-time max shows they had a better streak before (gap indicator)
+    // 3. OR their current streak is small relative to their previous achievement (recent restart)
+    // 4. BUT NOT if they have a continuous streak that naturally qualifies for their level
+    const hadMeaningfulLevel = levelRequirement >= 7;
+    const hadBetterStreak = allTimeMaxStreak > currentStreak;
+    const isRecentRestart = currentStreak < (levelRequirement * 0.7); // Less than 70% of level requirement
+    const hasNaturalQualification = currentStreak >= levelRequirement; // Already qualifies naturally
+    
+    const isGraceRecovery = hadMeaningfulLevel && (hadBetterStreak || isRecentRestart) && !hasNaturalQualification;
+    
+    if (isGraceRecovery) {
       console.log(`🔧 GRACE CONTINUATION: Detected grace recovery - currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}, previousLevel: ${highestLevelAchieved}`);
       
       // For grace period continuation, give them credit toward the next level
