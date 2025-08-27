@@ -745,20 +745,17 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     
     const levelRequirement = baseLevelRequirements[highestLevelAchieved] || 0;
     
-    // Only give credit if:
-    // 1. They previously achieved a meaningful level (7+ days)
-    // 2. There's evidence of activity gaps (not continuous from start)
-    // 3. They haven't naturally qualified for the next level yet
+    // Strategic approach: Give credit to users who need help reaching next level
+    // But protect continuous high-performers who are naturally progressing
     const hadMeaningfulLevel = levelRequirement >= 7;
     const nextLevelRequirements = { 7: 21, 21: 46, 46: 90, 90: 999 };
     const nextLevelReq = nextLevelRequirements[levelRequirement] || 999;
-    const hasNaturalNextQualification = currentStreak >= nextLevelReq;
     
-    // Detect non-continuous activity: either allTime > current OR current is much less than what would be continuous
-    const hasActivityGaps = allTimeMaxStreak > currentStreak || currentStreak < (levelRequirement * 1.5);
+    // Don't give credit if they have very high continuous activity (likely natural progression)
+    const hasHighContinuousActivity = currentStreak >= 14 && daysWithoutActivity === 0;
     
-    // Grace recovery: meaningful level + gap evidence + not naturally qualified for next level  
-    const isGraceRecovery = hadMeaningfulLevel && hasActivityGaps && !hasNaturalNextQualification;
+    // Give credit if: meaningful previous level + not on high continuous streak  
+    const isGraceRecovery = hadMeaningfulLevel && !hasHighContinuousActivity;
     
     if (isGraceRecovery) {
       console.log(`🔧 GRACE CONTINUATION: Detected grace recovery - currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}, previousLevel: ${highestLevelAchieved}`);
