@@ -2966,7 +2966,7 @@ Generate:
 1. Challenge: The main task to complete (keep it concise but clear, 1-2 sentences)
 2. Description: More focused explanation of what to do (2-3 sentences, more concise than typical)
 3. Tips: Array of 2-3 practical tips for completing this challenge successfully (brief but helpful)
-4. WhyThisMatters: Brief explanation of benefits and reasoning (1 sentence, keep it short and focused)
+4. WhyThisMatters: Brief explanation of benefits and reasoning (1-2 sentences, keep it focused)
 
 Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters. 
 Format tips as an array of strings: ["tip 1", "tip 2", "tip 3"]
