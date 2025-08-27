@@ -2701,6 +2701,7 @@ PURPOSE-SPECIFIC GUIDELINES:
 
 FOR PROFESSIONAL NETWORKING:
 - Create natural, contextual conversation bridges that feel organic to the setting
+- Use positive, appreciative language like "Great facilities/atmosphere/spot" - sounds professional and engaging
 - Show genuine interest without being overly direct or intrusive
 - Use professional-friendly language that's approachable but not too casual
 - Focus on shared experiences in the environment rather than direct asks
@@ -2713,17 +2714,19 @@ FOR PROFESSIONAL NETWORKING:
 PROFESSIONAL OPENER VARIETY BY SETTING TYPE:
 
 ACTIVE SETTINGS (GYM, SPORTS):
-- Environmental observation: "I've been coming here for a while - great facility"
+- Professional appreciation: "Great facilities they have here - I've been meaning to explore more"
+- Environmental observation: "I've been coming here for a while - excellent setup"
 - Shared experience: "Busy time of day to work out, isn't it?"
 - Gentle inquiry: "Do you happen to know if they have [general facility question]?"
 - Natural approach: "I don't think we've met - I'm [Name]"
 - Activity-related: "How long have you been training here?"
-- Contextual timing: "Perfect time to get a workout in"
+- Positive opener: "Great place to get a workout in"
 
 QUIET SETTINGS (LIBRARY, COFFEE SHOP):
+- Professional appreciation: "Great atmosphere they've created here for getting work done"
 - Respectful approach: "Excuse me, I don't mean to bother you"
 - Simple introduction: "Hi, I'm [Name] - I work around here"
-- Gentle observation: "This is a great spot to get work done"
+- Positive observation: "Great spot they have here - really productive environment"
 - Low-key approach: "Hope I'm not disturbing you"
 - Casual inquiry: "Is this seat taken?" (if appropriate)
 - Professional but soft: "I think I've seen you here before - are you local?"
