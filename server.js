@@ -732,46 +732,37 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   // NEW: Check if user is rebuilding from a grace period break
   // When resuming after grace, add their previous achievement as "credit" toward next zone
   // BUT ONLY if they were recently in a grace period (not for fresh starts after resets)
-  // DISABLED: Recovery logic was causing bugs - 14 day streaks showing "Coming Alive" instead of "Breaking Through"
-  if (false && currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && daysWithoutActivity > 0 && daysWithoutActivity <= 30) {
-    const levelRequirements = {
-      'Warming Up': 0,
-      'Breaking Through': 7,
-      'Coming Alive': 21,
-      'Charming': 46,
-      'Socialite': 90
-    };
+  // GRACE PERIOD CONTINUATION: Only apply when resuming within a legitimate grace period
+  // This fixes the case where users resume activity after missing days but within grace
+  if (currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && daysWithoutActivity > 0) {
+    // Only apply if they were recently in a grace period (reasonable recent gap)
+    const gracePeriod = gracePeriods[highestLevelAchieved] || 0;
+    const wasInRecentGracePeriod = daysWithoutActivity > 0 && daysWithoutActivity <= gracePeriod + 2; // small buffer
     
-    const previousLevelRequirement = levelRequirements[highestLevelAchieved] || 0;
-    
-    // Calculate effective streak: current streak + credit from previous achievement
-    // This allows users to continue from where they left off
-    const effectiveStreak = currentStreak + previousLevelRequirement;
-    
-    console.log(`🔧 GRACE DEBUG: Recovery calculation - current: ${currentStreak}, credit: ${previousLevelRequirement}, effective: ${effectiveStreak}`);
-    
-    // Determine zone based on effective streak (continuing from where they left off)
-    let recoveryZone = 'Warming Up';
-    if (effectiveStreak >= 90) recoveryZone = 'Socialite';
-    else if (effectiveStreak >= 46) recoveryZone = 'Charming';
-    else if (effectiveStreak >= 21) recoveryZone = 'Coming Alive';
-    else if (effectiveStreak >= 7) recoveryZone = 'Breaking Through';
-    
-    // Never drop below their highest achieved level
-    const levelOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
-    const highestIndex = levelOrder.indexOf(highestLevelAchieved);
-    const recoveryIndex = levelOrder.indexOf(recoveryZone);
-    
-    const finalZone = recoveryIndex >= highestIndex ? recoveryZone : highestLevelAchieved;
-    
-    console.log(`🔧 GRACE DEBUG: Recovery zone: ${finalZone} (effective streak: ${effectiveStreak})`);
-    
-    return {
-      level: finalZone,
-      isInGracePeriod: false,
-      isRecovering: true,
-      effectiveStreak: effectiveStreak
-    };
+    if (wasInRecentGracePeriod) {
+      console.log(`🔧 GRACE CONTINUATION: User resuming after ${daysWithoutActivity} days gap, grace period was ${gracePeriod} days`);
+      
+      const levelRequirements = {
+        'Warming Up': 0,
+        'Breaking Through': 7,
+        'Coming Alive': 21,
+        'Charming': 46,
+        'Socialite': 90
+      };
+      
+      const previousLevelRequirement = levelRequirements[highestLevelAchieved] || 0;
+      
+      // For grace period continuation, give them their previous level immediately
+      // This allows users to continue where they left off after grace periods
+      console.log(`🔧 GRACE CONTINUATION: Returning to ${highestLevelAchieved} level after grace period resume`);
+      
+      return {
+        level: highestLevelAchieved,
+        isInGracePeriod: false,
+        isRecovering: true,
+        graceContinuation: true
+      };
+    }
   }
 
   console.log(`🔧 GRACE DEBUG: No grace period needed, returning current level: ${currentLevel}`);
