@@ -321,29 +321,7 @@ const suggestionRotations = {
   "casual-everyday": ["Neighborhood walk", "Local market", "Bus stop", "Shopping center"]
 };
 
-// Breathwork affirmations pool
-const breathworkAffirmations = [
-  "You are worthy of love and respect—including from yourself",
-  "Your authentic self is enough for any interaction",
-  "Social situations are opportunities, not tests", 
-  "You belong in every room you enter",
-  "Your nervous energy is just excitement in disguise",
-  "People are drawn to genuine confidence",
-  "You have something valuable to offer every conversation",
-  "Your presence matters and makes a difference",
-  "Authentic connections come naturally to you",
-  "You are calm, confident, and completely yourself",
-  "Every interaction is a chance to practice being real",
-  "Your vulnerability is your greatest strength",
-  "You create safe spaces wherever you go",
-  "Other people want to connect with you too",
-  "Your uniqueness is exactly what the world needs",
-  "Social confidence grows with every genuine moment",
-  "You are exactly where you need to be right now",
-  "Your story matters and deserves to be heard",
-  "Authentic conversations flow naturally through you",
-  "You radiate calm confidence and genuine warmth"
-];
+
 
 // Social Zone-based challenge templates
 const socialZoneTemplates = {
@@ -3185,28 +3163,7 @@ Return ONLY a plain text response, no JSON formatting.`;
   }
 });
 
-app.get('/api/breathwork/affirmations', async (req, res) => {
-  try {
-    console.log('Received breathwork affirmations request');
-    
-    // Shuffle the affirmations array and return 10-15 random ones
-    const shuffled = [...breathworkAffirmations].sort(() => 0.5 - Math.random());
-    const selectedAffirmations = shuffled.slice(0, 12);
-    
-    console.log('Returning affirmations:', selectedAffirmations.length);
-    
-    res.json({
-      affirmations: selectedAffirmations
-    });
-    
-  } catch (error) {
-    console.error('Error getting breathwork affirmations:', error);
-    res.status(500).json({ 
-      error: 'Failed to get affirmations', 
-      details: error.message 
-    });
-  }
-});
+
 
 
 
