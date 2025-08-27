@@ -2706,13 +2706,6 @@ FOR CASUAL CONVERSATION:
 - Keep it light, friendly, and focused on starting dialogue rather than proximity requests
 - Use casual, approachable language that invites natural conversation flow
 
-FOR ROMANTIC INTEREST IN QUIET SETTINGS:
-- ABSOLUTELY FORBIDDEN to ask for permission to join/sit/share space or tranquility
-- DO NOT request to share their quiet space, peaceful moment, corner, or any physical proximity
-- Focus on genuine conversation starters about the environment, shared experience, or casual observations
-- Be respectful and non-intrusive while still creating romantic connection opportunities
-- Start actual conversations, not requests for proximity or space sharing
-
 FOR PROFESSIONAL NETWORKING:
 - ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - this is more professional and respectful
 - CRITICAL: MUST end with a QUESTION or direct invitation for response - never just statements
@@ -2747,7 +2740,7 @@ WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Pardon me - would you mind if I shared this quiet space for a bit?" (requesting to join/sit, not starting conversation)
 ❌ "Mind if I sit here?" (asking permission to join, not conversation starter)
 ❌ "Is it okay if I share this table?" (space request, not conversation opener)
-❌ "Mind if I share this quiet corner of tranquility?" (requesting to share space, not conversation starter - even for romantic interest)
+❌ "Mind if I share this quiet corner of tranquility?" (requesting to share space, not conversation starter - applies to casual/professional purposes)
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
@@ -2816,7 +2809,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat similar patterns or phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. PURPOSE-SPECIFIC REQUIREMENTS: For PROFESSIONAL openers, MUST end with a QUESTION or direct invitation for response (Format: 'Greeting + [optional context] + QUESTION'). For CASUAL openers, focus on actual CONVERSATION starters, NOT requests to join/sit/share space. For ROMANTIC INTEREST in quiet settings, ABSOLUTELY FORBIDDEN to ask permission to join/sit/share space or request to share tranquility/peaceful moments - focus on genuine conversation starters instead. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For all purposes in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat similar patterns or phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. PURPOSE-SPECIFIC REQUIREMENTS: For PROFESSIONAL openers, MUST end with a QUESTION or direct invitation for response (Format: 'Greeting + [optional context] + QUESTION'). For CASUAL openers, focus on actual CONVERSATION starters, NOT requests to join/sit/share space. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For all purposes in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
