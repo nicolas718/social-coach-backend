@@ -2701,8 +2701,11 @@ PURPOSE-SPECIFIC GUIDELINES:
 
 FOR PROFESSIONAL NETWORKING:
 - ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - this is more professional and respectful
-- MUST include a conversational hook - don't just make statements, ask questions or create opportunities for response
-- Avoid openers that are just "greeting + statement about yourself" - these give no natural way for others to engage
+- CRITICAL: MUST end with a QUESTION or direct invitation for response - never just statements
+- Professional openers MUST follow format: "Greeting + [optional brief context] + QUESTION"
+- Examples of proper conversational hooks: "Have you tried...?", "Do you know...?", "What do you think of...?", "Are you familiar with...?"
+- FORBIDDEN: Any opener that doesn't end with a question or invitation to respond
+- Avoid openers that are just "greeting + statement about yourself" or "greeting + observation" - these give no natural way for others to engage
 - Create natural, contextual conversation bridges that feel organic to the setting
 - Use positive, appreciative language like "Great facilities/atmosphere/spot" - sounds professional and engaging
 - Show genuine interest without being overly direct or intrusive
@@ -2754,6 +2757,8 @@ WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "This looks like the perfect time to..." (assumes timing assessment)
 ❌ "You seem like you could use..." (assumes their needs/state)
 ❌ "Hello - I've noticed the great setup they have here for training. Still exploring all the options myself." (greeting + statement with no conversational hook)
+❌ "Hello - impressed by the energy everyone brings to their training here. I find it really motivating to be around dedicated people." (greeting + statement, no question)
+❌ "Hello - great to see so many dedicated people here. I'm just getting familiar with this facility myself." (greeting + statement, no question)
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
@@ -2822,7 +2827,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For professional networking in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. MANDATORY FOR PROFESSIONAL OPENERS: MUST end with a QUESTION or direct invitation for response. Format: 'Greeting + [optional context] + QUESTION'. NO greeting + statement patterns allowed. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For professional networking in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
