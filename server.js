@@ -652,7 +652,7 @@ const updateUserStreakWithCallback = (deviceId, actionDate, callback) => {
 };
 
 // Helper function to calculate Social Zone level with grace period logic
-const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLevelAchieved, allTimeMaxStreak) => {
+const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLevelAchieved, allTimeMaxStreak, activityDates = []) => {
   console.log(`🔧 GRACE DEBUG: calculateSocialZoneLevel called with:`, {
     currentStreak,
     daysWithoutActivity,
@@ -745,17 +745,25 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     
     const levelRequirement = baseLevelRequirements[highestLevelAchieved] || 0;
     
-    // Strategic approach: Give credit to users who need help reaching next level
-    // But protect continuous high-performers who are naturally progressing
+    // Detect gaps by checking if activity dates have non-consecutive days
+    const hasActivityGaps = () => {
+      if (!activityDates || activityDates.length < 7) return false;
+      const sorted = [...activityDates].sort();
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = new Date(sorted[i-1] + 'T00:00:00Z');
+        const curr = new Date(sorted[i] + 'T00:00:00Z'); 
+        const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+        if (diffDays > 1) return true; // Found a gap
+      }
+      return false;
+    };
+    
+    // Final approach: Help users who achieved meaningful levels and have evidence of gaps
     const hadMeaningfulLevel = levelRequirement >= 7;
-    const nextLevelRequirements = { 7: 21, 21: 46, 46: 90, 90: 999 };
-    const nextLevelReq = nextLevelRequirements[levelRequirement] || 999;
+    const hasGaps = hasActivityGaps();
     
-    // Don't give credit if they have very high continuous activity (likely natural progression)
-    const hasHighContinuousActivity = currentStreak >= 14 && daysWithoutActivity === 0;
-    
-    // Give credit if: meaningful previous level + not on high continuous streak  
-    const isGraceRecovery = hadMeaningfulLevel && !hasHighContinuousActivity;
+    // Give credit if: meaningful previous level + evidence of gaps in activity pattern
+    const isGraceRecovery = hadMeaningfulLevel && hasGaps;
     
     if (isGraceRecovery) {
       console.log(`🔧 GRACE CONTINUATION: Detected grace recovery - currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}, previousLevel: ${highestLevelAchieved}`);
@@ -1103,7 +1111,7 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
       : 'Warming Up';
     
     // Call the actual function (with allTimeMaxStreak, not lastRun)
-    const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
+    const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak, activityDates);
     
     res.json({
       activityDates,
@@ -1627,7 +1635,8 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
               currentStreak,
               daysSinceActivityForZone,
               lastAchievedLevel,
-              allTimeMaxStreak
+              allTimeMaxStreak,
+              activityDates
             );
 
             console.log(`🔧 ANALYTICS DEBUG: calculateSocialZoneLevel returned:`, zoneInfo);
@@ -2031,7 +2040,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         console.log('- lastAchievedLevel:', lastAchievedLevel);
         console.log('- allTimeMaxStreak:', allTimeMaxStreak);
 
-        const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak);
+        const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak, activityDates);
 
         console.log(`🔧 CLEAN HOME DEBUG: calculateSocialZoneLevel returned:`, zone);
         console.log('!!!!! HOME ZONE RESULT:', zone);
