@@ -719,7 +719,9 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     // If user has gaps and their total activity suggests they achieved a higher level, upgrade their grace level
     if (hasActivityGaps() && allTimeMaxStreak >= 7) {
       const totalActivityDays = (activityDates || []).length;
-      const gapAdjustedLevel = totalActivityDays >= 21 ? 'Coming Alive'
+      const gapAdjustedLevel = totalActivityDays >= 90 ? 'Socialite'
+        : totalActivityDays >= 46 ? 'Charming'
+        : totalActivityDays >= 21 ? 'Coming Alive'
         : totalActivityDays >= 7 ? 'Breaking Through'
         : previousLevel;
       
