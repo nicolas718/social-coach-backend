@@ -2699,6 +2699,13 @@ CRITICAL ANTI-ASSUMPTION RULES:
 
 PURPOSE-SPECIFIC GUIDELINES:
 
+FOR CASUAL CONVERSATION:
+- Focus on actual CONVERSATION starters, not requests to join/sit/share space
+- AVOID openers that ask for permission to join them physically ("Can I sit here?", "Mind if I share this space?")
+- Create genuine conversation hooks about shared experiences, environment, or casual topics
+- Keep it light, friendly, and focused on starting dialogue rather than proximity requests
+- Use casual, approachable language that invites natural conversation flow
+
 FOR PROFESSIONAL NETWORKING:
 - ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - this is more professional and respectful
 - CRITICAL: MUST end with a QUESTION or direct invitation for response - never just statements
@@ -2734,17 +2741,23 @@ QUIET SETTINGS (LIBRARY, COFFEE SHOP):
 - Simple introduction: "Hi, I'm [Name] - I work around here"
 - Positive observation: "Great spot they have here - really productive environment"
 - Low-key approach: "Hope I'm not disturbing you"
-- Casual inquiry: "Is this seat taken?" (if appropriate)
+- Environmental question: "Do you find this a good spot for productivity?"
 - Professional but soft: "I think I've seen you here before - are you local?"
 
-NON-PROFESSIONAL OPENER VARIETY EXAMPLES (STAY GENERAL):
-- Direct: "Mind if I ask you something?"
-- Situational: "This place gets busy around this time, doesn't it?"
-- Casual: "How's it going?"
+CASUAL CONVERSATION OPENER EXAMPLES (STAY GENERAL):
+- Environmental: "This place has such a good atmosphere, doesn't it?"
+- Situational: "It gets pretty busy around this time, doesn't it?"
+- Direct but friendly: "How's it going?"
 - Simple question: "Are you enjoying yourself?"
 - General observation: "Nice place, isn't it?"
-- Time-based: "Perfect timing to be here"
-- With name introduction: "I'm [Name], mind if I join you?"
+- Activity-related: "Good spot to get some work done?"
+- Time-based observation: "Perfect time of day to be here"
+
+AVOID FOR CASUAL (THESE ARE JOINING REQUESTS, NOT CONVERSATION STARTERS):
+- "Mind if I join you?"
+- "Is this seat taken?"
+- "Can I share this space?"
+- "Would you mind if I sat here?"
 
 WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Perfect spot to catch your breath" (assumes they need a break)
@@ -2759,6 +2772,9 @@ WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Hello - I've noticed the great setup they have here for training. Still exploring all the options myself." (greeting + statement with no conversational hook)
 ❌ "Hello - impressed by the energy everyone brings to their training here. I find it really motivating to be around dedicated people." (greeting + statement, no question)
 ❌ "Hello - great to see so many dedicated people here. I'm just getting familiar with this facility myself." (greeting + statement, no question)
+❌ "Pardon me - would you mind if I shared this quiet space for a bit?" (requesting to join/sit, not starting conversation)
+❌ "Mind if I sit here?" (asking permission to join, not conversation starter)
+❌ "Is it okay if I share this table?" (space request, not conversation opener)
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
@@ -2827,7 +2843,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. MANDATORY FOR PROFESSIONAL OPENERS: MUST end with a QUESTION or direct invitation for response. Format: 'Greeting + [optional context] + QUESTION'. NO greeting + statement patterns allowed. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For professional networking in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. PURPOSE-SPECIFIC REQUIREMENTS: For PROFESSIONAL openers, MUST end with a QUESTION or direct invitation for response (Format: 'Greeting + [optional context] + QUESTION'). For CASUAL openers, focus on actual CONVERSATION starters, NOT requests to join/sit/share space - avoid 'Can I sit here?' or 'Mind if I share this space?' patterns. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For all purposes in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
