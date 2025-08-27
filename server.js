@@ -2701,6 +2701,8 @@ PURPOSE-SPECIFIC GUIDELINES:
 
 FOR PROFESSIONAL NETWORKING:
 - ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - this is more professional and respectful
+- MUST include a conversational hook - don't just make statements, ask questions or create opportunities for response
+- Avoid openers that are just "greeting + statement about yourself" - these give no natural way for others to engage
 - Create natural, contextual conversation bridges that feel organic to the setting
 - Use positive, appreciative language like "Great facilities/atmosphere/spot" - sounds professional and engaging
 - Show genuine interest without being overly direct or intrusive
@@ -2751,6 +2753,7 @@ WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Pardon the interruption - this seems like an ideal moment to introduce myself" (assumes interrupting something, assumes timing is good, assumes they want introduction)
 ❌ "This looks like the perfect time to..." (assumes timing assessment)
 ❌ "You seem like you could use..." (assumes their needs/state)
+❌ "Hello - I've noticed the great setup they have here for training. Still exploring all the options myself." (greeting + statement with no conversational hook)
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
