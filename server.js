@@ -2697,32 +2697,25 @@ CRITICAL ANTI-ASSUMPTION RULES:
 - VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
 - STAY COMPLETELY GENERAL - only reference the basic setting type, nothing more specific
 
+OPENER VARIETY EXAMPLES (STAY GENERAL):
+- Direct: "Mind if I ask you something?"
+- Situational: "This place gets busy around this time, doesn't it?"
+- Casual: "How's it going?"
+- Simple question: "Are you enjoying yourself?"
+- General observation: "Nice place, isn't it?"
+- Time-based: "Perfect timing to be here"
+- With name introduction: "I'm [Name], mind if I join you?"
+
 PURPOSE-SPECIFIC GUIDELINES:
 
 FOR CASUAL CONVERSATION:
 - Focus on actual CONVERSATION starters, not requests to join/sit/share space
 - AVOID openers that ask for permission to join them physically or share their space
-- Create genuine conversation hooks about shared experiences, environment, or casual topics
-- Keep it light, friendly, and focused on starting dialogue rather than proximity requests
-- Use casual, approachable language that invites natural conversation flow
 
 FOR PROFESSIONAL NETWORKING:
 - ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - this is more professional and respectful
 - CRITICAL: MUST end with a QUESTION or direct invitation for response - never just statements
 - Professional openers MUST follow format: "Greeting + [optional brief context] + QUESTION"
-- Use proper conversational hooks like questions about experience, familiarity, opinions, or general inquiries
-- FORBIDDEN: Any opener that doesn't end with a question or invitation to respond
-- Avoid openers that are just "greeting + statement about yourself" or "greeting + observation" - these give no natural way for others to engage
-- Create natural, contextual conversation bridges that feel organic to the setting
-- Use positive, appreciative language like "Great facilities/atmosphere/spot" - sounds professional and engaging
-- Show genuine interest without being overly direct or intrusive
-- Use professional-friendly language that's approachable but not too casual
-- Focus on shared experiences in the environment rather than direct asks
-- Build natural conversation flow that can develop into professional connections
-- Avoid sounding random or disconnected from the setting
-- NEVER assume someone wants to be interrupted, especially in quiet settings
-- NEVER assume timing is good or that it's an "ideal moment"
-- NEVER assume what someone is doing or why they're there
 
 WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Perfect spot to catch your breath" (assumes they need a break)
@@ -2748,10 +2741,9 @@ STRICT REQUIREMENTS:
 - Sometimes be brief, sometimes more conversational
 - Mix direct approaches with indirect observations
 - Never repeat the same energy/vibe/atmosphere comments
-- For professional purposes, ensure openers feel natural and contextual rather than randomly direct
 
 Generate:
-1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. Follow the purpose-specific guidelines above. Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing. For professional purposes, ensure the opener feels organic to the setting and builds natural conversation flow.
+1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the purpose/setting
 3. ExitStrategy: Natural way to end the conversation gracefully
 4. Tip: Practical advice for this scenario that focuses on delivery and mindset
@@ -2809,7 +2801,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat similar patterns or phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. PURPOSE-SPECIFIC REQUIREMENTS: For PROFESSIONAL openers, MUST end with a QUESTION or direct invitation for response (Format: 'Greeting + [optional context] + QUESTION'). For CASUAL openers, focus on actual CONVERSATION starters, NOT requests to join/sit/share space. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For all purposes in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
