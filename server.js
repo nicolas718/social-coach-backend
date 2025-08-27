@@ -315,31 +315,31 @@ const socialZoneTemplates = {
     name: "warming_up",
     intent: "Build comfort with initiating light interactions. Very low barrier, short, easy to attempt.",
     challengeType: "Simple icebreakers, noticing others, friendly interactions.",
-    prompt: "Generate a Daily Challenge that helps the user comfortably practice starting light, low-stakes interactions with people around them. Keep it short, positive, and easy to attempt. The tone should be friendly and approachable, avoiding pressure. Ensure it feels fresh and different from previous challenges."
+    prompt: "Create a simple, approachable challenge for light social interactions. Keep it positive, easy, and fresh."
   },
   "Breaking Through": {
     name: "breaking_through", 
     intent: "Move past hesitation and expand interactions beyond one-liners.",
     challengeType: "Slightly longer exchanges, encouraging curiosity and follow-ups.",
-    prompt: "Generate a Daily Challenge that encourages the user to break past small comfort zones by initiating and continuing interactions. The challenge should invite a natural back-and-forth without being forced. Keep it neutral-to-positive, light, and never judgmental. Ensure variety in style and depth from previous challenges."
+    prompt: "Create a challenge that gently pushes past comfort zones with natural back-and-forth interactions. Keep it light and varied."
   },
   "Coming Alive": {
     name: "coming_alive",
     intent: "Show more personality and presence in interactions.",
     challengeType: "Add playfulness, humor, or personal expression while keeping the interaction natural.",
-    prompt: "Generate a Daily Challenge that helps the user express more of their personality during interactions. The challenge should encourage light humor, playfulness, or personal touches in conversation while staying natural and non-repetitive. The tone must remain friendly, curious, and positive."
+    prompt: "Create a challenge that brings out personality through humor, playfulness, or personal expression. Stay natural and positive."
   },
   "Charming": {
     name: "charming",
     intent: "Build attraction and social magnetism through engaging, fun interactions.",
     challengeType: "Confident delivery, socially bold moves, smooth but still approachable.",
-    prompt: "Generate a Daily Challenge that encourages the user to interact with confidence and charm. The challenge should help them practice socially bold but light approaches that feel fun, inviting, and magnetic. Ensure phrasing avoids pressure or judgment, and keep variety by shifting interaction depth and style."
+    prompt: "Create a confident, charming challenge with socially bold yet fun approaches. Make it inviting and magnetic with varied styles."
   },
   "Socialite": {
     name: "socialite",
     intent: "Operate comfortably in dynamic, extroverted environments.",
     challengeType: "Advanced social tasks — longer interactions, group dynamics, or socially leading moments.",
-    prompt: "Generate a Daily Challenge that helps the user act comfortably in dynamic social contexts. The challenge should involve engaging multiple people or sustaining interactions in an outgoing way. Keep it friendly, non-repetitive, and setting-agnostic. Avoid judgmental or evaluative framing, while ensuring challenges feel expansive and socially bold."
+    prompt: "Create an expansive challenge for dynamic social contexts with multiple people or sustained interactions. Keep it outgoing and bold."
   }
 };
 
@@ -2945,7 +2945,7 @@ app.post('/generate-daily-challenge', requireApiKey, aiRateLimit, async (req, re
     console.log(`   Challenge Type: ${template.challengeType}`);
     console.log(`   Date: ${targetDate}`);
     
-    const prompt = `You are a social skills coach who creates progressive social challenges that build confidence gradually. Focus on authentic connection over scripted interactions.
+    const prompt = `You are a social skills coach who creates brief, progressive social challenges. Focus on authentic connection over scripted interactions.
 
 Social Zone Context: ${finalSocialZone}
 Zone Intent: ${template.intent}
@@ -2954,19 +2954,19 @@ Challenge Type: ${template.challengeType}
 ${template.prompt}
 
 Core Rules:
-- Never repetitive: Avoid repeating structure, tone, or style of past challenges
-- Setting-agnostic: Must work in any place where people are present, never tied to a specific environment
-- Tone: Always friendly, curious, and light
-- Use neutral-to-positive starting points that feel natural
-- No judgmental or nagging framing: Never evaluative, critical, or pressuring
-- Balance between shorter/light interactions and deeper/multi-step ones
-- Achieve freshness through shifts in tone, depth, and phrasing
+- Keep everything concise and actionable
+- Never repetitive: Vary structure, wording, and approach style
+- Setting-agnostic: Works anywhere people are present
+- Tone: Friendly, encouraging, light
+- Avoid judgmental or pressuring language
+- Mix brief interactions with slightly deeper ones
+- Create variety through different interaction types and approaches
 
 Generate:
-1. Challenge: The main task to complete (keep it concise, 1-2 sentences)
-2. Description: More detailed explanation of what to do (2-3 sentences)
-3. Tips: Array of 2-3 practical tips for completing this challenge successfully
-4. WhyThisMatters: Explanation of the benefits and reasoning behind this challenge
+1. Challenge: Main task (1 sentence, max 15 words)
+2. Description: Brief explanation (1-2 sentences, max 25 words total)
+3. Tips: 2-3 short, practical tips (each max 8 words)
+4. WhyThisMatters: Brief benefit explanation (1 sentence, max 15 words)
 
 Return ONLY valid JSON with fields: challenge, description, tips, whyThisMatters. 
 Format tips as an array of strings: ["tip 1", "tip 2", "tip 3"]
