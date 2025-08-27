@@ -960,47 +960,9 @@ app.get('/api/test/auth', (req, res) => {
   });
 });
 
-// Debug endpoint to check environment (NO AUTH REQUIRED)
-app.get('/debug/env-check', (req, res) => {
-  const apiKeySet = !!process.env.FRONTEND_API_KEY;
-  const keyLength = process.env.FRONTEND_API_KEY ? process.env.FRONTEND_API_KEY.length : 0;
-  const firstChars = process.env.FRONTEND_API_KEY ? process.env.FRONTEND_API_KEY.substring(0, 10) : 'NOT_SET';
-  const lastChars = process.env.FRONTEND_API_KEY ? process.env.FRONTEND_API_KEY.slice(-10) : 'NOT_SET';
-  
-  res.json({
-    status: 'debug',
-    frontend_api_key_configured: apiKeySet,
-    key_length: keyLength,
-    key_preview: `${firstChars}...${lastChars}`,
-    deployment_time: new Date().toISOString()
-  });
-});
+// Debug endpoint removed for security - exposed API key fragments
 
-// Debug endpoint for AWS Bedrock configuration (NO AUTH REQUIRED)
-app.get('/debug/bedrock-config', (req, res) => {
-  const bedrockKeySet = !!process.env.BEDROCK_API_KEY;
-  const bedrockKeyPreview = process.env.BEDROCK_API_KEY ? 
-    `${process.env.BEDROCK_API_KEY.substring(0, 10)}...${process.env.BEDROCK_API_KEY.slice(-10)}` : 'NOT_SET';
-  const endpointSet = !!process.env.BEDROCK_ENDPOINT;
-  const modelIdSet = !!process.env.MODEL_ID;
-  
-  // Construct the full endpoint URL
-  const fullEndpoint = process.env.BEDROCK_ENDPOINT && process.env.MODEL_ID ? 
-    `${process.env.BEDROCK_ENDPOINT}/model/${process.env.MODEL_ID}/invoke` : 'NOT_CONFIGURED';
-  
-  res.json({
-    status: 'debug',
-    bedrock_api_key_configured: bedrockKeySet,
-    bedrock_key_preview: bedrockKeyPreview,
-    bedrock_key_length: process.env.BEDROCK_API_KEY ? process.env.BEDROCK_API_KEY.length : 0,
-    bedrock_endpoint_configured: endpointSet,
-    bedrock_endpoint: process.env.BEDROCK_ENDPOINT || 'NOT_SET',
-    model_id_configured: modelIdSet,
-    model_id: process.env.MODEL_ID || 'NOT_SET',
-    full_endpoint_url: fullEndpoint,
-    deployment_time: new Date().toISOString()
-  });
-});
+// Debug endpoint removed for security - exposed Bedrock API key fragments
 
 // Debug all activities for a device
 app.get('/api/debug/all-activities/:deviceId', (req, res) => {
@@ -2718,7 +2680,7 @@ app.post('/generate-opener', requireApiKey, aiRateLimit, async (req, res) => {
     // Handle optional context
     const contextText = context && context.trim() ? context : `a ${setting} environment`;
     
-    // Create base prompt
+    // Create base prompt with purpose-specific guidelines
     let prompt = `Create a conversation opener for:
 
 Purpose: ${purpose}
@@ -2735,7 +2697,38 @@ CRITICAL ANTI-ASSUMPTION RULES:
 - VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
 - STAY COMPLETELY GENERAL - only reference the basic setting type, nothing more specific
 
-OPENER VARIETY EXAMPLES (STAY GENERAL):
+PURPOSE-SPECIFIC GUIDELINES:
+
+FOR PROFESSIONAL NETWORKING:
+- Create natural, contextual conversation bridges that feel organic to the setting
+- Show genuine interest without being overly direct or intrusive
+- Use professional-friendly language that's approachable but not too casual
+- Focus on shared experiences in the environment rather than direct asks
+- Build natural conversation flow that can develop into professional connections
+- Avoid sounding random or disconnected from the setting
+- NEVER assume someone wants to be interrupted, especially in quiet settings
+- NEVER assume timing is good or that it's an "ideal moment"
+- NEVER assume what someone is doing or why they're there
+
+PROFESSIONAL OPENER VARIETY BY SETTING TYPE:
+
+ACTIVE SETTINGS (GYM, SPORTS):
+- Environmental observation: "I've been coming here for a while - great facility"
+- Shared experience: "Busy time of day to work out, isn't it?"
+- Gentle inquiry: "Do you happen to know if they have [general facility question]?"
+- Natural approach: "I don't think we've met - I'm [Name]"
+- Activity-related: "How long have you been training here?"
+- Contextual timing: "Perfect time to get a workout in"
+
+QUIET SETTINGS (LIBRARY, COFFEE SHOP):
+- Respectful approach: "Excuse me, I don't mean to bother you"
+- Simple introduction: "Hi, I'm [Name] - I work around here"
+- Gentle observation: "This is a great spot to get work done"
+- Low-key approach: "Hope I'm not disturbing you"
+- Casual inquiry: "Is this seat taken?" (if appropriate)
+- Professional but soft: "I think I've seen you here before - are you local?"
+
+NON-PROFESSIONAL OPENER VARIETY EXAMPLES (STAY GENERAL):
 - Direct: "Mind if I ask you something?"
 - Situational: "This place gets busy around this time, doesn't it?"
 - Casual: "How's it going?"
@@ -2744,12 +2737,16 @@ OPENER VARIETY EXAMPLES (STAY GENERAL):
 - Time-based: "Perfect timing to be here"
 - With name introduction: "I'm [Name], mind if I join you?"
 
-WRONG EXAMPLES (TOO SPECIFIC):
+WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "Perfect spot to catch your breath" (assumes they need a break)
 ❌ "The corner couches are great" (assumes specific furniture/location)
 ❌ "Great for people-watching" (assumes specific activity)
 ❌ "That drink looks good" (assumes what they're drinking)
 ❌ "You look relaxed" (assumes their mood/state)
+❌ "I'd love to hear your professional insights" (too direct/random for most settings)
+❌ "Pardon the interruption - this seems like an ideal moment to introduce myself" (assumes interrupting something, assumes timing is good, assumes they want introduction)
+❌ "This looks like the perfect time to..." (assumes timing assessment)
+❌ "You seem like you could use..." (assumes their needs/state)
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
@@ -2757,9 +2754,10 @@ STRICT REQUIREMENTS:
 - Sometimes be brief, sometimes more conversational
 - Mix direct approaches with indirect observations
 - Never repeat the same energy/vibe/atmosphere comments
+- For professional purposes, ensure openers feel natural and contextual rather than randomly direct
 
 Generate:
-1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
+1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. Follow the purpose-specific guidelines above. Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing. For professional purposes, ensure the opener feels organic to the setting and builds natural conversation flow.
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the purpose/setting
 3. ExitStrategy: Natural way to end the conversation gracefully
 4. Tip: Practical advice for this scenario that focuses on delivery and mindset
@@ -2817,7 +2815,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. ULTRA IMPORTANT: NEVER MAKE ASSUMPTIONS about timing, interruptions, what someone is doing, or their state of mind. For professional networking in quiet settings (library, coffee shop), be especially respectful and non-assumptive. Create natural contextual bridges that feel organic rather than randomly direct. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
