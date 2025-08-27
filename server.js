@@ -768,12 +768,12 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     if (isGraceRecovery) {
       console.log(`🔧 GRACE CONTINUATION: Detected grace recovery - currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}, previousLevel: ${highestLevelAchieved}`);
       
-      // For grace period continuation, give them credit toward the next level
-      // This allows users to continue building where they left off after grace periods
-      const previousLevelRequirement = levelRequirement;
-      const effectiveStreak = currentStreak + previousLevelRequirement;
+      // For grace period continuation, give them credit for their actual previous progress
+      // This allows users to continue building where they left off after grace periods  
+      const creditDays = Math.max(levelRequirement, allTimeMaxStreak); // Use actual previous streak, not just level requirement
+      const effectiveStreak = currentStreak + creditDays;
       
-      console.log(`🔧 GRACE CONTINUATION: Adding ${previousLevelRequirement} credit days. Effective streak: ${effectiveStreak}`);
+      console.log(`🔧 GRACE CONTINUATION: Adding ${creditDays} credit days. Effective streak: ${effectiveStreak}`);
       
       // Determine zone based on effective streak (continuing from where they left off)
       let recoveryZone = 'Warming Up';
