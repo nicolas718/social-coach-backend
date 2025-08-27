@@ -732,23 +732,27 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   // NEW: Check if user is rebuilding from a grace period break
   // When resuming after grace, add their previous achievement as "credit" toward next zone
   // BUT ONLY if they were recently in a grace period (not for fresh starts after resets)
-  // GRACE PERIOD CONTINUATION: Detect users resuming after recent grace periods
-  // This fixes the case where users resume activity after missing days but within grace
-  if (currentStreak > 0 && currentStreak <= 3 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && allTimeMaxStreak > currentStreak) {
-    // Check if this looks like a grace period recovery scenario:
-    // - Small current streak (1-3 days) suggests recent restart
-    // - Much higher allTimeMaxStreak suggests they had a higher level before
-    // - highestLevelAchieved suggests they recently achieved a higher level
+  // GRACE PERIOD CONTINUATION: Only for users who had gaps and are rebuilding
+  // This gives credit to users resuming after legitimate breaks, NOT continuous streaks
+  if (currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && allTimeMaxStreak > currentStreak && daysWithoutActivity === 0) {
+    // CRITICAL: Only apply when:
+    // 1. They previously achieved a higher level (highestLevelAchieved)
+    // 2. Their all-time max shows they had a better streak before (allTimeMaxStreak > currentStreak)  
+    // 3. They're currently active (daysWithoutActivity === 0) so this isn't during grace period
+    // 4. Current streak is much smaller than what they achieved before (indicates recovery)
+    
     const baseLevelRequirements = {
       'Warming Up': 0,
-      'Breaking Through': 7,
+      'Breaking Through': 7,  
       'Coming Alive': 21,
       'Charming': 46,
       'Socialite': 90
     };
     
     const levelRequirement = baseLevelRequirements[highestLevelAchieved] || 0;
-    const isLikelyGraceRecovery = allTimeMaxStreak >= levelRequirement && currentStreak < levelRequirement;
+    const hadSignificantAchievement = allTimeMaxStreak >= levelRequirement;
+    const isSmallCurrentStreak = currentStreak < (levelRequirement * 0.5); // Less than half their previous achievement
+    const isLikelyGraceRecovery = hadSignificantAchievement && isSmallCurrentStreak;
     
     if (isLikelyGraceRecovery) {
       console.log(`🔧 GRACE CONTINUATION: Detected grace recovery - currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}, previousLevel: ${highestLevelAchieved}`);
