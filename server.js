@@ -732,7 +732,8 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   // NEW: Check if user is rebuilding from a grace period break
   // When resuming after grace, add their previous achievement as "credit" toward next zone
   // BUT ONLY if they were recently in a grace period (not for fresh starts after resets)
-  if (currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && daysWithoutActivity > 0 && daysWithoutActivity <= 30) {
+  // DISABLED: Recovery logic was causing bugs - 14 day streaks showing "Coming Alive" instead of "Breaking Through"
+  if (false && currentStreak > 0 && highestLevelAchieved && highestLevelAchieved !== 'Warming Up' && daysWithoutActivity > 0 && daysWithoutActivity <= 30) {
     const levelRequirements = {
       'Warming Up': 0,
       'Breaking Through': 7,
