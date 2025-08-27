@@ -753,15 +753,35 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     if (isLikelyGraceRecovery) {
       console.log(`🔧 GRACE CONTINUATION: Detected grace recovery - currentStreak: ${currentStreak}, allTimeMax: ${allTimeMaxStreak}, previousLevel: ${highestLevelAchieved}`);
       
-      // For grace period continuation, give them their previous level immediately
-      // This allows users to continue where they left off after grace periods
-      console.log(`🔧 GRACE CONTINUATION: Returning to ${highestLevelAchieved} level after grace period resume`);
+      // For grace period continuation, give them credit toward the next level
+      // This allows users to continue building where they left off after grace periods
+      const previousLevelRequirement = levelRequirement;
+      const effectiveStreak = currentStreak + previousLevelRequirement;
+      
+      console.log(`🔧 GRACE CONTINUATION: Adding ${previousLevelRequirement} credit days. Effective streak: ${effectiveStreak}`);
+      
+      // Determine zone based on effective streak (continuing from where they left off)
+      let recoveryZone = 'Warming Up';
+      if (effectiveStreak >= 90) recoveryZone = 'Socialite';
+      else if (effectiveStreak >= 46) recoveryZone = 'Charming';
+      else if (effectiveStreak >= 21) recoveryZone = 'Coming Alive';
+      else if (effectiveStreak >= 7) recoveryZone = 'Breaking Through';
+      
+      // Never drop below their highest achieved level
+      const levelOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+      const highestIndex = levelOrder.indexOf(highestLevelAchieved);
+      const recoveryIndex = levelOrder.indexOf(recoveryZone);
+      
+      const finalZone = recoveryIndex >= highestIndex ? recoveryZone : highestLevelAchieved;
+      
+      console.log(`🔧 GRACE CONTINUATION: Final zone: ${finalZone} (effective streak: ${effectiveStreak})`);
       
       return {
-        level: highestLevelAchieved,
+        level: finalZone,
         isInGracePeriod: false,
         isRecovering: true,
-        graceContinuation: true
+        graceContinuation: true,
+        effectiveStreak: effectiveStreak
       };
     }
   }
