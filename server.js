@@ -2700,6 +2700,7 @@ CRITICAL ANTI-ASSUMPTION RULES:
 PURPOSE-SPECIFIC GUIDELINES:
 
 FOR PROFESSIONAL NETWORKING:
+- ALWAYS start professional openers with a polite greeting (Hi, Hello, Hi there, etc.) - this is more professional and respectful
 - Create natural, contextual conversation bridges that feel organic to the setting
 - Use positive, appreciative language like "Great facilities/atmosphere/spot" - sounds professional and engaging
 - Show genuine interest without being overly direct or intrusive
