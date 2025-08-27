@@ -305,21 +305,7 @@ db.serialize(() => {
   });
 });
 
-// Hardcoded suggestion rotations for each purpose + setting combination
-const suggestionRotations = {
-  "romantic-active": ["At squat rack", "During yoga class", "Rock climbing wall", "Morning run route"],
-  "romantic-quiet": ["Coffee shop corner", "Library study area", "Bookstore aisle", "Museum gallery"],
-  "romantic-social": ["House party", "Bar counter", "Concert venue", "Dancing floor"],
-  "romantic-everyday": ["Grocery checkout", "Waiting in line", "Dog park", "Farmers market"],
-  "professional-active": ["Gym networking", "Running group", "Fitness class", "Sports club"],
-  "professional-quiet": ["Co-working space", "Hotel lobby", "Conference area", "Study lounge"],
-  "professional-social": ["Networking event", "Happy hour", "Industry meetup", "Work party"],
-  "professional-everyday": ["Coffee meeting", "Lunch spot", "Transit hub", "Business district"],
-  "casual-active": ["Pickup basketball", "Hiking group", "Beach volleyball", "Park workout"],
-  "casual-quiet": ["Local cafe", "Reading corner", "Study group", "Quiet workspace"],
-  "casual-social": ["Trivia night", "Game night", "Community event", "Social gathering"],
-  "casual-everyday": ["Neighborhood walk", "Local market", "Bus stop", "Shopping center"]
-};
+
 
 
 
@@ -2722,25 +2708,7 @@ app.get('/api/debug/raw-data/:deviceId', (req, res) => {
   });
 });
 
-app.post('/generate-suggestions', aiRateLimit, async (req, res) => {
-  try {
-    const { purpose, setting } = req.body;
-    console.log('Received suggestions request:', { purpose, setting });
-    
-    const key = `${purpose}-${setting}`;
-    const suggestions = suggestionRotations[key] || ["General location", "Another spot", "Third place", "Fourth option"];
-    
-    console.log('Returning hardcoded suggestions for:', key, suggestions);
-    res.json({ suggestions });
-    
-  } catch (error) {
-    console.error('Error getting suggestions:', error);
-    res.status(500).json({ 
-      error: 'Failed to get suggestions', 
-      details: error.message 
-    });
-  }
-});
+
 
 app.post('/generate-opener', requireApiKey, aiRateLimit, async (req, res) => {
   try {

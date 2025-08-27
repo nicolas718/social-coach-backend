@@ -7,10 +7,7 @@ Backend API for the Social Coach iOS app. Generates conversation openers and qui
 
 ## Endpoints
 
-### Generate Quick Suggestions
-POST /generate-suggestions
-Body: { "purpose": "romantic", "setting": "quiet" }
-Response: { "suggestions": ["suggestion1", "suggestion2", ...] }
+
 
 ### Generate Conversation Opener
 POST /generate-opener
