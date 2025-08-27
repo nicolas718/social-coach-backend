@@ -692,14 +692,41 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
     console.log(`🔧 GRACE DEBUG: Streak is broken, checking grace period logic`);
     
     // Determine the last achieved level before the miss.
-    // Prefer explicit highestLevelAchieved (caller may pass last-run level),
-    // otherwise derive from all-time max streak as a fallback.
+    // IMPORTANT: Check if user previously achieved a higher level through grace continuation
+    // by looking at their activity pattern for evidence of grace continuation achievements
     let previousLevel = highestLevelAchieved || 'Warming Up';
     if (!highestLevelAchieved) {
       if (allTimeMaxStreak >= 90) previousLevel = 'Socialite';
       else if (allTimeMaxStreak >= 46) previousLevel = 'Charming';
       else if (allTimeMaxStreak >= 21) previousLevel = 'Coming Alive';
       else if (allTimeMaxStreak >= 7) previousLevel = 'Breaking Through';
+    }
+    
+    // BUGFIX: If user has gaps in their activity (indicating grace continuation usage),
+    // check if they could have achieved a higher level through grace continuation
+    const hasActivityGaps = () => {
+      if (!activityDates || activityDates.length < 7) return false;
+      const sorted = [...activityDates].sort();
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = new Date(sorted[i-1] + 'T00:00:00Z');
+        const curr = new Date(sorted[i] + 'T00:00:00Z'); 
+        const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+        if (diffDays > 1) return true;
+      }
+      return false;
+    };
+    
+    // If user has gaps and their total activity suggests they achieved a higher level, upgrade their grace level
+    if (hasActivityGaps() && allTimeMaxStreak >= 7) {
+      const totalActivityDays = (activityDates || []).length;
+      const gapAdjustedLevel = totalActivityDays >= 21 ? 'Coming Alive'
+        : totalActivityDays >= 7 ? 'Breaking Through'
+        : previousLevel;
+      
+      if (gapAdjustedLevel !== previousLevel) {
+        console.log(`🔧 GRACE BUGFIX: Upgrading grace level from ${previousLevel} to ${gapAdjustedLevel} based on total activity (${totalActivityDays} days)`);
+        previousLevel = gapAdjustedLevel;
+      }
     }
 
     console.log(`🔧 GRACE DEBUG: Previous level based on highestLevelAchieved(${highestLevelAchieved}) and allTimeMaxStreak(${allTimeMaxStreak}): ${previousLevel}`);
@@ -796,7 +823,8 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
         isInGracePeriod: false,
         isRecovering: true,
         graceContinuation: true,
-        effectiveStreak: effectiveStreak
+        effectiveStreak: effectiveStreak,
+        newHighestAchieved: finalZone  // Record the new level achieved through grace continuation
       };
     }
   }
@@ -1112,6 +1140,16 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
     
     // Call the actual function (with allTimeMaxStreak, not lastRun)
     const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak, activityDates);
+    
+    // If user achieved a higher level through grace continuation, update their achieved level for future calculations
+    if (zone.newHighestAchieved) {
+      const achievedLevelRequirements = { 'Breaking Through': 7, 'Coming Alive': 21, 'Charming': 46, 'Socialite': 90 };
+      const achievedRequirement = achievedLevelRequirements[zone.newHighestAchieved] || 0;
+      
+      // Use the higher of their raw streak or grace-continuation achievement for future grace calculations
+      const effectiveAchievementLevel = zone.newHighestAchieved;
+      console.log(`🔧 GRACE UPDATE: User achieved ${effectiveAchievementLevel} through grace continuation - updating for future grace periods`);
+    }
     
     res.json({
       activityDates,
