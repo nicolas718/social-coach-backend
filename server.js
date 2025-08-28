@@ -2746,7 +2746,7 @@ Context: ${contextText}
 * VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
 * CREATE COMPLETELY DIFFERENT OPENERS each time — avoid repeating any phrases or patterns
 * STAY COMPLETELY GENERAL — only reference basic setting type
-* NEVER say "Whew" — avoid this word completely
+* NEVER say "Whew" or "magnetic" — avoid these words completely
 
 ## RESPONSE HANDLING:
 • POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest
@@ -2761,7 +2761,7 @@ Context: ${contextText}
 SUMMARY: Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
 
 Generate:
-1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros, occasionally use environment observations. Use simple, natural language - avoid unnecessary adjectives. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
+1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros, occasionally use environment observations. Use simple, natural language - avoid unnecessary adjectives. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew" or "magnetic"
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2823,7 +2823,7 @@ Generate:
 * VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
 * CREATE COMPLETELY DIFFERENT OPENERS each time — avoid repeating any phrases or patterns
 * STAY COMPLETELY GENERAL — only reference basic setting type
-* NEVER say "Whew" — avoid this word completely
+* NEVER say "Whew" or "magnetic" — avoid these words completely
 
 ## RESPONSE HANDLING:
 • POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest
