@@ -2742,18 +2742,22 @@ WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "I'd love to hear your professional insights" (too direct/random for most settings - PROFESSIONAL problem)
 ❌ "Making connections in an active environment - I'd love to hear your professional insights." (too direct, assumes they want to share insights - PROFESSIONAL problem)
 
-ROMANTIC OPENERS - AVOID THESE CRINGY PATTERNS:
+ROMANTIC OPENERS - CRITICAL ERRORS TO AVOID:
 ❌ "The energy in here is contagious, isn't it?" (clichéd energy comment)
 ❌ "The vibe here is amazing - makes me want to..." (forced enthusiasm about vibe)
 ❌ "Looking energized today - care to race me to..." (overly forward, assumptive)
+❌ "Taking a quick breather myself - nice to cross paths" (ASSUMES what they're doing)
 ❌ "I love the atmosphere here, perfect for meeting someone new" (try-hard, obvious intent)
 ❌ "This place has such good energy for connecting with people" (forced, unnatural)
 ❌ "The energy here always motivates me to start conversations" (self-centered, try-hard)
 ❌ "Can't help but be drawn to the energy you bring" (overly forward, pickup-line territory)
 ❌ "Something about this place makes me feel social" (explaining your behavior, weird)
+❌ "Perfect form matters everywhere, doesn't it?" (ASSUMES they care about form/technique)
 ❌ Any opener that mentions "energy," "vibe," "atmosphere" + wanting to meet/connect (clichéd combo)
 ❌ Overly enthusiastic exclamations or forced charm attempts
 ❌ Starting with compliments about their energy/vibe (too forward, pickup-line territory)
+❌ NEVER assume what someone is doing, thinking, or why they're there
+❌ NEVER assume shared activities or experiences ("taking a breather myself", "both here doing X")
 
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
@@ -2763,7 +2767,7 @@ STRICT REQUIREMENTS:
 - Never repeat the same energy/vibe/atmosphere comments
 
 Generate:
-1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. ${purpose.toLowerCase() === 'romantic' ? 'For ROMANTIC openers: ABSOLUTELY AVOID any mention of "energy," "vibe," or "atmosphere" combined with meeting/connecting. Start with a calm, brief acknowledgment of the shared moment/environment, then transition naturally to genuine conversation. Keep tone relaxed and composed - NO enthusiasm, NO try-hard charm, NO pickup lines. Think calm confidence, not forced excitement. Focus on authentic curiosity about their experience, not clever lines or compliments.' : ''} Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
+1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. ${purpose.toLowerCase() === 'romantic' ? 'For ROMANTIC openers: ABSOLUTELY CRITICAL - NEVER assume what someone is doing, why they\'re there, or what they\'re thinking. NO "taking a breather myself," NO "both here doing X," NO assumptions about their activities or state. AVOID any mention of "energy," "vibe," or "atmosphere." Start with a simple, direct approach - just say hello and ask a general question. Keep tone calm and composed - NO enthusiasm, NO try-hard charm, NO pickup lines. Use simple, direct language like "Hi there, how\'s it going?" or "Mind if I ask how you like this place?" Focus on basic, assumption-free conversation starters.' : ''} Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the purpose/setting
 3. ExitStrategy: Natural way to end the conversation gracefully
 4. Tip: Practical advice for this scenario that focuses on delivery and mindset
@@ -2828,7 +2832,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. For ROMANTIC openers specifically: ABSOLUTELY NEVER use words like 'energy,' 'vibe,' 'atmosphere,' 'contagious,' or any overly enthusiastic language. Romantic openers must be CALM, COMPOSED, and naturally curious - no pickup lines, no forced charm, no try-hard enthusiasm. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. For ROMANTIC openers specifically: ABSOLUTELY NEVER make assumptions about what someone is doing, thinking, or why they're there. NO phrases like 'taking a breather myself,' 'both here doing X,' 'perfect form matters,' or ANY assumption about their activities or state. NEVER use words like 'energy,' 'vibe,' 'atmosphere,' 'contagious,' or overly enthusiastic language. Romantic openers must be SIMPLE, DIRECT, CALM - use basic greetings like 'Hi, how's it going?' or 'Mind if I ask how you like this place?' No assumptions, no pickup lines, no forced charm. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
