@@ -2691,64 +2691,71 @@ Purpose: ${purpose}
 Setting: ${setting}  
 Context: ${contextText}
 
-❤️ ROMANTIC INTEREST OPENER GUIDELINES:
-🎯 CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational
+# ROMANTIC INTEREST OPENER FRAMEWORK
 
-FORMULA: [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
+### CORE GOALS:
+1. Be non-threatening — casual, approachable, friendly
+2. Be positive/neutral — never judgmental, naggy, or teasing
+3. Be engaging — sparks curiosity and invites a reply
+4. Be situational — context-aware, relevant to environment/activity
+5. Show interest
 
-ROMANTIC-SPECIFIC RULES:
-- ABSOLUTELY CRITICAL - NEVER assume what someone is doing, why they're there, or what they're thinking
-- NEVER assume shared activities, experiences, or timing
-- AVOID any mention of "energy," "vibe," or "atmosphere"
-- Start with a simple, direct approach - just say hello and ask a general question
-- Keep tone calm and composed - NO enthusiasm, NO try-hard charm, NO pickup lines
-- Use placeholders instead of specifics: say "[ACTIVITY]" instead of "yoga class" or "[EQUIPMENT]" instead of "treadmill"
-- Focus on basic, assumption-free conversation starters
-- Keep tone friendly, curious, and light
-- Make only neutral observations about the general environment, never specific activities or equipment
-- Avoid judgmental framing
-- If they seem busy/distracted, acknowledge it respectfully
+## FORMULA:
+Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
 
-WHAT NOT TO SAY (ASSUMPTION EXAMPLES):
-❌ "Mind if I grab a quick water break too?" (assumes they're on a break)
-❌ "First time trying this style of [ACTIVITY]" (assumes their experience level)
-❌ "How do you find these morning classes?" (assumes time of day and frequency)
-❌ "That [SPECIFIC EQUIPMENT] looks challenging" (assumes difficulty level)
-❌ "Taking a rest between sets myself" (assumes what they're doing)
-❌ "Been coming here long?" (assumes they come regularly)
-❌ "This place gets busy around this time" (assumes timing patterns)
-❌ "Looks like you're finishing up" (assumes their status/progress)
+## OPENER TYPES:
+• Situational Observation — comment on what's happening around you
+• Personal Observation (Tasteful) — notice a detail without judging
+• Opinion Question — invite perspective on something light and relevant
+• Genuine Compliment + Follow-Up — compliment naturally tied to a question
+
+## RULES FOR DELIVERY:
+• Tone should be friendly, curious, and light
+• Avoid judgmental framing:
+  - Example to avoid: "Why are you on your phone?"
+  - Example recommended: "Do you usually train here, or just trying it out?"
+• Focus on neutral-to-positive hooks — environment, activity, shared context
+
+SUMMARY: Opener = [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]
 
 Generate:
-1. Opener: Create a simple, direct conversation starter using the romantic framework above - NO assumptions about what they're doing, their experience, timing, or status. Use placeholders like [ACTIVITY] or [LOCATION] instead of specifics. NO energy/vibe language, just friendly and genuine
+1. Opener: Create a conversation starter following the framework above - use the formula [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]. Be non-threatening, positive/neutral, engaging, and situational
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
 5. Confidence Boost: Encouraging message that builds genuine confidence
 6. ResponseFramework: Include this romantic response framework as a single string:
 
-❤️ ROMANTIC INTEREST RESPONSE FRAMEWORK
-🎯 CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational
+# ROMANTIC INTEREST RESPONSE FRAMEWORK
 
-FORMULA: [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
+## CORE GOALS:
+1. Be non-threatening — casual, approachable, friendly
+2. Be positive/neutral — never judgmental, naggy, or teasing  
+3. Be engaging — sparks curiosity and invites a reply
+4. Be situational — context-aware, relevant to environment/activity
+5. Show interest
 
-RESPONSE HANDLING:
+## FORMULA:
+Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
+
+## RESPONSE HANDLING:
 • POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
 • NEUTRAL RESPONSE (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
 • NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
 
-DELIVERY RULES:
-- Keep tone friendly, curious, and light
-- Make only general observations about the environment - NEVER assume specific activities, equipment, or timing
-- Use placeholders like [LOCATION] or [SETTING] instead of specific references
-- Avoid judgmental framing
-- NEVER assume what they're doing or why they're there
-- If they seem busy/distracted, acknowledge it respectfully without assuming what they're busy with
+## DELIVERY RULES:
+• Tone should be friendly, curious, and light
+• Avoid judgmental framing:
+  - Example to avoid: "Why are you on your phone?"
+  - Example recommended: "Do you usually train here, or just trying it out?"
+• Focus on neutral-to-positive hooks — environment, activity, shared context
 
-BODY LANGUAGE CUES:
-- Open posture + eye contact = green light to continue
-- Polite but closed posture = keep it brief and respectful
-- Looking away/phone/headphones = respect the boundary
+## BODY LANGUAGE CUES:
+• Open posture + eye contact = green light to continue
+• Polite but closed posture = keep it brief and respectful  
+• Looking away/phone/headphones = respect the boundary
+
+SUMMARY: Opener = [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]
 
 Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework (MUST be a single string, not an object)`;
     } else {
