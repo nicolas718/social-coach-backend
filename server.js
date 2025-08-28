@@ -2703,7 +2703,9 @@ Context: ${contextText}
 7. Be seductive but playful — create intrigue without being pushy
 
 ## FORMULA:
-Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
+**PRIORITIZE DIRECT APPROACH:**
+• Direct Intro Start = [Direct Personal Intro] + [Observation/Compliment] + [Light Question]
+• (Occasionally Environmental Start = [Environment Observation] + [Personal Observation/Compliment] + [Light Question])
 
 ## OPENER TYPES:
 • Situational Observation — comment on what's happening around you
@@ -2723,8 +2725,7 @@ Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [L
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
-* **FOR ACTIVE SETTINGS (GYM/SPORTS): ALWAYS start with direct personal intros** ("Couldn't help noticing...") since people have headphones
-* **FOR OTHER SETTINGS: VARY 50/50** between environment observations and direct personal intros
+* **PRIORITIZE DIRECT PERSONAL INTROS:** Usually start with direct personal intros ("Couldn't help noticing..."), occasionally use environment observations
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
@@ -2756,7 +2757,7 @@ Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [L
 SUMMARY: Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
 
 Generate:
-1. Opener: Create a conversation starter following the framework above. **FOR ACTIVE SETTINGS (GYM/SPORTS): ALWAYS start with direct personal intros** since people have headphones. **FOR OTHER SETTINGS: VARY 50/50** between environment observations and direct intros. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
+1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros ("Couldn't help noticing..."), occasionally use environment observations. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2775,7 +2776,9 @@ Generate:
 7. Be seductive but playful — create intrigue without being pushy
 
 ## FORMULA:
-Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
+**PRIORITIZE DIRECT APPROACH:**
+• Direct Intro Start = [Direct Personal Intro] + [Observation/Compliment] + [Light Question]
+• (Occasionally Environmental Start = [Environment Observation] + [Personal Observation/Compliment] + [Light Question])
 
 ## OPENER TYPES:
 • Situational Observation — comment on what's happening around you
@@ -2795,8 +2798,7 @@ Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [L
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
-* **FOR ACTIVE SETTINGS (GYM/SPORTS): ALWAYS start with direct personal intros** ("Couldn't help noticing...") since people have headphones
-* **FOR OTHER SETTINGS: VARY 50/50** between environment observations and direct personal intros
+* **PRIORITIZE DIRECT PERSONAL INTROS:** Usually start with direct personal intros ("Couldn't help noticing..."), occasionally use environment observations
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
