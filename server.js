@@ -3558,8 +3558,8 @@ function formatOpenerDate(dateString) {
   }
 }
 
-// CONVERSATION PRACTICE API
-app.get('/api/conversation-practice/:deviceId', async (req, res) => {
+// CONVERSATION PRACTICE API - Content Generation Only
+app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate } = req.query;
@@ -3568,7 +3568,7 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE: Device ${deviceId}, Current Date: ${currentDate}`);
+    console.log(`🎭 CONVERSATION PRACTICE: Generating scenarios for Device ${deviceId}, Date: ${currentDate}`);
     
     // Use current date or simulated date
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
@@ -3576,7 +3576,7 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
     
     // Check if we already have scenarios for this date
     db.get(
-      "SELECT * FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
+      "SELECT scenarios_json FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
       [deviceId, dateKey],
       async (err, existing) => {
         if (err) {
@@ -3585,17 +3585,9 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
         }
         
         if (existing) {
-          // Return existing scenarios with completion status, score, and user answers
+          // Return existing scenarios (content only)
           console.log(`🎭 CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
           const scenariosData = JSON.parse(existing.scenarios_json);
-          scenariosData.isCompleted = !!existing.completed;
-          scenariosData.score = existing.score || 0;
-          
-          // Include user answers if they exist (for review mode)
-          if (existing.user_answers) {
-            scenariosData.userAnswers = JSON.parse(existing.user_answers);
-          }
-          
           return res.json(scenariosData);
         }
         
@@ -3695,8 +3687,7 @@ Return ONLY valid JSON in this exact format:
             }
           );
 
-          // Add completion status and return the generated scenarios
-          scenariosData.isCompleted = false;
+          // Return the generated scenarios (content only)
           res.json(scenariosData);
           
         } catch (error) {
@@ -3814,50 +3805,12 @@ Return ONLY valid JSON in this exact format:
           };
           
           // Add completion status to fallback scenarios
-          fallbackScenarios.isCompleted = false;
           res.json(fallbackScenarios);
         }
       }
     );
   } catch (error) {
     console.error('Error in conversation practice endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Mark conversation practice as completed
-app.post('/api/conversation-practice/:deviceId/complete', (req, res) => {
-  try {
-    const { deviceId } = req.params;
-    const { currentDate, score, userAnswers } = req.body;
-    
-    if (!deviceId) {
-      return res.status(400).json({ error: 'deviceId is required' });
-    }
-    
-    console.log(`🎭 CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
-    
-    // Use current date or simulated date
-    const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
-    const dateKey = today.toISOString().split('T')[0];
-    
-    // Mark as completed in database and store score and user answers
-    const userAnswersJson = userAnswers ? JSON.stringify(userAnswers) : null;
-    db.run(
-      "UPDATE conversation_practice_scenarios SET completed = 1, completed_at = ?, score = ?, user_answers = ? WHERE device_id = ? AND practice_date = ?",
-      [new Date().toISOString(), score, userAnswersJson, deviceId, dateKey],
-      function(err) {
-        if (err) {
-          console.error('Error marking conversation practice complete:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        console.log(`🎭 CONVERSATION PRACTICE: Marked complete for ${dateKey} with score ${score}%`);
-        res.json({ success: true, message: 'Conversation practice completed!', score: score });
-      }
-    );
-  } catch (error) {
-    console.error('Error in conversation practice completion endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
