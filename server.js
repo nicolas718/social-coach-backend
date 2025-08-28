@@ -2711,6 +2711,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 
 ## RULES FOR DELIVERY:
 • Tone should be friendly, curious, and light
+• Avoid big words - be more casual and conversational
 • Avoid judgmental framing:
   - Example to avoid: "Why are you on your phone?"
   - Example recommended: "Do you usually train here, or just trying it out?"
@@ -2733,6 +2734,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 - Mix direct approaches with indirect observations
 - Never repeat the same energy/vibe/atmosphere comments
 - Never ask to join someone this is a conversation starter
+- Avoid big words - be more casual and conversational
 
 SUMMARY: Opener = [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]
 
@@ -2763,6 +2765,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 
 ## DELIVERY RULES:
 • Tone should be friendly, curious, and light
+• Avoid big words - be more casual and conversational
 • Avoid judgmental framing:
   - Example to avoid: "Why are you on your phone?"
   - Example recommended: "Do you usually train here, or just trying it out?"
@@ -2785,6 +2788,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 - Mix direct approaches with indirect observations
 - Never repeat the same energy/vibe/atmosphere comments
 - Never ask to join someone this is a conversation starter
+- Avoid big words - be more casual and conversational
 
 ## BODY LANGUAGE CUES:
 • Open posture + eye contact = green light to continue
