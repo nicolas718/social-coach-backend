@@ -2716,6 +2716,24 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
   - Example recommended: "Do you usually train here, or just trying it out?"
 • Focus on neutral-to-positive hooks — environment, activity, shared context
 
+### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
+- DO NOT use the same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
+- DO NOT start with similar phrases about "energy/vibe/atmosphere" every time
+- ABSOLUTELY NEVER assume specific details not mentioned in the context
+- FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture (couches, tables, etc.), activities (people-watching, reading, etc.), locations within venue (corner, bar area, etc.), what someone is doing, why they're there, their mood/state
+- NEVER invent names - if name introduction is needed, use [Name] as placeholder
+- NEVER generate the same opening structure twice in a row
+- VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
+- STAY COMPLETELY GENERAL - only reference the basic setting type, nothing more specific
+
+### ⚡ STRICT REQUIREMENTS:
+- Each opener must feel completely different from the last
+- Use varied sentence structures, different question types
+- Sometimes be brief, sometimes more conversational
+- Mix direct approaches with indirect observations
+- Never repeat the same energy/vibe/atmosphere comments
+- Never ask to join someone this is a conversation starter
+
 SUMMARY: Opener = [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]
 
 Generate:
@@ -2749,6 +2767,24 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
   - Example to avoid: "Why are you on your phone?"
   - Example recommended: "Do you usually train here, or just trying it out?"
 • Focus on neutral-to-positive hooks — environment, activity, shared context
+
+### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
+- DO NOT use the same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
+- DO NOT start with similar phrases about "energy/vibe/atmosphere" every time
+- ABSOLUTELY NEVER assume specific details not mentioned in the context
+- FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture (couches, tables, etc.), activities (people-watching, reading, etc.), locations within venue (corner, bar area, etc.), what someone is doing, why they're there, their mood/state
+- NEVER invent names - if name introduction is needed, use [Name] as placeholder
+- NEVER generate the same opening structure twice in a row
+- VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
+- STAY COMPLETELY GENERAL - only reference the basic setting type, nothing more specific
+
+### ⚡ STRICT REQUIREMENTS:
+- Each opener must feel completely different from the last
+- Use varied sentence structures, different question types
+- Sometimes be brief, sometimes more conversational
+- Mix direct approaches with indirect observations
+- Never repeat the same energy/vibe/atmosphere comments
+- Never ask to join someone this is a conversation starter
 
 ## BODY LANGUAGE CUES:
 • Open posture + eye contact = green light to continue
