@@ -3959,8 +3959,8 @@ app.post('/api/debug/fix-user/:deviceId', (req, res) => {
   let dateToSet;
   if (creationDate) {
     // Use provided date
-    const customDate = new Date(creationDate + 'T00:00:00Z');
-    dateToSet = customDate.toISOString().replace('T', ' ').substring(0, 19);
+    const providedDate = new Date(creationDate + 'T00:00:00Z');
+    dateToSet = providedDate.toISOString().replace('T', ' ').substring(0, 19);
   } else {
     // Use current date
     const now = new Date();
