@@ -2712,39 +2712,39 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 • Genuine Compliment + Follow-Up — compliment naturally tied to a question
 
 ## RULES FOR DELIVERY:
-• Tone should be friendly, curious, and light
-• Avoid big words — be more casual and conversational
-• Be charming — focus on getting a conversation going
+• Tone: friendly, curious, and light
+• Avoid big words — be casual and conversational
+• Be charming — focus on getting conversation going
 • Be seductive but playful — create intrigue without being pushy
 • Avoid judgmental framing:
-  * Example to avoid: "Why are you on your phone?"
-  * Example recommended: "Do you usually train here, or just trying it out?"
+  * Avoid: "Why are you on your phone?"
+  * Better: "Do you usually train here, or just trying it out?"
 • Focus on neutral-to-positive hooks — environment, activity, shared context
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
-* Use varied sentence structures, different question types
-* Sometimes be brief, sometimes more conversational
+* Use varied sentence structures and question types
+* Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
-* Never repeat the same energy/vibe/atmosphere comments
-* Never ask to join someone — this is a conversation starter, not a request
-* Avoid big words — keep it casual and conversational
+* Never repeat energy/vibe/atmosphere comments
+* Never ask to join someone — this is conversation starter, not request
+* Avoid big words — keep casual and conversational
 
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
-* DO NOT use the same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
-* DO NOT start with similar phrases about "energy/vibe/atmosphere" every time
-* ABSOLUTELY NEVER assume specific details not mentioned in the context
-* FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture (couches, tables, etc.), activities (people-watching, reading, etc.), locations within venue (corner, bar area, etc.), what someone is doing, why they're there, their mood/state
-* NEVER invent names — if name introduction is needed, use [Name] as placeholder
-* NEVER generate the same opening structure twice in a row
-* VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
-* STAY COMPLETELY GENERAL — only reference the basic setting type, nothing more specific
+* DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
+* DO NOT start with similar "energy/vibe/atmosphere" phrases
+* NEVER assume specific details not mentioned in context
+* FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture, activities, locations within venue, what someone is doing, why they're there, their mood/state
+* NEVER invent names — use [Name] placeholder if needed
+* NEVER generate same opening structure twice in a row
+* VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
+* STAY COMPLETELY GENERAL — only reference basic setting type
 * NEVER say "Whew" — avoid this word completely
 
 ## RESPONSE HANDLING:
-• POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
-• NEUTRAL RESPONSE (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
-• NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
+• POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest
+• NEUTRAL RESPONSE (brief but polite): Keep light, one more attempt with different angle, then graceful transition
+• NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite exit
 
 ## BODY LANGUAGE CUES:
 • Open posture + eye contact = green light to continue
@@ -2782,39 +2782,39 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 • Genuine Compliment + Follow-Up — compliment naturally tied to a question
 
 ## RULES FOR DELIVERY:
-• Tone should be friendly, curious, and light
-• Avoid big words — be more casual and conversational
-• Be charming — focus on getting a conversation going
+• Tone: friendly, curious, and light
+• Avoid big words — be casual and conversational
+• Be charming — focus on getting conversation going
 • Be seductive but playful — create intrigue without being pushy
 • Avoid judgmental framing:
-  * Example to avoid: "Why are you on your phone?"
-  * Example recommended: "Do you usually train here, or just trying it out?"
+  * Avoid: "Why are you on your phone?"
+  * Better: "Do you usually train here, or just trying it out?"
 • Focus on neutral-to-positive hooks — environment, activity, shared context
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
-* Use varied sentence structures, different question types
-* Sometimes be brief, sometimes more conversational
+* Use varied sentence structures and question types
+* Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
-* Never repeat the same energy/vibe/atmosphere comments
-* Never ask to join someone — this is a conversation starter, not a request
-* Avoid big words — keep it casual and conversational
+* Never repeat energy/vibe/atmosphere comments
+* Never ask to join someone — this is conversation starter, not request
+* Avoid big words — keep casual and conversational
 
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
-* DO NOT use the same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
-* DO NOT start with similar phrases about "energy/vibe/atmosphere" every time
-* ABSOLUTELY NEVER assume specific details not mentioned in the context
-* FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture (couches, tables, etc.), activities (people-watching, reading, etc.), locations within venue (corner, bar area, etc.), what someone is doing, why they're there, their mood/state
-* NEVER invent names — if name introduction is needed, use [Name] as placeholder
-* NEVER generate the same opening structure twice in a row
-* VARY YOUR ENTIRE APPROACH each time: direct questions, observations, casual comments, situational remarks
-* STAY COMPLETELY GENERAL — only reference the basic setting type, nothing more specific
+* DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
+* DO NOT start with similar "energy/vibe/atmosphere" phrases
+* NEVER assume specific details not mentioned in context
+* FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture, activities, locations within venue, what someone is doing, why they're there, their mood/state
+* NEVER invent names — use [Name] placeholder if needed
+* NEVER generate same opening structure twice in a row
+* VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
+* STAY COMPLETELY GENERAL — only reference basic setting type
 * NEVER say "Whew" — avoid this word completely
 
 ## RESPONSE HANDLING:
-• POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
-• NEUTRAL RESPONSE (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
-• NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
+• POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest
+• NEUTRAL RESPONSE (brief but polite): Keep light, one more attempt with different angle, then graceful transition
+• NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite exit
 
 ## BODY LANGUAGE CUES:
 • Open posture + eye contact = green light to continue
