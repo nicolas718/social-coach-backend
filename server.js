@@ -2716,6 +2716,7 @@ Context: ${contextText}
 ## RULES FOR DELIVERY:
 • Tone: friendly, curious, and light
 • Avoid big words — be casual and conversational
+• Use simple, natural language — say "smile" not "incredible smile", "stories" not "fascinating stories"
 • Be charming — focus on getting conversation going
 • Be seductive but playful — create intrigue without being pushy
 • Avoid judgmental framing:
@@ -2732,6 +2733,7 @@ Context: ${contextText}
 * Never repeat energy/vibe/atmosphere comments
 * Never ask to join someone — this is conversation starter, not request
 * Avoid big words — keep casual and conversational
+* Use simple, natural language — avoid unnecessary adjectives ("incredible smile" → "smile", "fascinating stories" → "stories")
 
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
 * DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
@@ -2759,7 +2761,7 @@ Context: ${contextText}
 SUMMARY: Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
 
 Generate:
-1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros, occasionally use environment observations. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
+1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros, occasionally use environment observations. Use simple, natural language - avoid unnecessary adjectives. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2791,6 +2793,7 @@ Generate:
 ## RULES FOR DELIVERY:
 • Tone: friendly, curious, and light
 • Avoid big words — be casual and conversational
+• Use simple, natural language — say "smile" not "incredible smile", "stories" not "fascinating stories"
 • Be charming — focus on getting conversation going
 • Be seductive but playful — create intrigue without being pushy
 • Avoid judgmental framing:
@@ -2807,6 +2810,7 @@ Generate:
 * Never repeat energy/vibe/atmosphere comments
 * Never ask to join someone — this is conversation starter, not request
 * Avoid big words — keep casual and conversational
+* Use simple, natural language — avoid unnecessary adjectives ("incredible smile" → "smile", "fascinating stories" → "stories")
 
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
 * DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
