@@ -2699,11 +2699,13 @@ Context: ${contextText}
 3. Be engaging — sparks curiosity and invites a reply
 4. Be situational — context-aware, relevant to environment/activity
 5. Show interest
-6. Be charming — focus on getting a conversation going
+6. Be charming — focus on getting conversation going
 7. Be seductive but playful — create intrigue without being pushy
 
 ## FORMULA:
-Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
+**MIX 50/50 APPROACHES:**
+• Environmental Start = [Environment Observation] + [Personal Observation/Compliment] + [Light Question]
+• Direct Intro Start = [Direct Personal Intro] + [Observation/Compliment] + [Light Question]
 
 ## OPENER TYPES:
 • Situational Observation — comment on what's happening around you
@@ -2723,6 +2725,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
+* **VARY OPENING APPROACH 50/50:** Sometimes start with environment observations ("Love the energy here!"), sometimes start with direct personal intros ("Couldn't help noticing...")
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
@@ -2754,7 +2757,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 SUMMARY: Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
 
 Generate:
-1. Opener: Create a conversation starter following the framework above - use the formula [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
+1. Opener: Create a conversation starter following the framework above - **VARY APPROACH 50/50**: Sometimes start with environment observations ("Love the energy here!"), sometimes start with direct personal intros ("Couldn't help noticing..."). Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2773,7 +2776,9 @@ Generate:
 7. Be seductive but playful — create intrigue without being pushy
 
 ## FORMULA:
-Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
+**MIX 50/50 APPROACHES:**
+• Environmental Start = [Environment Observation] + [Personal Observation/Compliment] + [Light Question]
+• Direct Intro Start = [Direct Personal Intro] + [Observation/Compliment] + [Light Question]
 
 ## OPENER TYPES:
 • Situational Observation — comment on what's happening around you
@@ -2793,6 +2798,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
+* **VARY OPENING APPROACH 50/50:** Sometimes start with environment observations ("Love the energy here!"), sometimes start with direct personal intros ("Couldn't help noticing...")
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
