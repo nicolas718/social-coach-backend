@@ -2782,36 +2782,26 @@ Generate:
 
 Include these key points in the responseFramework string:
 
-COOL & CALM ROMANTIC APPROACH:
-- Stay relaxed and composed - confidence comes from being comfortable in your own skin
-- Most openers should begin with a brief, natural intro before transitioning to conversation
-- Focus on authentic curiosity rather than trying to be clever or impressive
-- Approach as equals sharing a moment, not as someone trying to "get" something
-- Let genuine interest and calm confidence do the work
+❤️ ROMANTIC INTEREST RESPONSE FRAMEWORK
+🎯 CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational
 
-INTRO-FOCUSED STRATEGY:
-- Start with a brief acknowledgment of the shared environment or moment
-- Transition naturally from observation to genuine question or comment
-- Keep energy calm and grounded - avoid high-energy or overly enthusiastic approaches
-- Let conversations flow from real curiosity, not forced charm
+FORMULA: [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
 
-RESPONSE READING GUIDE:
-POSITIVE SIGNS: Natural smiles, comfortable eye contact, asking questions back, relaxed body language
-→ Action: Continue with the same calm energy, share authentically, ask thoughtful follow-ups
+RESPONSE HANDLING:
+• POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
+• NEUTRAL RESPONSE (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
+• NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
 
-NEUTRAL SIGNS: Polite but reserved responses, seems preoccupied, brief but not dismissive
-→ Action: One more calm, genuine attempt from a different angle, then respectful transition
+DELIVERY RULES:
+- Keep tone friendly, curious, and light
+- Focus on neutral-to-positive observations about environment/activity/shared context
+- Avoid judgmental framing
+- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
 
-NEGATIVE SIGNS: Short, closed-off answers, avoiding eye contact, clear discomfort signals
-→ Action: Immediate graceful exit with a simple "Have a great [day/workout/time]"
-
-CALM ESCALATION PRINCIPLES:
-- Begin with environmental observation, move to personal interests only if they're engaged
-- Match their energy level naturally - never force enthusiasm
-- Build connection through genuine shared experiences, not manufactured commonality
-- Authenticity and calm presence trump any clever lines or techniques
-
-MINDSET: You're both here by choice, doing something you enjoy. That's your natural starting point. Stay grounded, be genuinely curious, and let real connection develop without forcing it.`;
+BODY LANGUAGE CUES:
+- Open posture + eye contact = green light to continue
+- Polite but closed posture = keep it brief and respectful
+- Looking away/phone/headphones = respect the boundary`;
 
       prompt += `
 
