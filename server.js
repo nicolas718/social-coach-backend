@@ -2698,19 +2698,29 @@ FORMULA: [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity
 
 ROMANTIC-SPECIFIC RULES:
 - ABSOLUTELY CRITICAL - NEVER assume what someone is doing, why they're there, or what they're thinking
-- NO "taking a breather myself," NO "both here doing X," NO assumptions about their activities or state  
+- NEVER assume shared activities, experiences, or timing
 - AVOID any mention of "energy," "vibe," or "atmosphere"
 - Start with a simple, direct approach - just say hello and ask a general question
 - Keep tone calm and composed - NO enthusiasm, NO try-hard charm, NO pickup lines
-- Use simple, direct language like "Hi there, how's it going?" or "Mind if I ask how you like this place?"
+- Use placeholders instead of specifics: say "[ACTIVITY]" instead of "yoga class" or "[EQUIPMENT]" instead of "treadmill"
 - Focus on basic, assumption-free conversation starters
 - Keep tone friendly, curious, and light
-- Focus on neutral-to-positive observations about environment/activity/shared context
+- Make only neutral observations about the general environment, never specific activities or equipment
 - Avoid judgmental framing
-- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
+- If they seem busy/distracted, acknowledge it respectfully
+
+WHAT NOT TO SAY (ASSUMPTION EXAMPLES):
+❌ "Mind if I grab a quick water break too?" (assumes they're on a break)
+❌ "First time trying this style of [ACTIVITY]" (assumes their experience level)
+❌ "How do you find these morning classes?" (assumes time of day and frequency)
+❌ "That [SPECIFIC EQUIPMENT] looks challenging" (assumes difficulty level)
+❌ "Taking a rest between sets myself" (assumes what they're doing)
+❌ "Been coming here long?" (assumes they come regularly)
+❌ "This place gets busy around this time" (assumes timing patterns)
+❌ "Looks like you're finishing up" (assumes their status/progress)
 
 Generate:
-1. Opener: Create a simple, direct conversation starter using the romantic framework above - NO assumptions, NO energy/vibe language, just friendly and genuine
+1. Opener: Create a simple, direct conversation starter using the romantic framework above - NO assumptions about what they're doing, their experience, timing, or status. Use placeholders like [ACTIVITY] or [LOCATION] instead of specifics. NO energy/vibe language, just friendly and genuine
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2729,9 +2739,11 @@ RESPONSE HANDLING:
 
 DELIVERY RULES:
 - Keep tone friendly, curious, and light
-- Focus on neutral-to-positive observations about environment/activity/shared context
+- Make only general observations about the environment - NEVER assume specific activities, equipment, or timing
+- Use placeholders like [LOCATION] or [SETTING] instead of specific references
 - Avoid judgmental framing
-- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
+- NEVER assume what they're doing or why they're there
+- If they seem busy/distracted, acknowledge it respectfully without assuming what they're busy with
 
 BODY LANGUAGE CUES:
 - Open posture + eye contact = green light to continue
