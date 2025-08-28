@@ -2725,7 +2725,7 @@ Context: ${contextText}
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
-* **PRIORITIZE DIRECT PERSONAL INTROS:** Usually start with direct personal intros ("Couldn't help noticing..."), occasionally use environment observations
+* **PRIORITIZE DIRECT PERSONAL INTROS:** Usually start with direct personal intros, occasionally use environment observations
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
@@ -2736,11 +2736,13 @@ Context: ${contextText}
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
 * DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
 * DO NOT start with similar "energy/vibe/atmosphere" phrases
+* DO NOT repeat same opening phrases ("Couldn't help noticing...", "You've got this...", "Your form looks...", etc.)
 * NEVER assume specific details not mentioned in context
 * FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture, activities, locations within venue, what someone is doing, why they're there, their mood/state
 * NEVER invent names — use [Name] placeholder if needed
 * NEVER generate same opening structure twice in a row
 * VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
+* CREATE COMPLETELY DIFFERENT OPENERS each time — avoid repeating any phrases or patterns
 * STAY COMPLETELY GENERAL — only reference basic setting type
 * NEVER say "Whew" — avoid this word completely
 
@@ -2757,7 +2759,7 @@ Context: ${contextText}
 SUMMARY: Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
 
 Generate:
-1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros ("Couldn't help noticing..."), occasionally use environment observations. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
+1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros, occasionally use environment observations. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew"
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2798,7 +2800,7 @@ Generate:
 
 ### ⚡ STRICT REQUIREMENTS:
 * Each opener must feel completely different from the last
-* **PRIORITIZE DIRECT PERSONAL INTROS:** Usually start with direct personal intros ("Couldn't help noticing..."), occasionally use environment observations
+* **PRIORITIZE DIRECT PERSONAL INTROS:** Usually start with direct personal intros, occasionally use environment observations
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
@@ -2809,11 +2811,13 @@ Generate:
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
 * DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
 * DO NOT start with similar "energy/vibe/atmosphere" phrases
+* DO NOT repeat same opening phrases ("Couldn't help noticing...", "You've got this...", "Your form looks...", etc.)
 * NEVER assume specific details not mentioned in context
 * FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture, activities, locations within venue, what someone is doing, why they're there, their mood/state
 * NEVER invent names — use [Name] placeholder if needed
 * NEVER generate same opening structure twice in a row
 * VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
+* CREATE COMPLETELY DIFFERENT OPENERS each time — avoid repeating any phrases or patterns
 * STAY COMPLETELY GENERAL — only reference basic setting type
 * NEVER say "Whew" — avoid this word completely
 
