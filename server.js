@@ -2680,8 +2680,68 @@ app.post('/generate-opener', requireApiKey, aiRateLimit, async (req, res) => {
     // Handle optional context
     const contextText = context && context.trim() ? context : `a ${setting} environment`;
     
-    // Create base prompt with purpose-specific guidelines
-    let prompt = `Create a conversation opener for:
+    // Create purpose-specific prompts
+    let prompt;
+    
+    if (purpose.toLowerCase() === 'romantic') {
+      // ROMANTIC PURPOSE ONLY - Dedicated framework only, no universal framework
+      prompt = `Create a conversation opener for:
+
+Purpose: ${purpose}
+Setting: ${setting}  
+Context: ${contextText}
+
+❤️ ROMANTIC INTEREST OPENER GUIDELINES:
+🎯 CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational
+
+FORMULA: [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
+
+ROMANTIC-SPECIFIC RULES:
+- ABSOLUTELY CRITICAL - NEVER assume what someone is doing, why they're there, or what they're thinking
+- NO "taking a breather myself," NO "both here doing X," NO assumptions about their activities or state  
+- AVOID any mention of "energy," "vibe," or "atmosphere"
+- Start with a simple, direct approach - just say hello and ask a general question
+- Keep tone calm and composed - NO enthusiasm, NO try-hard charm, NO pickup lines
+- Use simple, direct language like "Hi there, how's it going?" or "Mind if I ask how you like this place?"
+- Focus on basic, assumption-free conversation starters
+- Keep tone friendly, curious, and light
+- Focus on neutral-to-positive observations about environment/activity/shared context
+- Avoid judgmental framing
+- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
+
+Generate:
+1. Opener: Create a simple, direct conversation starter using the romantic framework above - NO assumptions, NO energy/vibe language, just friendly and genuine
+2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
+3. ExitStrategy: Natural way to end the conversation gracefully  
+4. Tip: Practical advice for this scenario focusing on delivery and mindset
+5. Confidence Boost: Encouraging message that builds genuine confidence
+6. ResponseFramework: Include this romantic response framework as a single string:
+
+❤️ ROMANTIC INTEREST RESPONSE FRAMEWORK
+🎯 CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational
+
+FORMULA: [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
+
+RESPONSE HANDLING:
+• POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
+• NEUTRAL RESPONSE (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
+• NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
+
+DELIVERY RULES:
+- Keep tone friendly, curious, and light
+- Focus on neutral-to-positive observations about environment/activity/shared context
+- Avoid judgmental framing
+- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
+
+BODY LANGUAGE CUES:
+- Open posture + eye contact = green light to continue
+- Polite but closed posture = keep it brief and respectful
+- Looking away/phone/headphones = respect the boundary
+
+Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework (MUST be a single string, not an object)`;
+    } else {
+      // CASUAL AND PROFESSIONAL - Universal framework + purpose-specific additions
+      prompt = `Create a conversation opener for:
 
 Purpose: ${purpose}
 Setting: ${setting}  
@@ -2742,23 +2802,6 @@ WRONG EXAMPLES (TOO SPECIFIC/RANDOM/ASSUMPTIVE):
 ❌ "I'd love to hear your professional insights" (too direct/random for most settings - PROFESSIONAL problem)
 ❌ "Making connections in an active environment - I'd love to hear your professional insights." (too direct, assumes they want to share insights - PROFESSIONAL problem)
 
-ROMANTIC OPENERS - CRITICAL ERRORS TO AVOID:
-❌ "The energy in here is contagious, isn't it?" (clichéd energy comment)
-❌ "The vibe here is amazing - makes me want to..." (forced enthusiasm about vibe)
-❌ "Looking energized today - care to race me to..." (overly forward, assumptive)
-❌ "Taking a quick breather myself - nice to cross paths" (ASSUMES what they're doing)
-❌ "I love the atmosphere here, perfect for meeting someone new" (try-hard, obvious intent)
-❌ "This place has such good energy for connecting with people" (forced, unnatural)
-❌ "The energy here always motivates me to start conversations" (self-centered, try-hard)
-❌ "Can't help but be drawn to the energy you bring" (overly forward, pickup-line territory)
-❌ "Something about this place makes me feel social" (explaining your behavior, weird)
-❌ "Perfect form matters everywhere, doesn't it?" (ASSUMES they care about form/technique)
-❌ Any opener that mentions "energy," "vibe," "atmosphere" + wanting to meet/connect (clichéd combo)
-❌ Overly enthusiastic exclamations or forced charm attempts
-❌ Starting with compliments about their energy/vibe (too forward, pickup-line territory)
-❌ NEVER assume what someone is doing, thinking, or why they're there
-❌ NEVER assume shared activities or experiences ("taking a breather myself", "both here doing X")
-
 STRICT REQUIREMENTS:
 - Each opener must feel completely different from the last
 - Use varied sentence structures, different question types
@@ -2767,52 +2810,16 @@ STRICT REQUIREMENTS:
 - Never repeat the same energy/vibe/atmosphere comments
 
 Generate:
-1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. ${purpose.toLowerCase() === 'romantic' ? 'For ROMANTIC openers: ABSOLUTELY CRITICAL - NEVER assume what someone is doing, why they\'re there, or what they\'re thinking. NO "taking a breather myself," NO "both here doing X," NO assumptions about their activities or state. AVOID any mention of "energy," "vibe," or "atmosphere." Start with a simple, direct approach - just say hello and ask a general question. Keep tone calm and composed - NO enthusiasm, NO try-hard charm, NO pickup lines. Use simple, direct language like "Hi there, how\'s it going?" or "Mind if I ask how you like this place?" Focus on basic, assumption-free conversation starters.' : ''} Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
+1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the purpose/setting
 3. ExitStrategy: Natural way to end the conversation gracefully
 4. Tip: Practical advice for this scenario that focuses on delivery and mindset
-5. Confidence Boost: Encouraging message that builds genuine confidence`;
-
-    // Add response framework for romantic interest openers only
-    console.log(`🔍 OPENER DEBUG: purpose="${purpose}", purpose.toLowerCase()="${purpose.toLowerCase()}", checking if romantic...`);
-    if (purpose.toLowerCase() === 'romantic') {
-      console.log('✅ ROMANTIC OPENER DETECTED - Adding response framework to prompt');
-      prompt += `
-6. ResponseFramework: A comprehensive guide as a SINGLE STRING that covers response handling. Format as one continuous text string (not nested objects):
-
-Include these key points in the responseFramework string:
-
-❤️ ROMANTIC INTEREST RESPONSE FRAMEWORK
-🎯 CORE GOALS: Be non-threatening, positive/neutral, engaging, and situational
-
-FORMULA: [Friendly Approach] + [Neutral/Positive Observation] + [Light Curiosity Question]
-
-RESPONSE HANDLING:
-• POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest in their answers
-• NEUTRAL RESPONSE (brief but polite): Keep it light, maybe one more attempt with a different angle, then graceful transition
-• NEGATIVE RESPONSE (closed off, uninterested): Respect boundaries immediately, polite acknowledgment and exit
-
-DELIVERY RULES:
-- Keep tone friendly, curious, and light
-- Focus on neutral-to-positive observations about environment/activity/shared context
-- Avoid judgmental framing
-- If they seem busy/distracted, acknowledge it: "Don't want to interrupt if you're in the zone"
-
-BODY LANGUAGE CUES:
-- Open posture + eye contact = green light to continue
-- Polite but closed posture = keep it brief and respectful
-- Looking away/phone/headphones = respect the boundary`;
-
-      prompt += `
-
-Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework (MUST be a single string, not an object)`;
-      console.log('✅ ROMANTIC PROMPT: Requesting 6 fields including responseFramework');
-    } else {
-      console.log('ℹ️  NON-ROMANTIC OPENER: Adding standard 5-field prompt (no responseFramework)');
-      prompt += `
+5. Confidence Boost: Encouraging message that builds genuine confidence
 
 Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost`;
     }
+
+
 
     const message = await callBedrockAPI(
       [
@@ -2822,7 +2829,7 @@ Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exit
         }
       ],
       600,
-"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. NEVER repeat patterns like 'Hey there! The energy/vibe here...' or similar phrases. For ROMANTIC openers specifically: ABSOLUTELY NEVER make assumptions about what someone is doing, thinking, or why they're there. NO phrases like 'taking a breather myself,' 'both here doing X,' 'perfect form matters,' or ANY assumption about their activities or state. NEVER use words like 'energy,' 'vibe,' 'atmosphere,' 'contagious,' or overly enthusiastic language. Romantic openers must be SIMPLE, DIRECT, CALM - use basic greetings like 'Hi, how's it going?' or 'Mind if I ask how you like this place?' No assumptions, no pickup lines, no forced charm. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
+"You are a social skills coach creating maximally varied, authentic conversation guidance. CRITICAL: Every opener must be completely different in structure, greeting, and approach. Generate radically different openers each time - vary greetings, sentence structure, question types, and conversational approaches. Make each one feel like a completely different person wrote it. Never invent specific details not mentioned in the context. NEVER invent names - if name introduction is needed, use [Name] as placeholder. You MUST return only valid JSON. For romantic openers, include all 6 fields where responseFramework is a SINGLE STRING (not nested objects or arrays). For other purposes, include only the first 5 fields. No markdown, no extra text, just clean JSON with string values only."
     );
 
     // Handle AWS Bedrock response format
