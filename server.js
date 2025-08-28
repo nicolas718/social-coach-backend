@@ -407,7 +407,7 @@ app.get('/api/test/social-zones', (req, res) => {
 });
 
 // Helper function to ensure user exists
-const ensureUserExists = (deviceId, callback, customDate = null) => {
+const ensureUserExists = (deviceId, callback) => {
   console.log(`🔍 Checking if user exists: ${deviceId}`);
   
   db.get("SELECT device_id FROM users WHERE device_id = ?", [deviceId], (err, row) => {
@@ -420,20 +420,11 @@ const ensureUserExists = (deviceId, callback, customDate = null) => {
     if (!row) {
       console.log(`👤 User not found, creating new user: ${deviceId}`);
       // Create new user with creation date
-      // If customDate provided (simulated mode), use that date
-      // Otherwise use current real date
-      let creationDate;
-      if (customDate) {
-        // Use the simulated date provided
-        const simDate = new Date(customDate + 'T00:00:00Z');
-        creationDate = simDate.toISOString().replace('T', ' ').substring(0, 19);
-        console.log(`👤 Using provided date for user creation: ${creationDate}`);
-      } else {
-        // Use current real date
-        const now = new Date();
-        creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
-        console.log(`👤 Using real date for user creation: ${creationDate}`);
-      }
+      // Use current real date for user creation
+      // Use current real date
+      const now = new Date();
+      const creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
+      console.log(`👤 Using real date for user creation: ${creationDate}`);
       
       db.run("INSERT INTO users (device_id, created_at) VALUES (?, ?)", [deviceId, creationDate], (err) => {
         if (err) {
@@ -2237,22 +2228,18 @@ app.get('/api/data/home/:deviceId', (req, res) => {
   try {
     console.log('🏠 Home endpoint started');
     const { deviceId } = req.params;
-    const { customDate } = req.query;  // Get custom date from query parameter
 
-    console.log(`🏠 Device ID: ${deviceId}, Custom Date: ${customDate}`);
+    console.log(`🏠 Device ID: ${deviceId}`);
 
     if (!deviceId) {
       console.log('❌ No device ID provided');
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use custom date if provided (for debug mode), otherwise use current date
-    const referenceDate = customDate ? new Date(customDate + 'T00:00:00Z') : new Date();
+    // Use current server date
+    const referenceDate = new Date();
     console.log(`🏠 Home screen request for device: ${deviceId}`);
     console.log(`🏠 Reference date: ${referenceDate.toISOString()}`);
-    if (customDate) {
-      console.log(`🧪 DEBUG MODE: Using custom date: ${customDate} (${referenceDate.toISOString()})`);
-    }
 
     // Ensure user exists first
     console.log('🏠 Calling ensureUserExists...');
@@ -2278,12 +2265,7 @@ app.get('/api/data/home/:deviceId', (req, res) => {
         console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
 
         // Get activity data for week calculation
-        // In debug mode: get ALL activities (no date filtering)
-        // In normal mode: get activities from last 30 days
-        let activityQuery;
-        let queryParams;
-        
-        // Always get ALL activities with counts, no date filtering (like debug mode)
+        // Get ALL activities with counts, no date filtering
         console.log(`🔍 Getting ALL activities with counts for device ${deviceId}`);
         activityQuery = `
           SELECT 
