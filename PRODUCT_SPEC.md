@@ -3,7 +3,7 @@
 #### Overview
 - Social Zone represents the user's current social momentum tier.
 - Social Confidence is a percentage designed to track with Social Zone and provide gradual day‑to‑day movement without volatility.
-- All dates use the simulated date passed from the app. No server-side "now" is used for user activity logic.
+- All dates use the real server time. Server uses current date/time for all user activity logic.
 
 #### Implementation Status: ✅ FULLY WORKING
 - Grace period logic has been successfully implemented and tested for all social zone levels
@@ -138,5 +138,5 @@ Example for "Breaking Through" (7-day streak, 3-day grace):
 
 Use the debug endpoint for quick testing:
 ```
-GET /api/debug/grace/:deviceId?currentDate=YYYY-MM-DD
+GET /api/debug/grace/:deviceId
 ```
