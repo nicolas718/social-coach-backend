@@ -2699,6 +2699,8 @@ Context: ${contextText}
 3. Be engaging — sparks curiosity and invites a reply
 4. Be situational — context-aware, relevant to environment/activity
 5. Show interest
+6. Be charming — focus on getting a conversation going
+7. Be seductive but playful — create intrigue without being pushy
 
 ## FORMULA:
 Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
@@ -2712,6 +2714,8 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 ## RULES FOR DELIVERY:
 • Tone should be friendly, curious, and light
 • Avoid big words - be more casual and conversational
+• Be charming - focus on getting a conversation going
+• Be seductive but playful - create intrigue without being pushy
 • Avoid judgmental framing:
   - Example to avoid: "Why are you on your phone?"
   - Example recommended: "Do you usually train here, or just trying it out?"
@@ -2739,7 +2743,7 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 SUMMARY: Opener = [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]
 
 Generate:
-1. Opener: Create a conversation starter following the framework above - use the formula [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]. Be non-threatening, positive/neutral, engaging, and situational
+1. Opener: Create a conversation starter following the framework above - use the formula [Friendly approach] + [Positive/neutral observation or compliment] + [Light curiosity question]. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2754,6 +2758,8 @@ Generate:
 3. Be engaging — sparks curiosity and invites a reply
 4. Be situational — context-aware, relevant to environment/activity
 5. Show interest
+6. Be charming — focus on getting a conversation going
+7. Be seductive but playful — create intrigue without being pushy
 
 ## FORMULA:
 Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Light Curiosity Question]
@@ -2766,6 +2772,8 @@ Opener = [Friendly Approach] + [Neutral/Positive Observation / Compliment] + [Li
 ## DELIVERY RULES:
 • Tone should be friendly, curious, and light
 • Avoid big words - be more casual and conversational
+• Be charming - focus on getting a conversation going
+• Be seductive but playful - create intrigue without being pushy
 • Avoid judgmental framing:
   - Example to avoid: "Why are you on your phone?"
   - Example recommended: "Do you usually train here, or just trying it out?"
