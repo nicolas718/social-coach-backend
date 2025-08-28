@@ -2684,7 +2684,7 @@ app.post('/generate-opener', requireApiKey, aiRateLimit, async (req, res) => {
     let prompt;
     
     if (purpose.toLowerCase() === 'romantic') {
-      // ROMANTIC PURPOSE ONLY - Dedicated framework only, no universal framework
+      // ROMANTIC PURPOSE ONLY - Dedicated romantic framework only, no CASUAL & PROFESSIONAL framework
       prompt = `Create a conversation opener for:
 
 Purpose: ${purpose}
@@ -2740,7 +2740,7 @@ BODY LANGUAGE CUES:
 
 Return ONLY valid JSON with fields: opener, followUps (array of 3 strings), exitStrategy, tip, confidenceBoost, responseFramework (MUST be a single string, not an object)`;
     } else {
-      // CASUAL AND PROFESSIONAL - Universal framework + purpose-specific additions
+      // CASUAL AND PROFESSIONAL - CASUAL & PROFESSIONAL framework + purpose-specific additions
       prompt = `Create a conversation opener for:
 
 Purpose: ${purpose}
