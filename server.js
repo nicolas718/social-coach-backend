@@ -2750,7 +2750,7 @@ STRICT REQUIREMENTS:
 - Never repeat the same energy/vibe/atmosphere comments
 
 Generate:
-1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
+1. Opener: Create a COMPLETELY UNIQUE conversation starter for ${purpose} intentions. ${purpose.toLowerCase() === 'romantic' ? 'For ROMANTIC openers: Start with a calm, brief intro that acknowledges the shared environment or moment, then transition naturally to genuine conversation. Keep energy relaxed and grounded - avoid overly enthusiastic or try-hard approaches. Focus on authentic curiosity rather than clever lines.' : ''} Use a different greeting style, sentence structure, and approach than any previous opener. Must feel natural but distinctly different each time. NO repetitive patterns or similar phrasing.
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the purpose/setting
 3. ExitStrategy: Natural way to end the conversation gracefully
 4. Tip: Practical advice for this scenario that focuses on delivery and mindset
@@ -2765,29 +2765,36 @@ Generate:
 
 Include these key points in the responseFramework string:
 
-ROMANTIC APPROACH FUNDAMENTALS:
-- Be genuinely interested, not just trying to impress
-- Create connection through shared experience of the moment/place
-- Show confidence but not arrogance - you're equals having a conversation
-- Let attraction develop naturally through good conversation
+COOL & CALM ROMANTIC APPROACH:
+- Stay relaxed and composed - confidence comes from being comfortable in your own skin
+- Most openers should begin with a brief, natural intro before transitioning to conversation
+- Focus on authentic curiosity rather than trying to be clever or impressive
+- Approach as equals sharing a moment, not as someone trying to "get" something
+- Let genuine interest and calm confidence do the work
+
+INTRO-FOCUSED STRATEGY:
+- Start with a brief acknowledgment of the shared environment or moment
+- Transition naturally from observation to genuine question or comment
+- Keep energy calm and grounded - avoid high-energy or overly enthusiastic approaches
+- Let conversations flow from real curiosity, not forced charm
 
 RESPONSE READING GUIDE:
-POSITIVE SIGNS: Smiles, maintains eye contact, asks questions back, turns body toward you, engaged tone
-→ Action: Continue the conversation, share something about yourself, ask follow-up questions
+POSITIVE SIGNS: Natural smiles, comfortable eye contact, asking questions back, relaxed body language
+→ Action: Continue with the same calm energy, share authentically, ask thoughtful follow-ups
 
-NEUTRAL SIGNS: Polite but brief responses, distracted, checking phone occasionally  
-→ Action: One more genuine attempt with a different angle, then graceful transition if still neutral
+NEUTRAL SIGNS: Polite but reserved responses, seems preoccupied, brief but not dismissive
+→ Action: One more calm, genuine attempt from a different angle, then respectful transition
 
-NEGATIVE SIGNS: Short answers, looking away, closed body language, "I'm busy" signals
-→ Action: Immediate respectful exit - "Well, have a great rest of your [workout/evening/etc]"
+NEGATIVE SIGNS: Short, closed-off answers, avoiding eye contact, clear discomfort signals
+→ Action: Immediate graceful exit with a simple "Have a great [day/workout/time]"
 
-ESCALATION PRINCIPLES:
-- Start with environment/situation, move to personal interests if they engage
-- Mirror their energy level - if they're quiet, stay calm; if animated, match it
-- Look for genuine common ground, not forced connections  
-- Quality conversation beats clever lines every time
+CALM ESCALATION PRINCIPLES:
+- Begin with environmental observation, move to personal interests only if they're engaged
+- Match their energy level naturally - never force enthusiasm
+- Build connection through genuine shared experiences, not manufactured commonality
+- Authenticity and calm presence trump any clever lines or techniques
 
-MINDSET: You're both here enjoying the same activity/place. That's already something in common. Focus on that shared experience rather than trying to be impressive.`;
+MINDSET: You're both here by choice, doing something you enjoy. That's your natural starting point. Stay grounded, be genuinely curious, and let real connection develop without forcing it.`;
 
       prompt += `
 
