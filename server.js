@@ -427,7 +427,7 @@ const ensureUserExists = (deviceId, callback, customDate = null) => {
         // Use the simulated date provided
         const simDate = new Date(customDate + 'T00:00:00Z');
         creationDate = simDate.toISOString().replace('T', ' ').substring(0, 19);
-        console.log(`👤 Using simulated date for user creation: ${creationDate}`);
+        console.log(`👤 Using provided date for user creation: ${creationDate}`);
       } else {
         // Use current real date
         const now = new Date();
@@ -1434,17 +1434,16 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   console.log('ANALYTICS: Request received at', new Date().toISOString());
   try {
     const { deviceId } = req.params;
-    const { currentDate, completed } = req.query;
-    console.log('ANALYTICS: deviceId:', deviceId, 'currentDate:', currentDate);
+    console.log('ANALYTICS: deviceId:', deviceId);
 
-    console.log(`🚀 ANALYTICS V2 START: Device ${deviceId}, currentDate: ${currentDate}`);
+    console.log(`🚀 ANALYTICS V2 START: Device ${deviceId}`);
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use simulated date if provided, otherwise use current date
-    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+    // Use current server date
+    const referenceDate = new Date();
     
     console.log(`📊 ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
@@ -1821,14 +1820,13 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
     console.log('HOME: Request received at', new Date().toISOString());
     try {
       const { deviceId } = req.params;
-      const { currentDate } = req.query;
-      console.log('HOME: deviceId:', deviceId, 'currentDate:', currentDate);
+      console.log('HOME: deviceId:', deviceId);
     
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎯 CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
+    console.log(`🎯 CLEAN SYSTEM: Device ${deviceId}`);
     
     // Step 1: Get user account creation date
     db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
@@ -1837,7 +1835,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
                 return res.status(500).json({ error: 'Database error' });
               }
 
-      const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+      const today = new Date();
       // Account creation logic for proper week bar colors
       let accountCreationDate;
       if (user && user.created_at) {
@@ -1913,8 +1911,8 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         }
         
         // Step 4: Calculate current streak (USE EXACT SAME LOGIC AS ANALYTICS)
-        const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
-        console.log(`🔧 HOME FIX: Using referenceDate: ${referenceDate.toISOString()}, vs original today: ${today.toISOString()}`);
+        const referenceDate = new Date();
+        console.log(`🔧 HOME FIX: Using referenceDate: ${referenceDate.toISOString()}`);
         currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
         console.log(`🔧 HOME FIX: calculateConsecutiveStreak returned: ${currentStreak}`);
         
@@ -3353,14 +3351,13 @@ app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
 app.get('/api/data/opener-library/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { currentDate } = req.query;
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use simulated date if provided, otherwise use current date
-    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+    // Use current server date
+    const referenceDate = new Date();
     
     console.log(`📚 OPENER LIBRARY: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
@@ -3562,16 +3559,15 @@ function formatOpenerDate(dateString) {
 app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { currentDate } = req.query;
     
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE: Generating scenarios for Device ${deviceId}, Date: ${currentDate}`);
+    console.log(`🎭 CONVERSATION PRACTICE: Generating scenarios for Device ${deviceId}`);
     
-    // Use current date or simulated date
-    const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+    // Use current server date
+    const today = new Date();
     const dateKey = today.toISOString().split('T')[0];
     
     // Check if we already have scenarios for this date
