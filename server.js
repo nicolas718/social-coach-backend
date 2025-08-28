@@ -2730,14 +2730,14 @@ Context: ${contextText}
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
-* Never repeat energy/vibe/atmosphere comments
+* NEVER use these banned words: "energy", "vibe", "atmosphere", "presence"
 * Never ask to join someone — this is conversation starter, not request
 * Avoid big words — keep casual and conversational
 * Use simple, natural language — avoid unnecessary adjectives ("incredible smile" → "smile", "fascinating stories" → "stories")
 
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
 * DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
-* DO NOT start with similar "energy/vibe/atmosphere" phrases
+* COMPLETELY AVOID overused words: "energy", "vibe", "atmosphere", "presence" - these are banned entirely
 * DO NOT repeat same opening phrases ("Couldn't help noticing...", "You've got this...", "Your form looks...", etc.)
 * NEVER assume specific details not mentioned in context
 * FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture, activities, locations within venue, what someone is doing, why they're there, their mood/state
@@ -2746,7 +2746,7 @@ Context: ${contextText}
 * VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
 * CREATE COMPLETELY DIFFERENT OPENERS each time — avoid repeating any phrases or patterns
 * STAY COMPLETELY GENERAL — only reference basic setting type
-* NEVER say "Whew" or "magnetic" — avoid these words completely
+* BANNED WORDS: "Whew", "magnetic", "energy", "vibe", "atmosphere", "presence" — never use these words
 
 ## RESPONSE HANDLING:
 • POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest
@@ -2761,7 +2761,7 @@ Context: ${contextText}
 SUMMARY: Opener = [Friendly Approach] + [Positive/Neutral Observation or Compliment] + [Light Curiosity Question]
 
 Generate:
-1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros, occasionally use environment observations. Use simple, natural language - avoid unnecessary adjectives. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew" or "magnetic"
+1. Opener: Create a conversation starter following the framework above - **PRIORITIZE DIRECT APPROACH**: Usually start with direct personal intros, occasionally use environment observations. Use simple, natural language - avoid unnecessary adjectives. Be non-threatening, positive/neutral, engaging, situational, charming, and seductive but playful. Focus on getting a conversation going and creating intrigue without being pushy. NEVER say "Whew", "magnetic", "energy", "vibe", "atmosphere", or "presence"
 2. Follow-ups: 3 varied questions that flow naturally from the opener and match the setting
 3. ExitStrategy: Natural way to end the conversation gracefully  
 4. Tip: Practical advice for this scenario focusing on delivery and mindset
@@ -2807,14 +2807,14 @@ Generate:
 * Use varied sentence structures and question types
 * Sometimes brief, sometimes more conversational
 * Mix direct approaches with indirect observations
-* Never repeat energy/vibe/atmosphere comments
+* NEVER use these banned words: "energy", "vibe", "atmosphere", "presence"
 * Never ask to join someone — this is conversation starter, not request
 * Avoid big words — keep casual and conversational
 * Use simple, natural language — avoid unnecessary adjectives ("incredible smile" → "smile", "fascinating stories" → "stories")
 
 ### 🚫 CRITICAL ANTI-ASSUMPTION RULES:
 * DO NOT use same greeting patterns repeatedly ("Hey there!", "Hi!", etc.)
-* DO NOT start with similar "energy/vibe/atmosphere" phrases
+* COMPLETELY AVOID overused words: "energy", "vibe", "atmosphere", "presence" - these are banned entirely
 * DO NOT repeat same opening phrases ("Couldn't help noticing...", "You've got this...", "Your form looks...", etc.)
 * NEVER assume specific details not mentioned in context
 * FORBIDDEN ASSUMPTIONS: names, drinks, food, furniture, activities, locations within venue, what someone is doing, why they're there, their mood/state
@@ -2823,7 +2823,7 @@ Generate:
 * VARY YOUR ENTIRE APPROACH: direct questions, observations, casual comments, situational remarks
 * CREATE COMPLETELY DIFFERENT OPENERS each time — avoid repeating any phrases or patterns
 * STAY COMPLETELY GENERAL — only reference basic setting type
-* NEVER say "Whew" or "magnetic" — avoid these words completely
+* BANNED WORDS: "Whew", "magnetic", "energy", "vibe", "atmosphere", "presence" — never use these words
 
 ## RESPONSE HANDLING:
 • POSITIVE RESPONSE (smiles, engages): Continue with follow-up questions, show genuine interest
