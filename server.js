@@ -1322,7 +1322,8 @@ app.post('/api/data/challenge', (req, res) => {
   }
 });
 
-// Save Daily Challenge Data - SUPABASE VERSION
+// Save Daily Challenge Data - SUPABASE VERSION (temporarily disabled for debugging)
+/*
 app.post('/api/data/challenge-v2', async (req, res) => {
   try {
     const {
@@ -1410,6 +1411,7 @@ app.post('/api/data/challenge-v2', async (req, res) => {
     });
   }
 });
+*/
 
 // Save Opener Data - UPDATED WITH CONDITIONAL STREAK LOGIC
 app.post('/api/data/opener', (req, res) => {
