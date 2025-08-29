@@ -967,10 +967,10 @@ app.get('/api/test/supabase', async (req, res) => {
   try {
     console.log('🧪 Testing Supabase connection...');
     
-    // Simple test query
+    // Simple test query - just select any data to test connection
     const { data, error } = await supabase
       .from('users')
-      .select('count(*)')
+      .select('*')
       .limit(1);
     
     if (error) {
