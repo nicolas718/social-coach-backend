@@ -1411,10 +1411,10 @@ app.post('/api/data/challenge', async (req, res) => {
     
     console.log(`✅ [SUPABASE] Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
 
-    // Return same response format that iOS app expects
+    // Return same response format that iOS app expects (must be integer for iOS compatibility)
     res.json({ 
       success: true, 
-      challengeId: challengeData.id,  // UUID instead of SQLite integer
+      challengeId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
       message: 'Challenge data saved and streak updated successfully' 
     });
 
@@ -1503,10 +1503,10 @@ app.post('/api/data/opener', async (req, res) => {
     
     console.log(`[SUPABASE] Opener saved: Used=${openerWasUsed}, Success=${openerWasSuccessful}`);
 
-    // Return same response format that iOS app expects
+    // Return same response format that iOS app expects (must be integer for iOS compatibility)
     res.json({ 
       success: true, 
-      openerId: openerData.id,  // UUID instead of SQLite integer
+      openerId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
       message: 'Opener data saved successfully' 
     });
 
@@ -1589,7 +1589,7 @@ app.post('/api/data/development', async (req, res) => {
 
         res.json({ 
           success: true, 
-          moduleId: updatedRecord.id,
+          moduleId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
           message: 'Development module data updated successfully' 
         });
       } else {
@@ -1597,7 +1597,7 @@ app.post('/api/data/development', async (req, res) => {
         console.log(`[SUPABASE] Development module ${developmentModuleId} for ${deviceId} already up to date`);
         res.json({ 
           success: true, 
-          moduleId: existingRecord.id,
+          moduleId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
           message: 'Development module data already up to date' 
         });
       }
@@ -1628,7 +1628,7 @@ app.post('/api/data/development', async (req, res) => {
 
       res.json({ 
         success: true, 
-        moduleId: newRecord.id,
+        moduleId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
         message: 'Development module data saved successfully' 
       });
     }
