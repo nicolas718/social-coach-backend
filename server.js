@@ -3558,8 +3558,9 @@ function formatOpenerDate(dateString) {
   }
 }
 
-// CONVERSATION PRACTICE API
-app.get('/api/conversation-practice/:deviceId', async (req, res) => {
+// CONVERSATION PRACTICE API - SIMPLIFIED SYSTEM
+// Backend only generates scenarios, frontend handles completion tracking
+app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate } = req.query;
@@ -3568,15 +3569,15 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE: Device ${deviceId}, Current Date: ${currentDate}`);
+    console.log(`🎭 CONVERSATION PRACTICE GENERATE: Device ${deviceId}, Current Date: ${currentDate}`);
     
     // Use current date or simulated date
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
-    // Check if we already have scenarios for this date
+    // Check if we already generated scenarios for this date (to prevent multiple generations per day)
     db.get(
-      "SELECT * FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
+      "SELECT scenarios_json FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
       [deviceId, dateKey],
       async (err, existing) => {
         if (err) {
@@ -3585,17 +3586,9 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
         }
         
         if (existing) {
-          // Return existing scenarios with completion status, score, and user answers
+          // Return existing scenarios (frontend will handle completion status)
           console.log(`🎭 CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
           const scenariosData = JSON.parse(existing.scenarios_json);
-          scenariosData.isCompleted = !!existing.completed;
-          scenariosData.score = existing.score || 0;
-          
-          // Include user answers if they exist (for review mode)
-          if (existing.user_answers) {
-            scenariosData.userAnswers = JSON.parse(existing.user_answers);
-          }
-          
           return res.json(scenariosData);
         }
         
@@ -3681,7 +3674,7 @@ Return ONLY valid JSON in this exact format:
             throw new Error('AI did not return exactly 5 scenarios');
           }
 
-          // Store scenarios in database for this date
+          // Store scenarios in database for this date (to prevent re-generation)
           db.run(
             "INSERT INTO conversation_practice_scenarios (device_id, practice_date, scenarios_json, created_at) VALUES (?, ?, ?, ?)",
             [deviceId, dateKey, JSON.stringify(scenariosData), new Date().toISOString()],
@@ -3695,8 +3688,7 @@ Return ONLY valid JSON in this exact format:
             }
           );
 
-          // Add completion status and return the generated scenarios
-          scenariosData.isCompleted = false;
+          // Return the generated scenarios (frontend handles completion)
           res.json(scenariosData);
           
         } catch (error) {
@@ -3757,107 +3749,81 @@ Return ONLY valid JSON in this exact format:
                     feedback: "Comments about someone's workout intensity can make them self-conscious. Focus on shared experiences rather than observations about their performance."
                   },
                   {
-                    text: "Do you come here often?",
-                    rating: "good",
-                    feedback: "A classic conversation starter that works in this context, though it's somewhat predictable."
+                    text: "Good timing! I was just thinking about grabbing some water too",
+                    rating: "best",
+                    feedback: "Perfect! You're acknowledging the shared moment and creating a light, relatable connection point."
                   },
                   {
-                    text: "Good workout! This evening crowd is usually pretty motivated",
-                    rating: "best",
-                    feedback: "Perfect timing and context! You're acknowledging the shared experience and making a positive observation about the environment you both share."
+                    text: "How long have you been working out here?",
+                    rating: "good",
+                    feedback: "Shows interest in their experience, though it's a bit direct for a first interaction."
                   }
                 ]
               },
               {
-                setting: "Dog park on a sunny weekend morning",
-                situation: "Your dog and another person's dog start playing together while you both watch",
+                setting: "Dog park on a sunny weekend",
+                situation: "Your dogs are playing together and both seem to be having a great time",
                 options: [
                   {
-                    text: "I hope your dog doesn't have any behavioral issues",
-                    rating: "poor",
-                    feedback: "This implies concern about their dog's behavior right from the start, which will make them defensive rather than friendly."
-                  },
-                  {
-                    text: "They seem to be having a great time together! How old is yours?",
+                    text: "They seem to be best friends already!",
                     rating: "best",
-                    feedback: "Perfect! You're commenting on the obvious connection between your dogs and asking a natural follow-up question that dog owners love to answer."
+                    feedback: "Excellent! You're commenting on the obvious shared positive experience that you're both witnessing. Natural and warm."
                   },
                   {
-                    text: "Your dog is so friendly!",
+                    text: "What breed is your dog?",
                     rating: "good",
-                    feedback: "A nice compliment that most dog owners appreciate, though it could be more interactive."
+                    feedback: "A classic dog park conversation starter, though a bit predictable. Still works well."
+                  },
+                  {
+                    text: "Your dog is so energetic",
+                    rating: "poor",
+                    feedback: "Could be taken as criticism depending on tone. Focus on positive shared observations instead."
                   }
                 ]
               },
               {
-                setting: "Grocery store checkout line during weekend shopping",
-                situation: "You notice the person ahead of you has ingredients that look like they're making the same dish you're planning",
+                setting: "Grocery store produce section",
+                situation: "You're both looking at the same display of avocados, trying to find ripe ones",
                 options: [
                   {
-                    text: "You must be really into healthy eating",
-                    rating: "poor",
-                    feedback: "Makes assumptions about their lifestyle choices, which can feel judgmental even when meant positively."
-                  },
-                  {
-                    text: "Those vegetables look fresh",
+                    text: "The trick is to find ones that give just a little when you press gently",
                     rating: "good",
-                    feedback: "A safe, positive comment but doesn't create much conversation momentum."
+                    feedback: "Helpful advice that shows you're knowledgeable, though it might come across as unsolicited."
                   },
                   {
-                    text: "Are you making stir-fry too? I'm attempting the same thing tonight",
+                    text: "Having the same struggle with these avocados?",
                     rating: "best",
-                    feedback: "Excellent! You're making a specific observation that creates instant common ground and sharing something about yourself to balance the conversation."
+                    feedback: "Perfect! You're acknowledging the shared experience with humor. Relatable and opens the door for them to respond."
+                  },
+                  {
+                    text: "These are all overripe",
+                    rating: "poor",
+                    feedback: "Starting with a complaint creates negative energy. Even if true, it's not the best conversation opener."
                   }
                 ]
               }
             ]
           };
           
-          // Add completion status to fallback scenarios
-          fallbackScenarios.isCompleted = false;
+          // Store fallback scenarios
+          db.run(
+            "INSERT INTO conversation_practice_scenarios (device_id, practice_date, scenarios_json, created_at) VALUES (?, ?, ?, ?)",
+            [deviceId, dateKey, JSON.stringify(fallbackScenarios), new Date().toISOString()],
+            function(err) {
+              if (err) {
+                console.error('Error storing fallback scenarios:', err);
+              } else {
+                console.log(`🎭 CONVERSATION PRACTICE: Stored fallback scenarios for ${dateKey}`);
+              }
+            }
+          );
+          
           res.json(fallbackScenarios);
         }
       }
     );
   } catch (error) {
     console.error('Error in conversation practice endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Mark conversation practice as completed
-app.post('/api/conversation-practice/:deviceId/complete', (req, res) => {
-  try {
-    const { deviceId } = req.params;
-    const { currentDate, score, userAnswers } = req.body;
-    
-    if (!deviceId) {
-      return res.status(400).json({ error: 'deviceId is required' });
-    }
-    
-    console.log(`🎭 CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
-    
-    // Use current date or simulated date
-    const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
-    const dateKey = today.toISOString().split('T')[0];
-    
-    // Mark as completed in database and store score and user answers
-    const userAnswersJson = userAnswers ? JSON.stringify(userAnswers) : null;
-    db.run(
-      "UPDATE conversation_practice_scenarios SET completed = 1, completed_at = ?, score = ?, user_answers = ? WHERE device_id = ? AND practice_date = ?",
-      [new Date().toISOString(), score, userAnswersJson, deviceId, dateKey],
-      function(err) {
-        if (err) {
-          console.error('Error marking conversation practice complete:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        console.log(`🎭 CONVERSATION PRACTICE: Marked complete for ${dateKey} with score ${score}%`);
-        res.json({ success: true, message: 'Conversation practice completed!', score: score });
-      }
-    );
-  } catch (error) {
-    console.error('Error in conversation practice completion endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
