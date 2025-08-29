@@ -407,7 +407,7 @@ app.get('/api/test/social-zones', (req, res) => {
 });
 
 // Helper function to ensure user exists
-const ensureUserExists = (deviceId, callback) => {
+const ensureUserExists = (deviceId, callback, customDate = null) => {
   console.log(`🔍 Checking if user exists: ${deviceId}`);
   
   db.get("SELECT device_id FROM users WHERE device_id = ?", [deviceId], (err, row) => {
@@ -420,11 +420,20 @@ const ensureUserExists = (deviceId, callback) => {
     if (!row) {
       console.log(`👤 User not found, creating new user: ${deviceId}`);
       // Create new user with creation date
-      // Use current real date for user creation
-      // Use current real date
-      const now = new Date();
-      const creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
-      console.log(`👤 Using real date for user creation: ${creationDate}`);
+      // If customDate provided (simulated mode), use that date
+      // Otherwise use current real date
+      let creationDate;
+      if (customDate) {
+        // Use the simulated date provided
+        const simDate = new Date(customDate + 'T00:00:00Z');
+        creationDate = simDate.toISOString().replace('T', ' ').substring(0, 19);
+        console.log(`👤 Using simulated date for user creation: ${creationDate}`);
+      } else {
+        // Use current real date
+        const now = new Date();
+        creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
+        console.log(`👤 Using real date for user creation: ${creationDate}`);
+      }
       
       db.run("INSERT INTO users (device_id, created_at) VALUES (?, ?)", [deviceId, creationDate], (err) => {
         if (err) {
@@ -979,8 +988,9 @@ app.get('/api/debug/all-activities/:deviceId', (req, res) => {
 // Debug endpoint to test grace period calculation
 app.get('/api/debug/grace/:deviceId', (req, res) => {
   const { deviceId } = req.params;
+  const { currentDate } = req.query;
   
-  const referenceDate = new Date();
+  const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
   
   // Get activity dates (EXACTLY like home endpoint)
   const activityQuery = `
@@ -1424,16 +1434,17 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
   console.log('ANALYTICS: Request received at', new Date().toISOString());
   try {
     const { deviceId } = req.params;
-    console.log('ANALYTICS: deviceId:', deviceId);
+    const { currentDate, completed } = req.query;
+    console.log('ANALYTICS: deviceId:', deviceId, 'currentDate:', currentDate);
 
-    console.log(`🚀 ANALYTICS V2 START: Device ${deviceId}`);
+    console.log(`🚀 ANALYTICS V2 START: Device ${deviceId}, currentDate: ${currentDate}`);
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use current server date
-    const referenceDate = new Date();
+    // Use simulated date if provided, otherwise use current date
+    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
     
     console.log(`📊 ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
@@ -1810,13 +1821,14 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
     console.log('HOME: Request received at', new Date().toISOString());
     try {
       const { deviceId } = req.params;
-      console.log('HOME: deviceId:', deviceId);
+      const { currentDate } = req.query;
+      console.log('HOME: deviceId:', deviceId, 'currentDate:', currentDate);
     
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎯 CLEAN SYSTEM: Device ${deviceId}`);
+    console.log(`🎯 CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
     
     // Step 1: Get user account creation date
     db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
@@ -1825,7 +1837,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
                 return res.status(500).json({ error: 'Database error' });
               }
 
-      const today = new Date();
+      const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
       // Account creation logic for proper week bar colors
       let accountCreationDate;
       if (user && user.created_at) {
@@ -1901,8 +1913,8 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         }
         
         // Step 4: Calculate current streak (USE EXACT SAME LOGIC AS ANALYTICS)
-        const referenceDate = new Date();
-        console.log(`🔧 HOME FIX: Using referenceDate: ${referenceDate.toISOString()}`);
+        const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+        console.log(`🔧 HOME FIX: Using referenceDate: ${referenceDate.toISOString()}, vs original today: ${today.toISOString()}`);
         currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
         console.log(`🔧 HOME FIX: calculateConsecutiveStreak returned: ${currentStreak}`);
         
@@ -2029,7 +2041,156 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
 
 // Removed duplicate calculateConsecutiveStreak function - now using global version
 
-// REMOVED: Entire simulated home endpoint - no longer used in production
+// ORIGINAL SIMULATED ENDPOINT (BACKUP)
+app.get('/api/simulated/home/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { currentDate, completed } = req.query;
+    
+    console.log(`🧪 SIMULATED HOME: Device ${deviceId}, Current Date: ${currentDate}`);
+    
+    // Get completed dates from query parameter (comma-separated list)
+    const completedDates = completed ? completed.split(',').filter(d => d.length > 0) : [];
+    console.log(`🧪 SIMULATED HOME: Completed dates: [${completedDates.join(', ')}]`);
+    
+    // Get all activity dates from database (both challenges and openers)
+    console.log(`🧪 SIMULATED HOME: Querying database for all activity dates with deviceId: ${deviceId}`);
+    
+    // Use the same query structure as the analytics endpoint
+    const activityQuery = `
+      SELECT DISTINCT date(activity_date) as activity_date
+                FROM (
+        SELECT challenge_date as activity_date
+                  FROM daily_challenges 
+        WHERE device_id = ?
+                  
+        UNION
+                  
+        SELECT opener_date as activity_date
+                  FROM openers 
+        WHERE device_id = ? AND opener_was_used = 1
+                ) activities
+                ORDER BY activity_date
+    `;
+    
+    console.log(`🧪 SIMULATED HOME: Executing query: ${activityQuery}`);
+    console.log(`🧪 SIMULATED HOME: Query parameters: [${deviceId}, ${deviceId}]`);
+    
+    db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+                  if (err) {
+        console.error('❌ Error fetching activity dates:', err);
+        res.status(500).json({ error: 'Database error' });
+        return;
+      }
+      
+      console.log(`🧪 SIMULATED HOME: Database query completed. Error: ${err}, Rows found: ${activityRows ? activityRows.length : 0}`);
+      
+      // Get activity dates from database
+      const dbActivityDates = activityRows.map(row => row.activity_date);
+      // Combine with completed dates from query parameter (remove duplicates)
+      const allActivityDates = [...new Set([...completedDates, ...dbActivityDates])];
+      
+      console.log(`🧪 SIMULATED HOME: DB activity dates: [${dbActivityDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Completed dates: [${completedDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Combined activity dates: [${allActivityDates.join(', ')}]`);
+      
+      // Use combined dates for week bar calculation
+      const activityDates = allActivityDates;
+    
+    // Parse current date
+    const currentDateObj = new Date(currentDate + 'T00:00:00.000Z');
+    
+    // Build week array - 7 days ending with current date
+    const weeklyActivity = [];
+    const calendar = [];
+    
+                  for (let i = 6; i >= 0; i--) {
+      const checkDate = new Date(currentDateObj);
+      checkDate.setDate(checkDate.getDate() - i);
+      const checkDateString = checkDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      calendar.push(checkDateString);
+      
+      if (activityDates.includes(checkDateString)) {
+        // Completed day - GREEN
+        weeklyActivity.push('streak');
+      } else if (activityDates.length === 0) {
+        // New user - all previous days should be grey
+        weeklyActivity.push('none');
+                      } else {
+        // Find the first completed date to determine if this is before start or missed
+        const firstCompletedDate = activityDates.sort()[0];
+        if (checkDateString < firstCompletedDate) {
+          // Before user started - GREY
+          weeklyActivity.push('none');
+        } else if (checkDateString > currentDate) {
+          // Future day - don't mark as missed yet - GREY
+          weeklyActivity.push('none');
+        } else if (checkDateString === currentDate) {
+          // Current day - always GREY (will be white in frontend)
+          weeklyActivity.push('none');
+                    } else {
+          // Past day after user started but not completed - RED
+          weeklyActivity.push('missed');
+        }
+      }
+    }
+    
+    // Calculate current streak - consecutive completed days working backwards from most recent
+    let currentStreak = 0;
+    
+    if (activityDates.length > 0) {
+      const sortedActivityDates = activityDates.sort(); // Earliest to latest
+      const mostRecentActivityDate = sortedActivityDates[sortedActivityDates.length - 1];
+      const mostRecentActivityDateObj = new Date(mostRecentActivityDate + 'T00:00:00.000Z');
+      
+      // Check if there's a gap between most recent activity date and current date
+      // If user missed days, streak should be 0
+      const daysBetween = Math.floor((currentDateObj.getTime() - mostRecentActivityDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysBetween > 1) {
+        // There are missed days between most recent activity and current date
+        // Streak is broken, reset to 0
+        currentStreak = 0;
+        console.log(`🧪 SIMULATED HOME: Streak broken - ${daysBetween} days between ${mostRecentActivityDate} and ${currentDate}`);
+      } else {
+        // No gap, count consecutive days backwards
+        let checkDate = new Date(mostRecentActivityDateObj);
+        
+        // Count consecutive days backwards
+        for (let i = sortedActivityDates.length - 1; i >= 0; i--) {
+          const expectedDateString = checkDate.toISOString().split('T')[0];
+          
+          if (sortedActivityDates[i] === expectedDateString) {
+            currentStreak++;
+            checkDate.setDate(checkDate.getDate() - 1); // Go back one day
+          } else {
+            // Gap found, streak is broken
+            break;
+          }
+        }
+      }
+    }
+    
+    console.log(`🧪 SIMULATED HOME: Calendar: [${calendar.join(', ')}]`);
+    console.log(`🧪 SIMULATED HOME: Week array: [${weeklyActivity.join(', ')}]`);
+    console.log(`🧪 SIMULATED HOME: Current streak: ${currentStreak}`);
+    
+    const response = {
+      currentStreak: currentStreak,
+      socialZoneLevel: "Warming Up",
+      weeklyActivity: weeklyActivity,
+      hasActivityToday: activityDates.includes(currentDate)
+    };
+    
+    console.log(`🧪 SIMULATED HOME: Response:`, response);
+    res.json(response);
+      });
+    } catch (error) {
+      console.error('❌ Error in simulated home endpoint:', error);
+      res.status(500).json({ error: 'Simulated endpoint error' });
+    }
+  });
 
 // Test endpoint to check database queries
 app.get('/api/test/database/:deviceId', (req, res) => {
@@ -2037,7 +2198,7 @@ app.get('/api/test/database/:deviceId', (req, res) => {
   
   console.log(`🧪 TEST: Testing database queries for device: ${deviceId}`);
   
-  // Test database query for activity dates
+  // Test the same query that the simulated home endpoint uses
   const activityQuery = `
     SELECT DISTINCT date(activity_date) as activity_date
     FROM (
@@ -2078,18 +2239,22 @@ app.get('/api/data/home/:deviceId', (req, res) => {
   try {
     console.log('🏠 Home endpoint started');
     const { deviceId } = req.params;
+    const { customDate } = req.query;  // Get custom date from query parameter
 
-    console.log(`🏠 Device ID: ${deviceId}`);
+    console.log(`🏠 Device ID: ${deviceId}, Custom Date: ${customDate}`);
 
     if (!deviceId) {
       console.log('❌ No device ID provided');
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use current server date
-    const referenceDate = new Date();
+    // Use custom date if provided (for debug mode), otherwise use current date
+    const referenceDate = customDate ? new Date(customDate + 'T00:00:00Z') : new Date();
     console.log(`🏠 Home screen request for device: ${deviceId}`);
     console.log(`🏠 Reference date: ${referenceDate.toISOString()}`);
+    if (customDate) {
+      console.log(`🧪 DEBUG MODE: Using custom date: ${customDate} (${referenceDate.toISOString()})`);
+    }
 
     // Ensure user exists first
     console.log('🏠 Calling ensureUserExists...');
@@ -2115,7 +2280,12 @@ app.get('/api/data/home/:deviceId', (req, res) => {
         console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
 
         // Get activity data for week calculation
-        // Get ALL activities with counts, no date filtering
+        // In debug mode: get ALL activities (no date filtering)
+        // In normal mode: get activities from last 30 days
+        let activityQuery;
+        let queryParams;
+        
+        // Always get ALL activities with counts, no date filtering (like debug mode)
         console.log(`🔍 Getting ALL activities with counts for device ${deviceId}`);
         activityQuery = `
           SELECT 
@@ -2277,11 +2447,17 @@ app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
         }
 
         // Generate debug info for each day
-        // Use real server date for production
+        // Use the currentDate parameter from frontend for simulated environment
         const activityDates = weeklyActivity.map(row => row.activity_date);
         
-        // Use current server date
-        const today = new Date();
+        // Use currentDate parameter if provided, otherwise use current date
+        let today = new Date();
+        if (currentDate) {
+          today = new Date(currentDate + 'T00:00:00.000Z');
+          console.log(`🧪 SIMULATED HOME: Using provided currentDate: ${currentDate} (FIXED VERSION)`);
+        } else {
+          console.log(`🧪 SIMULATED HOME: No currentDate provided, using current date`);
+        }
         
         const weeklyActivityArray = [];
         const debugInfo = [];
@@ -3177,13 +3353,14 @@ app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
 app.get('/api/data/opener-library/:deviceId', (req, res) => {
   try {
     const { deviceId } = req.params;
+    const { currentDate } = req.query;
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use current server date
-    const referenceDate = new Date();
+    // Use simulated date if provided, otherwise use current date
+    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
     
     console.log(`📚 OPENER LIBRARY: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
@@ -3381,24 +3558,25 @@ function formatOpenerDate(dateString) {
   }
 }
 
-// CONVERSATION PRACTICE API - Content Generation Only
-app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
+// CONVERSATION PRACTICE API
+app.get('/api/conversation-practice/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
+    const { currentDate } = req.query;
     
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE: Generating scenarios for Device ${deviceId}`);
+    console.log(`🎭 CONVERSATION PRACTICE: Device ${deviceId}, Current Date: ${currentDate}`);
     
-    // Use current server date
-    const today = new Date();
+    // Use current date or simulated date
+    const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
     // Check if we already have scenarios for this date
     db.get(
-      "SELECT scenarios_json FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
+      "SELECT * FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
       [deviceId, dateKey],
       async (err, existing) => {
         if (err) {
@@ -3407,9 +3585,17 @@ app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
         }
         
         if (existing) {
-          // Return existing scenarios (content only)
+          // Return existing scenarios with completion status, score, and user answers
           console.log(`🎭 CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
           const scenariosData = JSON.parse(existing.scenarios_json);
+          scenariosData.isCompleted = !!existing.completed;
+          scenariosData.score = existing.score || 0;
+          
+          // Include user answers if they exist (for review mode)
+          if (existing.user_answers) {
+            scenariosData.userAnswers = JSON.parse(existing.user_answers);
+          }
+          
           return res.json(scenariosData);
         }
         
@@ -3509,7 +3695,8 @@ Return ONLY valid JSON in this exact format:
             }
           );
 
-          // Return the generated scenarios (content only)
+          // Add completion status and return the generated scenarios
+          scenariosData.isCompleted = false;
           res.json(scenariosData);
           
         } catch (error) {
@@ -3627,12 +3814,50 @@ Return ONLY valid JSON in this exact format:
           };
           
           // Add completion status to fallback scenarios
+          fallbackScenarios.isCompleted = false;
           res.json(fallbackScenarios);
         }
       }
     );
   } catch (error) {
     console.error('Error in conversation practice endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Mark conversation practice as completed
+app.post('/api/conversation-practice/:deviceId/complete', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { currentDate, score, userAnswers } = req.body;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`🎭 CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
+    
+    // Use current date or simulated date
+    const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+    const dateKey = today.toISOString().split('T')[0];
+    
+    // Mark as completed in database and store score and user answers
+    const userAnswersJson = userAnswers ? JSON.stringify(userAnswers) : null;
+    db.run(
+      "UPDATE conversation_practice_scenarios SET completed = 1, completed_at = ?, score = ?, user_answers = ? WHERE device_id = ? AND practice_date = ?",
+      [new Date().toISOString(), score, userAnswersJson, deviceId, dateKey],
+      function(err) {
+        if (err) {
+          console.error('Error marking conversation practice complete:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        console.log(`🎭 CONVERSATION PRACTICE: Marked complete for ${dateKey} with score ${score}%`);
+        res.json({ success: true, message: 'Conversation practice completed!', score: score });
+      }
+    );
+  } catch (error) {
+    console.error('Error in conversation practice completion endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -3803,8 +4028,8 @@ app.post('/api/debug/fix-user/:deviceId', (req, res) => {
   let dateToSet;
   if (creationDate) {
     // Use provided date
-    const providedDate = new Date(creationDate + 'T00:00:00Z');
-    dateToSet = providedDate.toISOString().replace('T', ' ').substring(0, 19);
+    const customDate = new Date(creationDate + 'T00:00:00Z');
+    dateToSet = customDate.toISOString().replace('T', ' ').substring(0, 19);
   } else {
     // Use current date
     const now = new Date();
