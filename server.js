@@ -1322,8 +1322,7 @@ app.post('/api/data/challenge', (req, res) => {
   }
 });
 
-// Save Daily Challenge Data - SUPABASE VERSION (temporarily disabled for debugging)
-/*
+// Save Daily Challenge Data - SUPABASE VERSION
 app.post('/api/data/challenge-v2', async (req, res) => {
   try {
     const {
@@ -1387,20 +1386,14 @@ app.post('/api/data/challenge-v2', async (req, res) => {
 
     console.log(`✅ [SUPABASE] Challenge saved successfully for ${deviceId}, now updating streak...`);
 
-    // For now, still use SQLite streak update (we'll migrate this later)
-    updateUserStreakWithCallback(deviceId, challengeDate, (streakErr) => {
-      if (streakErr) {
-        console.error('❌ Error updating streak:', streakErr);
-        return res.status(500).json({ error: 'Failed to update streak' });
-      }
+    // For now, skip streak update to avoid SQLite/Supabase conflict
+    // TODO: Create Supabase version of streak update
+    console.log(`✅ [SUPABASE] Challenge saved (streak update skipped for now)`);
 
-      console.log(`✅ [SUPABASE] Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
-
-      res.json({ 
-        success: true, 
-        challengeId: challengeData.id,
-        message: 'Challenge data saved and streak updated successfully (Supabase version)' 
-      });
+    res.json({ 
+      success: true, 
+      challengeId: challengeData.id,
+      message: 'Challenge data saved successfully in Supabase (streak update pending)' 
     });
 
   } catch (error) {
@@ -1411,7 +1404,6 @@ app.post('/api/data/challenge-v2', async (req, res) => {
     });
   }
 });
-*/
 
 // Save Opener Data - UPDATED WITH CONDITIONAL STREAK LOGIC
 app.post('/api/data/opener', (req, res) => {
