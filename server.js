@@ -1429,8 +1429,8 @@ app.post('/api/data/challenge', async (req, res) => {
 
 
 
-// Save Opener Data - UPDATED WITH CONDITIONAL STREAK LOGIC
-app.post('/api/data/opener', (req, res) => {
+// Save Opener Data - NOW POWERED BY SUPABASE!
+app.post('/api/data/opener', async (req, res) => {
   try {
     const {
       deviceId,
@@ -1449,7 +1449,7 @@ app.post('/api/data/opener', (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    console.log('Opener data received:', { 
+    console.log('[SUPABASE] Opener data received:', { 
       deviceId, openerWasUsed, openerWasSuccessful, 
       openerSetting, openerPurpose, openerConfidenceLevel 
     });
@@ -1461,50 +1461,61 @@ app.post('/api/data/opener', (req, res) => {
       }
     }
 
-    ensureUserExists(deviceId, (err) => {
-      if (err) {
-        console.error('Error ensuring user exists:', err);
-        return res.status(500).json({ error: 'Database error' });
+    // Ensure user exists (Supabase version)
+    await ensureUserExistsSupabase(deviceId);
+
+    // ALWAYS insert opener data (save everything regardless of usage)
+    const { data: openerData, error: openerError } = await supabase
+      .from('openers')
+      .insert({
+        device_id: deviceId,
+        opener_text: openerText,
+        opener_setting: openerSetting,
+        opener_purpose: openerPurpose,
+        opener_was_used: openerWasUsed,
+        opener_was_successful: openerWasSuccessful,
+        opener_rating: openerRating,
+        opener_confidence_level: openerConfidenceLevel,
+        opener_notes: openerNotes,
+        opener_date: openerDate
+      })
+      .select()
+      .single();
+
+    if (openerError) {
+      console.error('❌ [SUPABASE] Error saving opener:', openerError);
+      return res.status(500).json({ 
+        error: 'Failed to save opener data',
+        details: openerError.message 
+      });
+    }
+
+    // Update streak if opener was used (SAME LOGIC as SQLite version)
+    if (openerWasUsed === true) {
+      try {
+        await updateUserStreakSupabase(deviceId, openerDate);
+        console.log(`✅ [SUPABASE] Opener streak updated for ${deviceId}`);
+      } catch (streakErr) {
+        console.error('❌ [SUPABASE] Error updating streak after opener:', streakErr);
+        // Don't fail the request if streak update fails - opener was saved successfully
       }
+    }
+    
+    console.log(`[SUPABASE] Opener saved: Used=${openerWasUsed}, Success=${openerWasSuccessful}`);
 
-      // ALWAYS insert opener data (save everything regardless of usage)
-      db.run(
-        `INSERT INTO openers 
-         (device_id, opener_text, opener_setting, opener_purpose, opener_was_used, 
-          opener_was_successful, opener_rating, opener_confidence_level, opener_notes, opener_date) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [deviceId, openerText, openerSetting, openerPurpose, openerWasUsed, 
-         openerWasSuccessful, openerRating, openerConfidenceLevel, openerNotes, openerDate],
-        function(err) {
-          if (err) {
-            console.error('Error saving opener:', err);
-            return res.status(500).json({ error: 'Failed to save opener data' });
-          }
-
-          // Update streak if opener was used (for immediate display)
-          if (openerWasUsed === true) {
-            updateUserStreakWithCallback(deviceId, openerDate, (streakErr) => {
-              if (streakErr) {
-                console.error('Error updating streak after opener:', streakErr);
-          } else {
-                console.log(`✅ Opener streak updated for ${deviceId}`);
-              }
-            });
-          }
-          
-          console.log(`Opener saved: Used=${openerWasUsed}, Success=${openerWasSuccessful}`);
-
-          res.json({ 
-            success: true, 
-            openerId: this.lastID,
-            message: 'Opener data saved successfully' 
-          });
-        }
-      );
+    // Return same response format that iOS app expects
+    res.json({ 
+      success: true, 
+      openerId: openerData.id,  // UUID instead of SQLite integer
+      message: 'Opener data saved successfully' 
     });
+
   } catch (error) {
-    console.error('Error in opener endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ [SUPABASE] Error in opener endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 
