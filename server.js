@@ -1342,92 +1342,8 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
   });
 });
 
-// Save Daily Challenge Data - CHALLENGES ALWAYS UPDATE STREAK (SQLite version - keeping for gradual migration)
-app.post('/api/data/challenge', (req, res) => {
-  try {
-    const {
-      deviceId,
-      challengeCompleted = true,
-      challengeWasSuccessful,
-      challengeRating,
-      challengeConfidenceLevel,
-      challengeNotes,
-      challengeDate,
-      challengeType
-    } = req.body;
-
-    if (!deviceId) {
-      return res.status(400).json({ error: 'deviceId is required' });
-    }
-
-    console.log('Challenge data received:', { 
-      deviceId, challengeCompleted, challengeWasSuccessful, 
-      challengeRating, challengeConfidenceLevel, challengeType 
-    });
-
-    // Validate confidence level is within 4-level range (1-4)
-    if (challengeConfidenceLevel !== null && challengeConfidenceLevel !== undefined) {
-      if (challengeConfidenceLevel < 1 || challengeConfidenceLevel > 4) {
-        return res.status(400).json({ error: 'Invalid confidence level. Must be 1-4 (1=Anxious, 2=Nervous, 3=Comfortable, 4=Confident)' });
-      }
-    }
-
-    // Extract date from challengeDate for user creation
-    const dateForUserCreation = challengeDate ? challengeDate.split('T')[0] : null;
-
-    ensureUserExists(deviceId, (err) => {
-      if (err) {
-        console.error('❌ Error ensuring user exists:', err);
-        return res.status(500).json({ error: 'Database error creating user' });
-      }
-      
-      console.log(`✅ User exists/created, proceeding with challenge for: ${deviceId}`);
-
-      // Insert challenge data with success field
-      db.run(
-        `INSERT INTO daily_challenges 
-         (device_id, challenge_completed, challenge_was_successful, challenge_rating, 
-          challenge_confidence_level, challenge_notes, challenge_date, challenge_type) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [deviceId, challengeCompleted, challengeWasSuccessful, challengeRating, 
-         challengeConfidenceLevel, challengeNotes, challengeDate, challengeType],
-        function(err) {
-          if (err) {
-            console.error('Error saving challenge:', err);
-            return res.status(500).json({ error: 'Failed to save challenge data' });
-          }
-
-          console.log(`📝 Challenge saved successfully for ${deviceId}, now updating streak...`);
-
-          // Capture the challenge ID before the callback to preserve context
-          const challengeId = this.lastID;
-
-          // Update streak and wait for completion before responding
-          updateUserStreakWithCallback(deviceId, challengeDate, (streakErr) => {
-            if (streakErr) {
-              console.error('Error updating streak:', streakErr);
-              return res.status(500).json({ error: 'Failed to update streak' });
-            }
-
-            console.log(`✅ Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
-
-          res.json({ 
-            success: true, 
-              challengeId: challengeId,
-              message: 'Challenge data saved and streak updated successfully' 
-            });
-          });
-        }
-      );
-    });
-  } catch (error) {
-    console.error('Error in challenge endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Save Daily Challenge Data - SUPABASE VERSION
-app.post('/api/data/challenge-v2', async (req, res) => {
+// Save Daily Challenge Data - NOW POWERED BY SUPABASE!
+app.post('/api/data/challenge', async (req, res) => {
   try {
     const {
       deviceId,
@@ -1494,14 +1410,12 @@ app.post('/api/data/challenge-v2', async (req, res) => {
     const streakResult = await updateUserStreakSupabase(deviceId, challengeDate);
     
     console.log(`✅ [SUPABASE] Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
-    console.log(`✅ [SUPABASE] New streak: ${streakResult.currentStreak}, Best streak: ${streakResult.bestStreak}`);
 
+    // Return same response format that iOS app expects
     res.json({ 
       success: true, 
-      challengeId: challengeData.id,
-      currentStreak: streakResult.currentStreak,
-      bestStreak: streakResult.bestStreak,
-      message: 'Challenge data saved and streak updated successfully (Supabase)' 
+      challengeId: challengeData.id,  // UUID instead of SQLite integer
+      message: 'Challenge data saved and streak updated successfully' 
     });
 
   } catch (error) {
@@ -1512,6 +1426,8 @@ app.post('/api/data/challenge-v2', async (req, res) => {
     });
   }
 });
+
+
 
 // Save Opener Data - UPDATED WITH CONDITIONAL STREAK LOGIC
 app.post('/api/data/opener', (req, res) => {
