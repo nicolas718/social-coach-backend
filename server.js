@@ -1519,8 +1519,8 @@ app.post('/api/data/opener', async (req, res) => {
   }
 });
 
-// Save Development Module Data
-app.post('/api/data/development', (req, res) => {
+// Save Development Module Data - NOW POWERED BY SUPABASE!
+app.post('/api/data/development', async (req, res) => {
   try {
     const {
       deviceId,
@@ -1535,90 +1535,110 @@ app.post('/api/data/development', (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    ensureUserExists(deviceId, (err) => {
-      if (err) {
-        console.error('Error ensuring user exists:', err);
-        return res.status(500).json({ error: 'Database error' });
+    console.log('[SUPABASE] Development data received:', {
+      deviceId, developmentModuleId, developmentScreenReached, 
+      developmentIsCompleted, developmentProgressPercentage
+    });
+
+    // Ensure user exists (Supabase version)
+    await ensureUserExistsSupabase(deviceId);
+
+    // Check if module progress already exists for this user and module
+    const { data: existingRecord, error: selectError } = await supabase
+      .from('development_modules')
+      .select('*')
+      .eq('device_id', deviceId)
+      .eq('development_module_id', developmentModuleId)
+      .single();
+
+    // Handle "not found" error (PGRST116) as expected case
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error('❌ [SUPABASE] Error checking existing module progress:', selectError);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (existingRecord) {
+      // Update existing record if new progress is higher or module is completed (SAME LOGIC)
+      const shouldUpdate = 
+        developmentScreenReached > existingRecord.development_screen_reached ||
+        (developmentIsCompleted && !existingRecord.development_is_completed);
+
+      if (shouldUpdate) {
+        const { data: updatedRecord, error: updateError } = await supabase
+          .from('development_modules')
+          .update({
+            development_screen_reached: developmentScreenReached,
+            development_is_completed: developmentIsCompleted,
+            development_progress_percentage: developmentProgressPercentage,
+            development_date: developmentDate
+          })
+          .eq('device_id', deviceId)
+          .eq('development_module_id', developmentModuleId)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('❌ [SUPABASE] Error updating development module:', updateError);
+          return res.status(500).json({ 
+            error: 'Failed to update development module data',
+            details: updateError.message 
+          });
+        }
+
+        console.log(`✅ [SUPABASE] Updated development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
+
+        res.json({ 
+          success: true, 
+          moduleId: updatedRecord.id,
+          message: 'Development module data updated successfully' 
+        });
+      } else {
+        // No update needed (SAME LOGIC)
+        console.log(`[SUPABASE] Development module ${developmentModuleId} for ${deviceId} already up to date`);
+        res.json({ 
+          success: true, 
+          moduleId: existingRecord.id,
+          message: 'Development module data already up to date' 
+        });
+      }
+    } else {
+      // Insert new record (SAME LOGIC)
+      const { data: newRecord, error: insertError } = await supabase
+        .from('development_modules')
+        .insert({
+          device_id: deviceId,
+          development_module_id: developmentModuleId,
+          development_screen_reached: developmentScreenReached,
+          development_is_completed: developmentIsCompleted,
+          development_progress_percentage: developmentProgressPercentage,
+          development_date: developmentDate
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('❌ [SUPABASE] Error saving development module:', insertError);
+        return res.status(500).json({ 
+          error: 'Failed to save development module data',
+          details: insertError.message 
+        });
       }
 
-      // Check if module progress already exists for this user and module
-      db.get(
-        "SELECT * FROM development_modules WHERE device_id = ? AND development_module_id = ?",
-        [deviceId, developmentModuleId],
-        (err, existingRecord) => {
-          if (err) {
-            console.error('Error checking existing module progress:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
+      console.log(`✅ [SUPABASE] Saved development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
 
-          if (existingRecord) {
-            // Update existing record if new progress is higher or module is completed
-            const shouldUpdate = 
-              developmentScreenReached > existingRecord.development_screen_reached ||
-              (developmentIsCompleted && !existingRecord.development_is_completed);
+      res.json({ 
+        success: true, 
+        moduleId: newRecord.id,
+        message: 'Development module data saved successfully' 
+      });
+    }
 
-            if (shouldUpdate) {
-              db.run(
-                `UPDATE development_modules 
-                 SET development_screen_reached = ?, development_is_completed = ?, 
-                     development_progress_percentage = ?, development_date = ?
-                 WHERE device_id = ? AND development_module_id = ?`,
-                [developmentScreenReached, developmentIsCompleted, 
-                 developmentProgressPercentage, developmentDate, deviceId, developmentModuleId],
-                function(err) {
-                  if (err) {
-                    console.error('Error updating development module:', err);
-                    return res.status(500).json({ error: 'Failed to update development module data' });
-                  }
-
-                  console.log(`Updated development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
-
-                  res.json({ 
-                    success: true, 
-                    moduleId: existingRecord.id,
-                    message: 'Development module data updated successfully' 
-                  });
-                }
-              );
-            } else {
-              // No update needed
-              res.json({ 
-                success: true, 
-                moduleId: existingRecord.id,
-                message: 'Development module data already up to date' 
-              });
-            }
-          } else {
-            // Insert new record
-            db.run(
-              `INSERT INTO development_modules 
-               (device_id, development_module_id, development_screen_reached, 
-                development_is_completed, development_progress_percentage, development_date) 
-               VALUES (?, ?, ?, ?, ?, ?)`,
-              [deviceId, developmentModuleId, developmentScreenReached, 
-               developmentIsCompleted, developmentProgressPercentage, developmentDate],
-              function(err) {
-                if (err) {
-                  console.error('Error saving development module:', err);
-                  return res.status(500).json({ error: 'Failed to save development module data' });
-                }
-
-                console.log(`Saved development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
-
-                res.json({ 
-                  success: true, 
-                  moduleId: this.lastID,
-                  message: 'Development module data saved successfully' 
-                });
-              }
-            );
-          }
-        }
-      );
-    });
   } catch (error) {
-    console.error('Error in development endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ [SUPABASE] Error in development endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 
