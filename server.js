@@ -157,8 +157,14 @@ function requireApiKey(req, res, next) {
   next();
 }
 
-// Apply authentication to all /api/* routes
-app.use('/api/*', requireApiKey);
+// Apply authentication to all /api/* routes except test endpoints
+app.use('/api/*', (req, res, next) => {
+  // Skip auth for test endpoints
+  if (req.path === '/api/test/supabase' || req.path === '/api/test/auth') {
+    return next();
+  }
+  return requireApiKey(req, res, next);
+});
 
 console.log('✅ API key authentication middleware configured for all protected routes');
 
