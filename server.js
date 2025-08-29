@@ -3884,7 +3884,7 @@ function formatOpenerDate(dateString) {
   }
 }
 
-// CONVERSATION PRACTICE API
+// CONVERSATION PRACTICE API - NOW POWERED BY SUPABASE!
 app.get('/api/conversation-practice/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
@@ -3894,41 +3894,46 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE: Device ${deviceId}, Current Date: ${currentDate}`);
+    console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Device ${deviceId}, Current Date: ${currentDate}`);
     
-    // Use current date or simulated date
+    // Use current date or simulated date (SAME LOGIC)
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
-    // Check if we already have scenarios for this date
-    console.log(`🎭 CONVERSATION PRACTICE: Querying database for device_id='${deviceId}' AND practice_date='${dateKey}'`);
-    db.get(
-      "SELECT * FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
-      [deviceId, dateKey],
-      async (err, existing) => {
-        if (err) {
-          console.error('Error checking existing scenarios:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        if (existing) {
-          // Return existing scenarios with completion status, score, and user answers
-          console.log(`🎭 CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
-          console.log(`🎭 CONVERSATION PRACTICE: completed=${existing.completed}, score=${existing.score}`);
-          const scenariosData = JSON.parse(existing.scenarios_json);
-          scenariosData.isCompleted = !!existing.completed;
-          scenariosData.score = existing.score || 0;
-          
-          // Include user answers if they exist (for review mode)
-          if (existing.user_answers) {
-            scenariosData.userAnswers = JSON.parse(existing.user_answers);
-          }
-          
-          console.log(`🎭 CONVERSATION PRACTICE: Returning data with isCompleted=${scenariosData.isCompleted}, score=${scenariosData.score}`);
-          return res.json(scenariosData);
-        }
-        
-        console.log(`🎭 CONVERSATION PRACTICE: No existing scenarios found for ${dateKey} - will generate new ones`);
+    // Check if we already have scenarios for this date (Supabase version)
+    console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Querying database for device_id='${deviceId}' AND practice_date='${dateKey}'`);
+    
+    const { data: existing, error: selectError } = await supabase
+      .from('conversation_practice_scenarios')
+      .select('*')
+      .eq('device_id', deviceId)
+      .eq('practice_date', dateKey)
+      .single();
+    
+    // Handle "not found" error as expected case
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error('❌ [SUPABASE] Error checking existing scenarios:', selectError);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (existing) {
+      // Return existing scenarios with completion status, score, and user answers (SAME LOGIC)
+      console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
+      console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: completed=${existing.completed}, score=${existing.score}`);
+      const scenariosData = JSON.parse(existing.scenarios_json);
+      scenariosData.isCompleted = !!existing.completed;
+      scenariosData.score = existing.score || 0;
+      
+      // Include user answers if they exist (for review mode)
+      if (existing.user_answers) {
+        scenariosData.userAnswers = JSON.parse(existing.user_answers);
+      }
+      
+      console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Returning data with isCompleted=${scenariosData.isCompleted}, score=${scenariosData.score}`);
+      return res.json(scenariosData);
+    }
+    
+    console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: No existing scenarios found for ${dateKey} - will generate new ones`);
         
         // Generate new scenarios using AI
         console.log(`🎭 CONVERSATION PRACTICE: Generating new scenarios for ${dateKey}`);
@@ -4012,26 +4017,36 @@ Return ONLY valid JSON in this exact format:
             throw new Error('AI did not return exactly 5 scenarios');
           }
 
-          // Store scenarios in database for this date
-          db.run(
-            "INSERT INTO conversation_practice_scenarios (device_id, practice_date, scenarios_json, created_at) VALUES (?, ?, ?, ?)",
-            [deviceId, dateKey, JSON.stringify(scenariosData), new Date().toISOString()],
-            function(err) {
-              if (err) {
-                console.error('Error storing scenarios:', err);
-                // Still return the scenarios even if storage fails
-              } else {
-                console.log(`🎭 CONVERSATION PRACTICE: Stored scenarios for ${dateKey}`);
-              }
+          // Store scenarios in Supabase for this date
+          try {
+            const { data: storedScenarios, error: storageError } = await supabase
+              .from('conversation_practice_scenarios')
+              .insert({
+                device_id: deviceId,
+                practice_date: dateKey,
+                scenarios_json: JSON.stringify(scenariosData),
+                created_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+            
+            if (storageError) {
+              console.error('❌ [SUPABASE] Error storing scenarios:', storageError);
+              // Still return the scenarios even if storage fails
+            } else {
+              console.log(`✅ [SUPABASE] CONVERSATION PRACTICE: Stored scenarios for ${dateKey}`);
             }
-          );
+          } catch (storageErr) {
+            console.error('❌ [SUPABASE] Storage error:', storageErr);
+            // Continue anyway - return generated scenarios
+          }
 
           // Add completion status and return the generated scenarios
           scenariosData.isCompleted = false;
           res.json(scenariosData);
           
         } catch (error) {
-          console.error('🎭 Error generating conversation scenarios:', error);
+          console.error('🎭 [SUPABASE] Error generating conversation scenarios:', error);
           
           // Fallback to sample scenarios if AI fails
           const fallbackScenarios = {
@@ -4148,16 +4163,18 @@ Return ONLY valid JSON in this exact format:
           fallbackScenarios.isCompleted = false;
           res.json(fallbackScenarios);
         }
-      }
-    );
+
   } catch (error) {
-    console.error('Error in conversation practice endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ [SUPABASE] Error in conversation practice endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 
-// Mark conversation practice as completed
-app.post('/api/conversation-practice/:deviceId/complete', (req, res) => {
+// Mark conversation practice as completed - NOW POWERED BY SUPABASE!
+app.post('/api/conversation-practice/:deviceId/complete', async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate, score, userAnswers } = req.body;
@@ -4166,30 +4183,49 @@ app.post('/api/conversation-practice/:deviceId/complete', (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
+    console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
     
-    // Use current date or simulated date
+    // Use current date or simulated date (SAME LOGIC)
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
-    // Mark as completed in database and store score and user answers
+    // Mark as completed in Supabase and store score and user answers
     const userAnswersJson = userAnswers ? JSON.stringify(userAnswers) : null;
-    db.run(
-      "UPDATE conversation_practice_scenarios SET completed = 1, completed_at = ?, score = ?, user_answers = ? WHERE device_id = ? AND practice_date = ?",
-      [new Date().toISOString(), score, userAnswersJson, deviceId, dateKey],
-      function(err) {
-        if (err) {
-          console.error('Error marking conversation practice complete:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        console.log(`🎭 CONVERSATION PRACTICE: Marked complete for ${dateKey} with score ${score}%`);
-        res.json({ success: true, message: 'Conversation practice completed!', score: score });
-      }
-    );
+    
+    const { data: updatedRecord, error: updateError } = await supabase
+      .from('conversation_practice_scenarios')
+      .update({
+        completed: true,
+        completed_at: new Date().toISOString(),
+        score: score,
+        user_answers: userAnswersJson
+      })
+      .eq('device_id', deviceId)
+      .eq('practice_date', dateKey)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('❌ [SUPABASE] Error marking conversation practice complete:', updateError);
+      return res.status(500).json({ 
+        error: 'Database error',
+        details: updateError.message 
+      });
+    }
+    console.log(`✅ [SUPABASE] CONVERSATION PRACTICE: Marked complete for ${dateKey} with score ${score}%`);
+    res.json({ 
+      success: true, 
+      message: 'Conversation practice completed!', 
+      score: score,
+      practiceId: updatedRecord.id
+    });
+
   } catch (error) {
-    console.error('Error in conversation practice completion endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ [SUPABASE] Error in conversation practice completion endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 
