@@ -1238,7 +1238,7 @@ app.get('/api/debug/grace/:deviceId', (req, res) => {
   });
 });
 
-// Save Daily Challenge Data - CHALLENGES ALWAYS UPDATE STREAK
+// Save Daily Challenge Data - CHALLENGES ALWAYS UPDATE STREAK (SQLite version - keeping for gradual migration)
 app.post('/api/data/challenge', (req, res) => {
   try {
     const {
@@ -1319,6 +1319,95 @@ app.post('/api/data/challenge', (req, res) => {
   } catch (error) {
     console.error('Error in challenge endpoint:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Save Daily Challenge Data - SUPABASE VERSION
+app.post('/api/data/challenge-v2', async (req, res) => {
+  try {
+    const {
+      deviceId,
+      challengeCompleted = true,
+      challengeWasSuccessful,
+      challengeRating,
+      challengeConfidenceLevel,
+      challengeNotes,
+      challengeDate,
+      challengeType
+    } = req.body;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    console.log('[SUPABASE] Challenge data received:', { 
+      deviceId, challengeCompleted, challengeWasSuccessful, 
+      challengeRating, challengeConfidenceLevel, challengeType 
+    });
+
+    // Validate confidence level is within 4-level range (1-4)
+    if (challengeConfidenceLevel !== null && challengeConfidenceLevel !== undefined) {
+      if (challengeConfidenceLevel < 1 || challengeConfidenceLevel > 4) {
+        return res.status(400).json({ error: 'Invalid confidence level. Must be 1-4 (1=Anxious, 2=Nervous, 3=Comfortable, 4=Confident)' });
+      }
+    }
+
+    // Extract date from challengeDate for user creation
+    const dateForUserCreation = challengeDate ? challengeDate.split('T')[0] : null;
+
+    // Ensure user exists (Supabase version)
+    await ensureUserExistsSupabase(deviceId, dateForUserCreation);
+    
+    console.log(`✅ [SUPABASE] User exists/created, proceeding with challenge for: ${deviceId}`);
+
+    // Insert challenge data into Supabase
+    const { data: challengeData, error: challengeError } = await supabase
+      .from('daily_challenges')
+      .insert({
+        device_id: deviceId,
+        challenge_completed: challengeCompleted,
+        challenge_was_successful: challengeWasSuccessful,
+        challenge_rating: challengeRating,
+        challenge_confidence_level: challengeConfidenceLevel,
+        challenge_notes: challengeNotes,
+        challenge_date: challengeDate,
+        challenge_type: challengeType
+      })
+      .select()
+      .single();
+
+    if (challengeError) {
+      console.error('❌ [SUPABASE] Error saving challenge:', challengeError);
+      return res.status(500).json({ 
+        error: 'Failed to save challenge data', 
+        details: challengeError.message 
+      });
+    }
+
+    console.log(`✅ [SUPABASE] Challenge saved successfully for ${deviceId}, now updating streak...`);
+
+    // For now, still use SQLite streak update (we'll migrate this later)
+    updateUserStreakWithCallback(deviceId, challengeDate, (streakErr) => {
+      if (streakErr) {
+        console.error('❌ Error updating streak:', streakErr);
+        return res.status(500).json({ error: 'Failed to update streak' });
+      }
+
+      console.log(`✅ [SUPABASE] Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
+
+      res.json({ 
+        success: true, 
+        challengeId: challengeData.id,
+        message: 'Challenge data saved and streak updated successfully (Supabase version)' 
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ [SUPABASE] Error in challenge endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error', 
+      details: error.message 
+    });
   }
 });
 
