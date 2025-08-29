@@ -6,6 +6,7 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 console.log('===============================================');
@@ -161,9 +162,19 @@ app.use('/api/*', requireApiKey);
 
 console.log('✅ API key authentication middleware configured for all protected routes');
 
-// Initialize SQLite Database
+// Initialize SQLite Database (keeping for gradual migration)
 const dbPath = path.join(__dirname, 'social_coach_data.sqlite');
 const db = new sqlite3.Database(dbPath);
+
+// Initialize Supabase Database
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+console.log('✅ Supabase client initialized');
+console.log('🔗 Supabase URL:', process.env.SUPABASE_URL);
+console.log('🔑 Service key configured:', !!process.env.SUPABASE_SERVICE_KEY);
 
 // Create tables if they don't exist
 db.serialize(() => {
@@ -951,6 +962,44 @@ app.get('/test-deployment', (req, res) => {
   });
 });
 
+// Test Supabase connection
+app.get('/api/test/supabase', async (req, res) => {
+  try {
+    console.log('🧪 Testing Supabase connection...');
+    
+    // Simple test query
+    const { data, error } = await supabase
+      .from('users')
+      .select('count(*)')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Supabase test failed:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Supabase connection failed',
+        error: error.message
+      });
+    }
+    
+    console.log('✅ Supabase connection successful');
+    res.json({
+      status: 'success',
+      message: 'Supabase connection working!',
+      timestamp: new Date().toISOString(),
+      supabaseConnected: true
+    });
+    
+  } catch (error) {
+    console.error('❌ Supabase test error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Supabase test failed',
+      error: error.message
+    });
+  }
+});
+
 // Test endpoint for API key authentication
 app.get('/api/test/auth', (req, res) => {
   res.json({ 
@@ -1398,11 +1447,14 @@ app.delete('/api/data/clear/:deviceId', (req, res) => {
         }
       });
 
-      db.run('DELETE FROM conversation_practice_scenarios WHERE device_id = ?', [deviceId], (err) => {
+      db.run('DELETE FROM conversation_practice_scenarios WHERE device_id = ?', [deviceId], function(err) {
         if (err) {
-          console.error('Error deleting conversation practice scenarios:', err);
+          console.error('❌ Error deleting conversation practice scenarios:', err);
         } else {
-          console.log('✅ Deleted conversation practice scenarios');
+          console.log(`✅ Deleted ${this.changes} conversation practice scenario(s) for device ${deviceId}`);
+          if (this.changes === 0) {
+            console.log('⚠️  No conversation practice scenarios were found to delete');
+          }
         }
       });
 
@@ -1417,8 +1469,8 @@ app.delete('/api/data/clear/:deviceId', (req, res) => {
       // Send success response
       res.json({ 
         success: true, 
-        message: 'All data cleared for testing',
-        clearedTables: ['daily_challenges', 'openers', 'development_modules', 'users']
+        message: 'All data cleared for testing (including conversation practice scenarios)',
+        clearedTables: ['daily_challenges', 'openers', 'development_modules', 'conversation_practice_scenarios', 'users']
       });
     });
 
@@ -3304,6 +3356,47 @@ app.post('/api/debug/reset-user/:deviceId', (req, res) => {
   }
 });
 
+// Debug endpoint to see conversation practice data
+app.get('/api/debug/conversation-practice/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`🔍 DEBUG: Getting all conversation practice data for device: ${deviceId}`);
+    
+    db.all('SELECT * FROM conversation_practice_scenarios WHERE device_id = ? ORDER BY practice_date DESC', [deviceId], (err, rows) => {
+      if (err) {
+        console.error('Error fetching conversation practice data:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      console.log(`🔍 DEBUG: Found ${rows.length} conversation practice records:`);
+      rows.forEach(row => {
+        console.log(`  - Date: ${row.practice_date}, Completed: ${row.completed}, Score: ${row.score}`);
+      });
+      
+      res.json({
+        deviceId: deviceId,
+        totalRecords: rows.length,
+        records: rows.map(row => ({
+          practice_date: row.practice_date,
+          completed: row.completed,
+          score: row.score,
+          created_at: row.created_at,
+          completed_at: row.completed_at
+        }))
+      });
+    });
+    
+  } catch (error) {
+    console.error('Error in debug conversation practice endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // AWS Bedrock API health check endpoint
 app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
   try {
@@ -3558,9 +3651,8 @@ function formatOpenerDate(dateString) {
   }
 }
 
-// CONVERSATION PRACTICE API - SIMPLIFIED SYSTEM
-// Backend only generates scenarios, frontend handles completion tracking
-app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
+// CONVERSATION PRACTICE API
+app.get('/api/conversation-practice/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate } = req.query;
@@ -3569,15 +3661,16 @@ app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 CONVERSATION PRACTICE GENERATE: Device ${deviceId}, Current Date: ${currentDate}`);
+    console.log(`🎭 CONVERSATION PRACTICE: Device ${deviceId}, Current Date: ${currentDate}`);
     
     // Use current date or simulated date
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
-    // Check if we already generated scenarios for this date (to prevent multiple generations per day)
+    // Check if we already have scenarios for this date
+    console.log(`🎭 CONVERSATION PRACTICE: Querying database for device_id='${deviceId}' AND practice_date='${dateKey}'`);
     db.get(
-      "SELECT scenarios_json FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
+      "SELECT * FROM conversation_practice_scenarios WHERE device_id = ? AND practice_date = ?",
       [deviceId, dateKey],
       async (err, existing) => {
         if (err) {
@@ -3586,11 +3679,23 @@ app.get('/api/conversation-practice/:deviceId/generate', async (req, res) => {
         }
         
         if (existing) {
-          // Return existing scenarios (frontend will handle completion status)
+          // Return existing scenarios with completion status, score, and user answers
           console.log(`🎭 CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
+          console.log(`🎭 CONVERSATION PRACTICE: completed=${existing.completed}, score=${existing.score}`);
           const scenariosData = JSON.parse(existing.scenarios_json);
+          scenariosData.isCompleted = !!existing.completed;
+          scenariosData.score = existing.score || 0;
+          
+          // Include user answers if they exist (for review mode)
+          if (existing.user_answers) {
+            scenariosData.userAnswers = JSON.parse(existing.user_answers);
+          }
+          
+          console.log(`🎭 CONVERSATION PRACTICE: Returning data with isCompleted=${scenariosData.isCompleted}, score=${scenariosData.score}`);
           return res.json(scenariosData);
         }
+        
+        console.log(`🎭 CONVERSATION PRACTICE: No existing scenarios found for ${dateKey} - will generate new ones`);
         
         // Generate new scenarios using AI
         console.log(`🎭 CONVERSATION PRACTICE: Generating new scenarios for ${dateKey}`);
@@ -3674,7 +3779,7 @@ Return ONLY valid JSON in this exact format:
             throw new Error('AI did not return exactly 5 scenarios');
           }
 
-          // Store scenarios in database for this date (to prevent re-generation)
+          // Store scenarios in database for this date
           db.run(
             "INSERT INTO conversation_practice_scenarios (device_id, practice_date, scenarios_json, created_at) VALUES (?, ?, ?, ?)",
             [deviceId, dateKey, JSON.stringify(scenariosData), new Date().toISOString()],
@@ -3688,7 +3793,8 @@ Return ONLY valid JSON in this exact format:
             }
           );
 
-          // Return the generated scenarios (frontend handles completion)
+          // Add completion status and return the generated scenarios
+          scenariosData.isCompleted = false;
           res.json(scenariosData);
           
         } catch (error) {
@@ -3749,81 +3855,107 @@ Return ONLY valid JSON in this exact format:
                     feedback: "Comments about someone's workout intensity can make them self-conscious. Focus on shared experiences rather than observations about their performance."
                   },
                   {
-                    text: "Good timing! I was just thinking about grabbing some water too",
-                    rating: "best",
-                    feedback: "Perfect! You're acknowledging the shared moment and creating a light, relatable connection point."
+                    text: "Do you come here often?",
+                    rating: "good",
+                    feedback: "A classic conversation starter that works in this context, though it's somewhat predictable."
                   },
                   {
-                    text: "How long have you been working out here?",
-                    rating: "good",
-                    feedback: "Shows interest in their experience, though it's a bit direct for a first interaction."
+                    text: "Good workout! This evening crowd is usually pretty motivated",
+                    rating: "best",
+                    feedback: "Perfect timing and context! You're acknowledging the shared experience and making a positive observation about the environment you both share."
                   }
                 ]
               },
               {
-                setting: "Dog park on a sunny weekend",
-                situation: "Your dogs are playing together and both seem to be having a great time",
+                setting: "Dog park on a sunny weekend morning",
+                situation: "Your dog and another person's dog start playing together while you both watch",
                 options: [
                   {
-                    text: "They seem to be best friends already!",
-                    rating: "best",
-                    feedback: "Excellent! You're commenting on the obvious shared positive experience that you're both witnessing. Natural and warm."
-                  },
-                  {
-                    text: "What breed is your dog?",
-                    rating: "good",
-                    feedback: "A classic dog park conversation starter, though a bit predictable. Still works well."
-                  },
-                  {
-                    text: "Your dog is so energetic",
+                    text: "I hope your dog doesn't have any behavioral issues",
                     rating: "poor",
-                    feedback: "Could be taken as criticism depending on tone. Focus on positive shared observations instead."
+                    feedback: "This implies concern about their dog's behavior right from the start, which will make them defensive rather than friendly."
+                  },
+                  {
+                    text: "They seem to be having a great time together! How old is yours?",
+                    rating: "best",
+                    feedback: "Perfect! You're commenting on the obvious connection between your dogs and asking a natural follow-up question that dog owners love to answer."
+                  },
+                  {
+                    text: "Your dog is so friendly!",
+                    rating: "good",
+                    feedback: "A nice compliment that most dog owners appreciate, though it could be more interactive."
                   }
                 ]
               },
               {
-                setting: "Grocery store produce section",
-                situation: "You're both looking at the same display of avocados, trying to find ripe ones",
+                setting: "Grocery store checkout line during weekend shopping",
+                situation: "You notice the person ahead of you has ingredients that look like they're making the same dish you're planning",
                 options: [
                   {
-                    text: "The trick is to find ones that give just a little when you press gently",
-                    rating: "good",
-                    feedback: "Helpful advice that shows you're knowledgeable, though it might come across as unsolicited."
-                  },
-                  {
-                    text: "Having the same struggle with these avocados?",
-                    rating: "best",
-                    feedback: "Perfect! You're acknowledging the shared experience with humor. Relatable and opens the door for them to respond."
-                  },
-                  {
-                    text: "These are all overripe",
+                    text: "You must be really into healthy eating",
                     rating: "poor",
-                    feedback: "Starting with a complaint creates negative energy. Even if true, it's not the best conversation opener."
+                    feedback: "Makes assumptions about their lifestyle choices, which can feel judgmental even when meant positively."
+                  },
+                  {
+                    text: "Those vegetables look fresh",
+                    rating: "good",
+                    feedback: "A safe, positive comment but doesn't create much conversation momentum."
+                  },
+                  {
+                    text: "Are you making stir-fry too? I'm attempting the same thing tonight",
+                    rating: "best",
+                    feedback: "Excellent! You're making a specific observation that creates instant common ground and sharing something about yourself to balance the conversation."
                   }
                 ]
               }
             ]
           };
           
-          // Store fallback scenarios
-          db.run(
-            "INSERT INTO conversation_practice_scenarios (device_id, practice_date, scenarios_json, created_at) VALUES (?, ?, ?, ?)",
-            [deviceId, dateKey, JSON.stringify(fallbackScenarios), new Date().toISOString()],
-            function(err) {
-              if (err) {
-                console.error('Error storing fallback scenarios:', err);
-              } else {
-                console.log(`🎭 CONVERSATION PRACTICE: Stored fallback scenarios for ${dateKey}`);
-              }
-            }
-          );
-          
+          // Add completion status to fallback scenarios
+          fallbackScenarios.isCompleted = false;
           res.json(fallbackScenarios);
         }
       }
     );
   } catch (error) {
     console.error('Error in conversation practice endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Mark conversation practice as completed
+app.post('/api/conversation-practice/:deviceId/complete', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { currentDate, score, userAnswers } = req.body;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`🎭 CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
+    
+    // Use current date or simulated date
+    const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+    const dateKey = today.toISOString().split('T')[0];
+    
+    // Mark as completed in database and store score and user answers
+    const userAnswersJson = userAnswers ? JSON.stringify(userAnswers) : null;
+    db.run(
+      "UPDATE conversation_practice_scenarios SET completed = 1, completed_at = ?, score = ?, user_answers = ? WHERE device_id = ? AND practice_date = ?",
+      [new Date().toISOString(), score, userAnswersJson, deviceId, dateKey],
+      function(err) {
+        if (err) {
+          console.error('Error marking conversation practice complete:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        console.log(`🎭 CONVERSATION PRACTICE: Marked complete for ${dateKey} with score ${score}%`);
+        res.json({ success: true, message: 'Conversation practice completed!', score: score });
+      }
+    );
+  } catch (error) {
+    console.error('Error in conversation practice completion endpoint:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
