@@ -417,7 +417,7 @@ app.get('/api/test/social-zones', (req, res) => {
   }
 });
 
-// Helper function to ensure user exists
+// Helper function to ensure user exists (SQLite version - keeping for gradual migration)
 const ensureUserExists = (deviceId, callback, customDate = null) => {
   console.log(`🔍 Checking if user exists: ${deviceId}`);
   
@@ -459,6 +459,66 @@ const ensureUserExists = (deviceId, callback, customDate = null) => {
       callback(null);
     }
   });
+};
+
+// Supabase version of ensure user exists
+const ensureUserExistsSupabase = async (deviceId, customDate = null) => {
+  console.log(`🔍 [SUPABASE] Checking if user exists: ${deviceId}`);
+  
+  try {
+    // Check if user exists
+    const { data: existingUser, error: selectError } = await supabase
+      .from('users')
+      .select('device_id')
+      .eq('device_id', deviceId)
+      .single();
+    
+    if (selectError && selectError.code !== 'PGRST116') {
+      // PGRST116 is "not found" error, which is expected for new users
+      console.error('❌ [SUPABASE] Error checking user existence:', selectError);
+      throw selectError;
+    }
+    
+    if (!existingUser) {
+      console.log(`👤 [SUPABASE] User not found, creating new user: ${deviceId}`);
+      
+      // Create new user with creation date
+      let createdAt;
+      if (customDate) {
+        // Use the simulated date provided
+        createdAt = new Date(customDate + 'T00:00:00Z').toISOString();
+        console.log(`👤 [SUPABASE] Using simulated date for user creation: ${createdAt}`);
+      } else {
+        // Use current real date
+        createdAt = new Date().toISOString();
+        console.log(`👤 [SUPABASE] Using real date for user creation: ${createdAt}`);
+      }
+      
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert({
+          device_id: deviceId,
+          created_at: createdAt
+        })
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('❌ [SUPABASE] Error creating user:', insertError);
+        throw insertError;
+      } else {
+        console.log(`✅ [SUPABASE] User created successfully: ${deviceId} with creation date: ${createdAt}`);
+      }
+      
+      return newUser;
+    } else {
+      console.log(`✅ [SUPABASE] User already exists: ${deviceId}`);
+      return existingUser;
+    }
+  } catch (error) {
+    console.error('❌ [SUPABASE] ensureUserExists failed:', error);
+    throw error;
+  }
 };
 
 // Helper function to calculate and update streak - UPDATED TO HANDLE BOTH CHALLENGES AND OPENERS
@@ -996,6 +1056,41 @@ app.get('/api/test/supabase', async (req, res) => {
       status: 'error',
       message: 'Supabase test failed',
       error: error.message
+    });
+  }
+});
+
+// Test Supabase user creation
+app.post('/api/test/user-create', async (req, res) => {
+  try {
+    const { deviceId, customDate } = req.body;
+    
+    if (!deviceId) {
+      return res.status(400).json({ 
+        error: 'deviceId is required in request body' 
+      });
+    }
+    
+    console.log(`🧪 Testing Supabase user creation for: ${deviceId}`);
+    
+    // Test the new Supabase function
+    const user = await ensureUserExistsSupabase(deviceId, customDate);
+    
+    console.log('✅ Supabase user creation test successful');
+    res.json({
+      status: 'success',
+      message: 'User creation test successful!',
+      user: user,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Supabase user creation test failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'User creation test failed',
+      error: error.message,
+      stack: error.stack
     });
   }
 });
