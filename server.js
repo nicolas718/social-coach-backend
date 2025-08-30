@@ -3,7 +3,7 @@
 
 const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
+// SQLite removed - using Supabase PostgreSQL
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
@@ -192,9 +192,7 @@ app.use('/api/*', requireApiKey);
 
 console.log('✅ API key authentication middleware configured for all protected routes');
 
-// Initialize SQLite Database (keeping for gradual migration)
-const dbPath = path.join(__dirname, 'social_coach_data.sqlite');
-const db = new sqlite3.Database(dbPath);
+// SQLite initialization removed - using Supabase PostgreSQL
 
 // Initialize Supabase Database
 const supabase = createClient(
