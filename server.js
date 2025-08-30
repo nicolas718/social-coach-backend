@@ -447,49 +447,7 @@ app.get('/api/test/social-zones', (req, res) => {
   }
 });
 
-// Helper function to ensure user exists (SQLite version - keeping for gradual migration)
-const ensureUserExists = (deviceId, callback, customDate = null) => {
-  console.log(`🔍 Checking if user exists: ${deviceId}`);
-  
-  db.get("SELECT device_id FROM users WHERE device_id = ?", [deviceId], (err, row) => {
-    if (err) {
-      console.error('❌ Error checking user existence:', err);
-      callback(err);
-      return;
-    }
-    
-    if (!row) {
-      console.log(`👤 User not found, creating new user: ${deviceId}`);
-      // Create new user with creation date
-      // If customDate provided (simulated mode), use that date
-      // Otherwise use current real date
-      let creationDate;
-      if (customDate) {
-        // Use the simulated date provided
-        const simDate = new Date(customDate + 'T00:00:00Z');
-        creationDate = simDate.toISOString().replace('T', ' ').substring(0, 19);
-        console.log(`👤 Using simulated date for user creation: ${creationDate}`);
-      } else {
-        // Use current real date
-        const now = new Date();
-        creationDate = now.toISOString().replace('T', ' ').substring(0, 19);
-        console.log(`👤 Using real date for user creation: ${creationDate}`);
-      }
-      
-      db.run("INSERT INTO users (device_id, created_at) VALUES (?, ?)", [deviceId, creationDate], (err) => {
-        if (err) {
-          console.error('❌ Error creating user:', err);
-        } else {
-          console.log(`✅ User created successfully: ${deviceId} with creation date: ${creationDate}`);
-        }
-        callback(err);
-      });
-    } else {
-      console.log(`✅ User already exists: ${deviceId}`);
-      callback(null);
-    }
-  });
-};
+// SQLite helper function removed - using ensureUserExistsSupabase() instead
 
 // Supabase version of streak update - 100% accurate replication of SQLite logic
 const updateUserStreakSupabase = async (deviceId, actionDate) => {
@@ -578,7 +536,7 @@ const updateUserStreakSupabase = async (deviceId, actionDate) => {
     if (updateError) {
       console.error(`❌ [SUPABASE] Failed to update streak for ${deviceId}:`, updateError);
       throw updateError;
-    } else {
+        } else {
       console.log(`✅ [SUPABASE] Successfully updated streak for ${deviceId}: ${newStreak} (best: ${newBestStreak})`);
       console.log('=== END SUPABASE STREAK DEBUG ===\n');
       
@@ -645,180 +603,19 @@ const ensureUserExistsSupabase = async (deviceId, customDate = null) => {
       }
       
       return newUser;
-    } else {
+        } else {
       console.log(`✅ [SUPABASE] User already exists: ${deviceId}`);
       return existingUser;
-    }
+        }
   } catch (error) {
     console.error('❌ [SUPABASE] ensureUserExists failed:', error);
     throw error;
-  }
+      }
 };
 
-// Helper function to calculate and update streak - UPDATED TO HANDLE BOTH CHALLENGES AND OPENERS
-const updateUserStreak = (deviceId, actionDate) => {
-  db.get("SELECT current_streak, all_time_best_streak, last_completion_date FROM users WHERE device_id = ?", 
-    [deviceId], (err, user) => {
-    if (err) {
-      console.error('Error getting user for streak update:', err);
-      return;
-    }
+// SQLite helper function removed - using updateUserStreakSupabase() instead
 
-    console.log(`=== STREAK DEBUG for ${deviceId} ===`);
-    console.log('Current user data:', {
-      current_streak: user.current_streak,
-      all_time_best_streak: user.all_time_best_streak,
-      last_completion_date: user.last_completion_date
-    });
-    console.log('New action date:', actionDate);
-
-    let newStreak = 1;
-    let newBestStreak = user.all_time_best_streak || 0;
-    
-    if (user.last_completion_date) {
-      // Parse dates more carefully - extract just the date part (YYYY-MM-DD)
-      const lastDateStr = user.last_completion_date.split('T')[0]; // Get YYYY-MM-DD part
-      const currentDateStr = actionDate.split('T')[0]; // Get YYYY-MM-DD part
-      
-      const lastDate = new Date(lastDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
-      const currentDate = new Date(currentDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
-      
-      // Calculate difference in days (more reliable calculation)
-      const timeDiff = currentDate.getTime() - lastDate.getTime();
-      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-      
-      console.log('Date comparison:', {
-        lastDateStr,
-        currentDateStr,
-        lastDate: lastDate.toISOString(),
-        currentDate: currentDate.toISOString(),
-        timeDiff,
-        daysDiff
-      });
-      
-      if (daysDiff === 1) {
-        // Consecutive day - streak continues
-        newStreak = (user.current_streak || 0) + 1;
-        console.log(`Consecutive day detected! Incrementing streak: ${user.current_streak} → ${newStreak}`);
-      } else if (daysDiff === 0) {
-        // Same day - keep current streak, don't increment for same-day actions
-        newStreak = user.current_streak || 1;
-        console.log(`Same day detected. Keeping streak at: ${newStreak}`);
-      } else {
-        // Gap > 1 day - streak resets to 1
-        console.log(`Gap detected (${daysDiff} days). Resetting streak to 1`);
-        newStreak = 1;
-      }
-    } else {
-      console.log('No previous completion date. Starting new streak at 1');
-    }
-    
-    // Update best streak if current is higher
-    if (newStreak > newBestStreak) {
-      newBestStreak = newStreak;
-      console.log(`New best streak! ${newBestStreak}`);
-    }
-    
-    console.log(`Final streak values: current=${newStreak}, best=${newBestStreak}`);
-    
-    db.run(
-      "UPDATE users SET current_streak = ?, all_time_best_streak = ?, last_completion_date = ? WHERE device_id = ?",
-      [newStreak, newBestStreak, actionDate, deviceId],
-      (err) => {
-        if (err) {
-          console.error('Error updating streak:', err);
-        } else {
-          console.log(`✅ Successfully updated streak for ${deviceId}: ${newStreak} (best: ${newBestStreak})`);
-          console.log('=== END STREAK DEBUG ===\n');
-        }
-      }
-    );
-  });
-};
-
-// Callback version of updateUserStreak for endpoints that need to wait for completion
-const updateUserStreakWithCallback = (deviceId, actionDate, callback) => {
-  db.get("SELECT current_streak, all_time_best_streak, last_completion_date FROM users WHERE device_id = ?", 
-    [deviceId], (err, user) => {
-    if (err) {
-      console.error('Error getting user for streak update:', err);
-      return callback(err);
-    }
-
-    console.log(`=== STREAK DEBUG (WITH CALLBACK) for ${deviceId} ===`);
-    console.log('Current user data:', {
-      current_streak: user.current_streak,
-      all_time_best_streak: user.all_time_best_streak,
-      last_completion_date: user.last_completion_date
-    });
-    console.log('New action date:', actionDate);
-
-    let newStreak = 1;
-    let newBestStreak = user.all_time_best_streak || 0;
-    
-    if (user.last_completion_date) {
-      // Parse dates more carefully - extract just the date part (YYYY-MM-DD)
-      const lastDateStr = user.last_completion_date.split('T')[0]; // Get YYYY-MM-DD part
-      const currentDateStr = actionDate.split('T')[0]; // Get YYYY-MM-DD part
-      
-      const lastDate = new Date(lastDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
-      const currentDate = new Date(currentDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
-      
-      // Calculate difference in days (more reliable calculation)
-      const timeDiff = currentDate.getTime() - lastDate.getTime();
-      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-      
-      console.log('Date comparison:', {
-        lastDateStr,
-        currentDateStr,
-        lastDate: lastDate.toISOString(),
-        currentDate: currentDate.toISOString(),
-        timeDiff,
-        daysDiff
-      });
-      
-      if (daysDiff === 1) {
-        // Consecutive day - increment streak
-        newStreak = (user.current_streak || 0) + 1;
-        console.log(`Consecutive day detected! Incrementing streak: ${user.current_streak} → ${newStreak}`);
-      } else if (daysDiff === 0) {
-        // Same day - keep current streak, don't increment for same-day actions
-        newStreak = user.current_streak || 1;
-        console.log(`Same day detected. Keeping streak at: ${newStreak}`);
-      } else {
-        // Gap > 1 day - streak resets to 1
-        console.log(`Gap detected (${daysDiff} days). Resetting streak to 1`);
-        newStreak = 1;
-      }
-    } else {
-      console.log('No previous completion date. Starting new streak at 1');
-    }
-    
-    // Update best streak if current is higher
-    if (newStreak > newBestStreak) {
-      newBestStreak = newStreak;
-      console.log(`New best streak! ${newBestStreak}`);
-    }
-    
-    console.log(`Final streak values: current=${newStreak}, best=${newBestStreak}`);
-    
-    // Update the database
-    db.run(
-      "UPDATE users SET current_streak = ?, all_time_best_streak = ?, last_completion_date = ? WHERE device_id = ?",
-      [newStreak, newBestStreak, actionDate, deviceId],
-      function(err) {
-        if (err) {
-          console.error(`❌ Failed to update streak for ${deviceId}:`, err);
-          return callback(err);
-        } else {
-          console.log(`✅ Successfully updated streak for ${deviceId}: ${newStreak} (best: ${newBestStreak})`);
-          console.log('=== END STREAK DEBUG (WITH CALLBACK) ===\n');
-          callback(null); // Success - no error
-        }
-      }
-    );
-  });
-};
+// SQLite helper function removed - using updateUserStreakSupabase() instead
 
 // Helper function to calculate Social Zone level with grace period logic
 const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLevelAchieved, allTimeMaxStreak, activityDates = []) => {
@@ -1530,11 +1327,11 @@ app.post('/api/data/challenge', async (req, res) => {
     console.log(`✅ [SUPABASE] Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
 
     // Return same response format that iOS app expects (must be integer for iOS compatibility)
-    res.json({ 
-      success: true, 
+          res.json({ 
+            success: true, 
       challengeId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
-      message: 'Challenge data saved and streak updated successfully' 
-    });
+              message: 'Challenge data saved and streak updated successfully' 
+            });
 
   } catch (error) {
     console.error('❌ [SUPABASE] Error in challenge endpoint:', error);
@@ -1582,7 +1379,7 @@ app.post('/api/data/opener', async (req, res) => {
     // Ensure user exists (Supabase version)
     await ensureUserExistsSupabase(deviceId);
 
-    // ALWAYS insert opener data (save everything regardless of usage)
+      // ALWAYS insert opener data (save everything regardless of usage)
     const { data: openerData, error: openerError } = await supabase
       .from('openers')
       .insert({
@@ -1609,7 +1406,7 @@ app.post('/api/data/opener', async (req, res) => {
     }
 
     // Update streak if opener was used (SAME LOGIC as SQLite version)
-    if (openerWasUsed === true) {
+          if (openerWasUsed === true) {
       try {
         await updateUserStreakSupabase(deviceId, openerDate);
         console.log(`✅ [SUPABASE] Opener streak updated for ${deviceId}`);
@@ -1622,11 +1419,11 @@ app.post('/api/data/opener', async (req, res) => {
     console.log(`[SUPABASE] Opener saved: Used=${openerWasUsed}, Success=${openerWasSuccessful}`);
 
     // Return same response format that iOS app expects (must be integer for iOS compatibility)
-    res.json({ 
-      success: true, 
+          res.json({ 
+            success: true, 
       openerId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
-      message: 'Opener data saved successfully' 
-    });
+            message: 'Opener data saved successfully' 
+          });
 
   } catch (error) {
     console.error('❌ [SUPABASE] Error in opener endpoint:', error);
@@ -1661,7 +1458,7 @@ app.post('/api/data/development', async (req, res) => {
     // Ensure user exists (Supabase version)
     await ensureUserExistsSupabase(deviceId);
 
-    // Check if module progress already exists for this user and module
+      // Check if module progress already exists for this user and module
     const { data: existingRecord, error: selectError } = await supabase
       .from('development_modules')
       .select('*')
@@ -1672,16 +1469,16 @@ app.post('/api/data/development', async (req, res) => {
     // Handle "not found" error (PGRST116) as expected case
     if (selectError && selectError.code !== 'PGRST116') {
       console.error('❌ [SUPABASE] Error checking existing module progress:', selectError);
-      return res.status(500).json({ error: 'Database error' });
-    }
+            return res.status(500).json({ error: 'Database error' });
+          }
 
-    if (existingRecord) {
+          if (existingRecord) {
       // Update existing record if new progress is higher or module is completed (SAME LOGIC)
-      const shouldUpdate = 
-        developmentScreenReached > existingRecord.development_screen_reached ||
-        (developmentIsCompleted && !existingRecord.development_is_completed);
+            const shouldUpdate = 
+              developmentScreenReached > existingRecord.development_screen_reached ||
+              (developmentIsCompleted && !existingRecord.development_is_completed);
 
-      if (shouldUpdate) {
+            if (shouldUpdate) {
         const { data: updatedRecord, error: updateError } = await supabase
           .from('development_modules')
           .update({
@@ -1705,21 +1502,21 @@ app.post('/api/data/development', async (req, res) => {
 
         console.log(`✅ [SUPABASE] Updated development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
 
-        res.json({ 
-          success: true, 
+                  res.json({ 
+                    success: true, 
           moduleId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
-          message: 'Development module data updated successfully' 
-        });
-      } else {
+                    message: 'Development module data updated successfully' 
+                  });
+            } else {
         // No update needed (SAME LOGIC)
         console.log(`[SUPABASE] Development module ${developmentModuleId} for ${deviceId} already up to date`);
-        res.json({ 
-          success: true, 
+              res.json({ 
+                success: true, 
           moduleId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
-          message: 'Development module data already up to date' 
-        });
-      }
-    } else {
+                message: 'Development module data already up to date' 
+              });
+            }
+          } else {
       // Insert new record (SAME LOGIC)
       const { data: newRecord, error: insertError } = await supabase
         .from('development_modules')
@@ -1744,12 +1541,12 @@ app.post('/api/data/development', async (req, res) => {
 
       console.log(`✅ [SUPABASE] Saved development module ${developmentModuleId} for ${deviceId}: Screen ${developmentScreenReached}, ${developmentProgressPercentage}%`);
 
-      res.json({ 
-        success: true, 
+                res.json({ 
+                  success: true, 
         moduleId: 1,  // iOS expects integer, not UUID - use simple integer for compatibility
-        message: 'Development module data saved successfully' 
-      });
-    }
+                  message: 'Development module data saved successfully' 
+                });
+              }
 
   } catch (error) {
     console.error('❌ [SUPABASE] Error in development endpoint:', error);
@@ -1807,11 +1604,11 @@ app.delete('/api/data/clear/:deviceId', async (req, res) => {
 
     console.log('✅ [SUPABASE] Reset user streak to 0');
 
-    // Send success response
-    res.json({ 
-      success: true, 
+      // Send success response
+      res.json({ 
+        success: true, 
       message: 'All data cleared for testing from Supabase',
-      clearedTables: ['daily_challenges', 'openers', 'development_modules', 'conversation_practice_scenarios', 'users']
+        clearedTables: ['daily_challenges', 'openers', 'development_modules', 'conversation_practice_scenarios', 'users']
     });
 
   } catch (error) {
@@ -1849,33 +1646,33 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
 
     if (userError && userError.code !== 'PGRST116') {
       console.error('❌ [SUPABASE] Error getting user for analytics:', userError);
-      return res.status(500).json({ error: 'Database error' });
-    }
+        return res.status(500).json({ error: 'Database error' });
+      }
 
-    // If no user exists, return all zeros
-    if (!user) {
+      // If no user exists, return all zeros
+      if (!user) {
       console.log(`📊 [SUPABASE] ANALYTICS: No user found for ${deviceId}, returning all zeros`);
-      return res.json({
-        currentStreak: 0,
-        allTimeBestStreak: 0,
-        socialConfidencePercentage: 0,
-        weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
-        overallSuccessRate: 0,
-        totalChallenges: 0,
-        totalOpeners: 0,
-        successfulChallenges: 0,
-        successfulOpeners: 0,
-        improvedConfidence: 0,
-        reducedSocialAnxiety: 0,
-        enhancedCommunication: 0,
-        increasedSocialEnergy: 0,
-        betterRelationships: 0,
-        averageRating: 0,
-        totalModulesStarted: 0,
-        completedModules: 0,
-        averageModuleProgress: 0
-      });
-    }
+        return res.json({
+          currentStreak: 0,
+          allTimeBestStreak: 0,
+          socialConfidencePercentage: 0,
+          weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
+          overallSuccessRate: 0,
+          totalChallenges: 0,
+          totalOpeners: 0,
+          successfulChallenges: 0,
+          successfulOpeners: 0,
+          improvedConfidence: 0,
+          reducedSocialAnxiety: 0,
+          enhancedCommunication: 0,
+          increasedSocialEnergy: 0,
+          betterRelationships: 0,
+          averageRating: 0,
+          totalModulesStarted: 0,
+          completedModules: 0,
+          averageModuleProgress: 0
+        });
+      }
 
     console.log(`📊 [SUPABASE] ANALYTICS: User found - current_streak: ${user.current_streak}, best_streak: ${user.all_time_best_streak}`);
 
@@ -1969,209 +1766,209 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
     console.log(`🔧 [SUPABASE] ANALYTICS: Using authoritative streak: ${currentStreak} (from Supabase user record)`);
 
     // Calculate allTimeMaxStreak from activity data (same logic as other endpoints)
-    const computeMaxConsecutiveStreak = (dates) => {
-      if (!dates || dates.length === 0) return 0;
-      const sorted = [...dates].sort();
-      let maxRun = 1, run = 1;
-      for (let i = 1; i < sorted.length; i++) {
-        const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
-        const cur = new Date(sorted[i] + 'T00:00:00Z');
-        const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
-        if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
-        else if (diff > 1) { run = 1; }
-      }
-      return maxRun;
-    };
+            const computeMaxConsecutiveStreak = (dates) => {
+              if (!dates || dates.length === 0) return 0;
+              const sorted = [...dates].sort();
+              let maxRun = 1, run = 1;
+              for (let i = 1; i < sorted.length; i++) {
+                const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
+                const cur = new Date(sorted[i] + 'T00:00:00Z');
+                const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
+                if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
+                else if (diff > 1) { run = 1; }
+              }
+              return maxRun;
+            };
     const derivedBestStreak = computeMaxConsecutiveStreak(allActivityDates);
-    const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
+            const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
 
     // Calculate lastAchievedLevel (same logic as other endpoints)  
-    const toISO = (d) => d.toISOString().split('T')[0];
-    let lastRun = 0;
+            const toISO = (d) => d.toISOString().split('T')[0];
+            let lastRun = 0;
     if (allActivityDates.length > 0) {
       // Use most recent date (allActivityDates is ASC ordered, so take last element)
       const recent = new Date(allActivityDates[allActivityDates.length - 1] + 'T00:00:00Z');
-      let check = new Date(recent);
-      while (true) {
-        const ds = toISO(check);
+              let check = new Date(recent);
+              while (true) {
+                const ds = toISO(check);
         if (allActivityDates.includes(ds)) {
-          lastRun += 1;
-          check.setDate(check.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-    }
+                  lastRun += 1;
+                  check.setDate(check.getDate() - 1);
+                } else {
+                  break;
+                }
+              }
+            }
 
-    // Use allTimeMaxStreak for highest level achieved (for grace recovery)
-    const lastAchievedLevel = allTimeMaxStreak >= 90
-      ? 'Socialite'
-      : allTimeMaxStreak >= 46
-        ? 'Charming'
-        : allTimeMaxStreak >= 21
-          ? 'Coming Alive'
-          : allTimeMaxStreak >= 7
-            ? 'Breaking Through'
-            : 'Warming Up';
+            // Use allTimeMaxStreak for highest level achieved (for grace recovery)
+            const lastAchievedLevel = allTimeMaxStreak >= 90
+              ? 'Socialite'
+              : allTimeMaxStreak >= 46
+                ? 'Charming'
+                : allTimeMaxStreak >= 21
+                  ? 'Coming Alive'
+                  : allTimeMaxStreak >= 7
+                    ? 'Breaking Through'
+                    : 'Warming Up';
 
     console.log(`🔧 [SUPABASE] ANALYTICS: Derived stats - lastRun: ${lastRun}, lastAchievedLevel: ${lastAchievedLevel}, allTimeMaxStreak: ${allTimeMaxStreak}`);
 
     // Calculate core metrics using SUPABASE data (same logic as SQLite version)
     const totalSuccessfulActions = successfulChallenges + successfulOpeners;
     const totalActions = totalChallenges + totalOpeners;
-    const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
+            const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
     
-    // Bayesian smoothing for success rate to reduce volatility at low volume
-    const priorCount = 12; // neutral prior ~ two weeks of mixed activity
-    const priorMean = 0.5; // assume 50% success prior
-    const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
-    // Social Confidence = function of Social Zone and streak, with graceful trickle-down
+            // Bayesian smoothing for success rate to reduce volatility at low volume
+            const priorCount = 12; // neutral prior ~ two weeks of mixed activity
+            const priorMean = 0.5; // assume 50% success prior
+            const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
+            // Social Confidence = function of Social Zone and streak, with graceful trickle-down
     // Compute zone from current context using SUPABASE data
-    const todayForZone = referenceDate || new Date();
-    const daysSinceActivityForZone = (() => {
+            const todayForZone = referenceDate || new Date();
+            const daysSinceActivityForZone = (() => {
       if (allActivityDates.length === 0) return 999;
       const mostRecentActivity = allActivityDates[allActivityDates.length - 1]; // Last element (most recent)
       const d1 = new Date(mostRecentActivity + 'T00:00:00Z');
-      const d2 = new Date(todayForZone);
-      return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
-    })();
+              const d2 = new Date(todayForZone);
+              return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+            })();
     console.log(`🔧 [SUPABASE] ANALYTICS: About to call calculateSocialZoneLevel with:`, {
-      currentStreak,
-      daysSinceActivityForZone,
-      lastAchievedLevel,
-      allTimeMaxStreak,
-      'user.all_time_best_streak': user.all_time_best_streak,
+              currentStreak,
+              daysSinceActivityForZone,
+              lastAchievedLevel,
+              allTimeMaxStreak,
+              'user.all_time_best_streak': user.all_time_best_streak,
       'mostRecentActivity': allActivityDates[allActivityDates.length - 1],
-      'todayForZone': todayForZone.toISOString().split('T')[0]
-    });
+              'todayForZone': todayForZone.toISOString().split('T')[0]
+            });
 
-    const zoneInfo = calculateSocialZoneLevel(
-      currentStreak,
-      daysSinceActivityForZone,
-      lastAchievedLevel,
-      allTimeMaxStreak,
+            const zoneInfo = calculateSocialZoneLevel(
+              currentStreak,
+              daysSinceActivityForZone,
+              lastAchievedLevel,
+              allTimeMaxStreak,
       allActivityDates
-    );
+            );
 
     console.log(`🔧 [SUPABASE] ANALYTICS: calculateSocialZoneLevel returned:`, zoneInfo);
     
-    const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
-    const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
+          const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+          const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
     
-    // STRICT mapping: Social Confidence always matches Social Zone level
-    // Zone start/end mapping (strict per-zone band), plus within-zone progression by streak
-    const zoneStart = [4, 20, 40, 60, 80]; // entry confidence for each zone
-    const zoneEnd   = [18, 32, 52, 72, 90]; // cap within each zone
-    const zoneBaseRequirements = [0, 7, 21, 46, 90];
-    const nextRequirements = [7, 21, 46, 90, 120]; // last one effectively "infinity"
+          // STRICT mapping: Social Confidence always matches Social Zone level
+          // Zone start/end mapping (strict per-zone band), plus within-zone progression by streak
+          const zoneStart = [4, 20, 40, 60, 80]; // entry confidence for each zone
+          const zoneEnd   = [18, 32, 52, 72, 90]; // cap within each zone
+          const zoneBaseRequirements = [0, 7, 21, 46, 90];
+          const nextRequirements = [7, 21, 46, 90, 120]; // last one effectively "infinity"
 
-    const startPct = zoneStart[zoneIndex] ?? 2;
-    const endPct   = zoneEnd[zoneIndex] ?? 90;
-    const zoneStartStreak = zoneBaseRequirements[zoneIndex] ?? 0;
-    const zoneEndStreak = nextRequirements[zoneIndex] ?? (zoneStartStreak + 30);
-    const zoneSpan = Math.max(1, zoneEndStreak - zoneStartStreak);
-    const streakWithinZone = Math.max(0, Math.min(zoneSpan, currentStreak - zoneStartStreak));
+          const startPct = zoneStart[zoneIndex] ?? 2;
+          const endPct   = zoneEnd[zoneIndex] ?? 90;
+          const zoneStartStreak = zoneBaseRequirements[zoneIndex] ?? 0;
+          const zoneEndStreak = nextRequirements[zoneIndex] ?? (zoneStartStreak + 30);
+          const zoneSpan = Math.max(1, zoneEndStreak - zoneStartStreak);
+          const streakWithinZone = Math.max(0, Math.min(zoneSpan, currentStreak - zoneStartStreak));
     
-    // Calculate progress within the zone (0 to 1)
-    const linearProgress = streakWithinZone / zoneSpan;
-    // Apply conservative easing curve (^1.6) for smoother early progression
-    const progress = Math.pow(linearProgress, 1.6);
-    let socialConfidencePercentage = Math.round(startPct + (endPct - startPct) * progress);
+          // Calculate progress within the zone (0 to 1)
+          const linearProgress = streakWithinZone / zoneSpan;
+          // Apply conservative easing curve (^1.6) for smoother early progression
+          const progress = Math.pow(linearProgress, 1.6);
+          let socialConfidencePercentage = Math.round(startPct + (endPct - startPct) * progress);
 
     console.log(`💫 [SUPABASE] CONFIDENCE DEBUG:`, {
-      zone: zoneInfo.level,
-      zoneIndex,
-      currentStreak,
-      streakWithinZone,
-      linearProgress: (linearProgress * 100).toFixed(1) + '%',
-      easedProgress: (progress * 100).toFixed(1) + '%',
-      startPct,
-      endPct,
-      baseConfidence: socialConfidencePercentage,
-      isInGracePeriod: zoneInfo.isInGracePeriod
-    });
+            zone: zoneInfo.level,
+            zoneIndex,
+            currentStreak,
+            streakWithinZone,
+            linearProgress: (linearProgress * 100).toFixed(1) + '%',
+            easedProgress: (progress * 100).toFixed(1) + '%',
+            startPct,
+            endPct,
+            baseConfidence: socialConfidencePercentage,
+            isInGracePeriod: zoneInfo.isInGracePeriod
+          });
 
-    // Apply decay by days since last activity (still anchored to current zone)
-    const daysMissed = Math.max(0, daysSinceActivityForZone);
-    const decayPerDayInGrace = 0.4;  // gentler decay during grace
-    const decayPerDayAfterGrace = 1.2; // faster decay after grace expires
-    const decayRate = zoneInfo.isInGracePeriod ? decayPerDayInGrace : decayPerDayAfterGrace;
-    const decayAmount = decayRate * daysMissed;
-    socialConfidencePercentage = Math.max(2, Math.round(socialConfidencePercentage - decayAmount));
+          // Apply decay by days since last activity (still anchored to current zone)
+          const daysMissed = Math.max(0, daysSinceActivityForZone);
+          const decayPerDayInGrace = 0.4;  // gentler decay during grace
+          const decayPerDayAfterGrace = 1.2; // faster decay after grace expires
+          const decayRate = zoneInfo.isInGracePeriod ? decayPerDayInGrace : decayPerDayAfterGrace;
+          const decayAmount = decayRate * daysMissed;
+          socialConfidencePercentage = Math.max(2, Math.round(socialConfidencePercentage - decayAmount));
 
     console.log(`💫 [SUPABASE] CONFIDENCE DECAY:`, {
-      daysMissed,
-      decayRate: decayRate + '%/day',
-      totalDecay: decayAmount + '%',
-      finalConfidence: socialConfidencePercentage + '%'
-    });
+            daysMissed,
+            decayRate: decayRate + '%/day',
+            totalDecay: decayAmount + '%',
+            finalConfidence: socialConfidencePercentage + '%'
+          });
 
     // Damping weights to avoid volatility with very few actions (using SUPABASE data)
-    // Logarithmic ramp up – reaches ~1 around 16+ actions
-    const effectiveVolume = Math.min(1, Math.log2((totalActions || 0) + 1) / 4);
+          // Logarithmic ramp up – reaches ~1 around 16+ actions
+          const effectiveVolume = Math.min(1, Math.log2((totalActions || 0) + 1) / 4);
     const openerEffectiveVolume = Math.min(1, Math.log2(totalOpeners + 1) / 4);
 
     // Calculate personal benefits using SUPABASE data
-    let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
-    let increasedSocialEnergy = 0, betterRelationships = 0;
+          let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
+          let increasedSocialEnergy = 0, betterRelationships = 0;
 
-    // Only calculate benefits based on actual activities (stabilized growth curves)
+          // Only calculate benefits based on actual activities (stabilized growth curves)
     if (currentStreak > 0 || totalChallenges > 0 || totalOpeners > 0) {
-      // Helper functions for smooth, bounded growth
-      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-      const logistic = (n, k, max) => max * (1 - Math.exp(-k * Math.max(0, n)));
+            // Helper functions for smooth, bounded growth
+            const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+            const logistic = (n, k, max) => max * (1 - Math.exp(-k * Math.max(0, n)));
 
-      const A = totalActions;              // total activity volume
-      const S = currentStreak;             // streak length
+            const A = totalActions;              // total activity volume
+            const S = currentStreak;             // streak length
 
-      // Improved Confidence – small baseline, slow growth from streak + volume, light success influence
-      const confFromStreak = logistic(S, 0.18, 35);      // caps at 35
-      const confFromActivity = logistic(A, 0.08, 20);    // caps at 20
-      const confFromSuccess = ((smoothedSuccessRate - 50) / 100) * 10 * effectiveVolume; // ±5 at low volume
-      improvedConfidence = clamp(20 + confFromStreak + confFromActivity + confFromSuccess, 10, 85);
+            // Improved Confidence – small baseline, slow growth from streak + volume, light success influence
+            const confFromStreak = logistic(S, 0.18, 35);      // caps at 35
+            const confFromActivity = logistic(A, 0.08, 20);    // caps at 20
+            const confFromSuccess = ((smoothedSuccessRate - 50) / 100) * 10 * effectiveVolume; // ±5 at low volume
+            improvedConfidence = clamp(20 + confFromStreak + confFromActivity + confFromSuccess, 10, 85);
 
-      // Reduced Social Anxiety – similar scale, slightly different weights
-      const anxFromStreak = logistic(S, 0.15, 25);
-      const anxFromActivity = logistic(A, 0.06, 15);
-      const anxFromSuccess = ((smoothedSuccessRate - 50) / 100) * 8 * effectiveVolume;
-      reducedSocialAnxiety = clamp(20 + anxFromStreak + anxFromActivity + anxFromSuccess, 10, 85);
+            // Reduced Social Anxiety – similar scale, slightly different weights
+            const anxFromStreak = logistic(S, 0.15, 25);
+            const anxFromActivity = logistic(A, 0.06, 15);
+            const anxFromSuccess = ((smoothedSuccessRate - 50) / 100) * 8 * effectiveVolume;
+            reducedSocialAnxiety = clamp(20 + anxFromStreak + anxFromActivity + anxFromSuccess, 10, 85);
 
-      // Increased Social Energy – very gentle curve with streak only
-      increasedSocialEnergy = clamp(12 + logistic(S, 0.12, 25), 10, 70);
+            // Increased Social Energy – very gentle curve with streak only
+            increasedSocialEnergy = clamp(12 + logistic(S, 0.12, 25), 10, 70);
 
-      // Better Relationships – based on opener success with strong damping + small streak effect
-      const openerPriorCount = 8;
-      const openerSmoothedRate = totalOpeners > 0
-        ? ((successfulOpeners + priorMean * openerPriorCount) / (totalOpeners + openerPriorCount)) * 100
-        : priorMean * 100;
-      const relFromOpeners = (openerSmoothedRate * 0.18) * openerEffectiveVolume; // capped by effective volume
-      const relFromStreak = logistic(S, 0.08, 10);
-      betterRelationships = clamp(15 + relFromOpeners + relFromStreak, 10, 80);
-    }
-    
+            // Better Relationships – based on opener success with strong damping + small streak effect
+            const openerPriorCount = 8;
+            const openerSmoothedRate = totalOpeners > 0
+              ? ((successfulOpeners + priorMean * openerPriorCount) / (totalOpeners + openerPriorCount)) * 100
+              : priorMean * 100;
+            const relFromOpeners = (openerSmoothedRate * 0.18) * openerEffectiveVolume; // capped by effective volume
+            const relFromStreak = logistic(S, 0.08, 10);
+            betterRelationships = clamp(15 + relFromOpeners + relFromStreak, 10, 80);
+          }
+          
     // Enhanced Communication is calculated separately and includes module progress (using SUPABASE data)
-    // Module contribution scales based on number of completed modules
+          // Module contribution scales based on number of completed modules
     const moduleProgressScore = Math.min(100, avgProgress || 0);
-    
-    // Base contribution from modules is 30%, but increases with more modules completed
-    // 1 module = 30%, 2 modules = 40%, 3 modules = 50%, 4+ modules = 60%
-    // Module weight grows with completed modules; keep low with none
-    const moduleContribution = Math.min(40, Math.max(5, completedModules * 10));
-    // Activity contribution is damped at low volume
-    const activityContribution = (100 - moduleContribution) * effectiveVolume;
-    
-    // Calculate enhanced communication with dynamic weighting
-    enhancedCommunication = Math.round(
-      (smoothedSuccessRate * (activityContribution / 100)) +
-      (moduleProgressScore * (moduleContribution / 100))
-    );
+          
+          // Base contribution from modules is 30%, but increases with more modules completed
+          // 1 module = 30%, 2 modules = 40%, 3 modules = 50%, 4+ modules = 60%
+          // Module weight grows with completed modules; keep low with none
+          const moduleContribution = Math.min(40, Math.max(5, completedModules * 10));
+          // Activity contribution is damped at low volume
+          const activityContribution = (100 - moduleContribution) * effectiveVolume;
+          
+          // Calculate enhanced communication with dynamic weighting
+          enhancedCommunication = Math.round(
+            (smoothedSuccessRate * (activityContribution / 100)) +
+            (moduleProgressScore * (moduleContribution / 100))
+          );
 
-    // Cap all benefits at 100
-    improvedConfidence = Math.min(100, Math.round(improvedConfidence));
-    reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
-    enhancedCommunication = Math.min(100, enhancedCommunication);
-    increasedSocialEnergy = Math.min(100, Math.round(increasedSocialEnergy));
-    betterRelationships = Math.min(100, Math.round(betterRelationships));
+          // Cap all benefits at 100
+          improvedConfidence = Math.min(100, Math.round(improvedConfidence));
+          reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
+          enhancedCommunication = Math.min(100, enhancedCommunication);
+          increasedSocialEnergy = Math.min(100, Math.round(increasedSocialEnergy));
+          betterRelationships = Math.min(100, Math.round(betterRelationships));
 
           // Return complete analytics data
           res.json({
@@ -2243,27 +2040,7 @@ app.get('/api/debug/query/:deviceId', (req, res) => {
   });
 });
 
-// DEBUG ENDPOINT FOR ACTIVITY DATA
-app.get('/api/debug/activity/:deviceId', (req, res) => {
-  const { deviceId } = req.params;
-  
-  db.all("SELECT * FROM openers WHERE device_id = ? ORDER BY opener_date DESC", [deviceId], (err, openers) => {
-    if (err) {
-                  return res.status(500).json({ error: 'Database error' });
-                }
-
-    db.all("SELECT * FROM daily_challenges WHERE device_id = ? ORDER BY challenge_date DESC", [deviceId], (err, challenges) => {
-                  if (err) {
-                    return res.status(500).json({ error: 'Database error' });
-                  }
-
-      res.json({
-        openers: openers,
-        challenges: challenges
-      });
-    });
-  });
-});
+// Debug endpoint removed - SQLite dependency eliminated
 
   // NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
   app.get('/api/clean/home/:deviceId', async (req, res) => {
@@ -2274,10 +2051,10 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
       const { currentDate } = req.query;
       console.log('HOME: deviceId:', deviceId, 'currentDate:', currentDate);
     
-      if (!deviceId) {
-        return res.status(400).json({ error: 'deviceId is required' });
-      }
-      
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
       console.log(`🎯 [SUPABASE] CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
       
       // Step 1: Get user account creation date from SUPABASE
@@ -2289,8 +2066,8 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
       
       if (userError && userError.code !== 'PGRST116') {
         console.error('❌ [SUPABASE] Error getting user:', userError);
-        return res.status(500).json({ error: 'Database error' });
-      }
+                return res.status(500).json({ error: 'Database error' });
+              }
 
       console.log(`🎯 [SUPABASE] HOME: User data:`, user ? {
         device_id: user.device_id,
@@ -2360,10 +2137,10 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         // Step 3: Build week bar using SUPABASE activity data (6 previous days + today)
         const weekBar = [];
         
-        for (let i = 6; i >= 0; i--) {
-          const checkDate = new Date(today);
-          checkDate.setDate(today.getDate() - i);
-          const dateString = checkDate.toISOString().split('T')[0];
+                  for (let i = 6; i >= 0; i--) {
+                    const checkDate = new Date(today);
+                    checkDate.setDate(today.getDate() - i);
+                    const dateString = checkDate.toISOString().split('T')[0];
           
           let color = 'none';
           
@@ -2377,7 +2154,7 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
             // Before account creation: grey
             color = 'before';
             console.log(`🎯 [SUPABASE] BEFORE: ${dateString} < ${accountCreationDate.toISOString().split('T')[0]}`);
-          } else {
+                      } else {
             // No activity after account creation: red
             color = 'missed';
           }
@@ -2528,14 +2305,14 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
         return res.status(500).json({ error: 'Database error getting activity data' });
       }
       
-    } catch (error) {
+  } catch (error) {
       console.error('❌ [SUPABASE] Error in clean home endpoint:', error);
       res.status(500).json({ 
         error: 'Server error',
         details: error.message 
       });
-    }
-  });
+  }
+});
 
 // Removed duplicate calculateConsecutiveStreak function - now using global version
 
@@ -3965,8 +3742,8 @@ app.get('/api/data/opener-library/:deviceId', async (req, res) => {
     console.log(`📚 [SUPABASE] Found ${recentHistoryData.length} recent openers in history`);
 
     // Calculate success by purpose breakdown using Supabase data
-    const allPurposes = ['casual', 'romantic', 'professional'];
-    
+            const allPurposes = ['casual', 'romantic', 'professional'];
+            
     // Group openers by purpose and calculate stats (same logic as SQLite version)
     const purposeStats = {};
     (allOpeners || []).forEach(opener => {
@@ -3984,63 +3761,63 @@ app.get('/api/data/opener-library/:deviceId', async (req, res) => {
     });
     
     // Calculate success rates by purpose - include all purposes (same format as SQLite version)
-    const successByPurpose = allPurposes.map(purpose => {
+            const successByPurpose = allPurposes.map(purpose => {
       const stat = purposeStats[purpose] || { used_count: 0, successful_count: 0 };
-      const successRate = stat.used_count > 0 
-        ? (stat.successful_count / stat.used_count)
-        : 0;
-      
-      return {
-        name: purpose.charAt(0).toUpperCase() + purpose.slice(1),
-        setting: getPurposeDescription(purpose),
-        successRate: Math.round(successRate * 100),
-        totalUsed: stat.used_count,
-        totalSuccessful: stat.successful_count
-      };
-    });
+              const successRate = stat.used_count > 0 
+                ? (stat.successful_count / stat.used_count)
+                : 0;
+              
+              return {
+                name: purpose.charAt(0).toUpperCase() + purpose.slice(1),
+                setting: getPurposeDescription(purpose),
+                successRate: Math.round(successRate * 100),
+                totalUsed: stat.used_count,
+                totalSuccessful: stat.successful_count
+              };
+            });
 
     console.log(`📚 [SUPABASE] Success by purpose calculated for ${allPurposes.length} categories`);
 
     // Format successful openers for frontend (using Supabase data) - iOS expects integer IDs
     const formattedSuccessfulOpeners = successfulOpenersData.map((opener, index) => ({
       id: index + 1,  // Convert UUID to integer for iOS compatibility
-      category: opener.category,
-      setting: opener.setting,
-      text: opener.text,
-      date: formatOpenerDate(opener.date),
-      rating: opener.rating || 0,
-      confidence: opener.confidence || 0,
-      isSuccess: true
-    }));
+              category: opener.category,
+              setting: opener.setting,
+              text: opener.text,
+              date: formatOpenerDate(opener.date),
+              rating: opener.rating || 0,
+              confidence: opener.confidence || 0,
+              isSuccess: true
+            }));
 
     // Format recent history for frontend (using Supabase data) - iOS expects integer IDs
     const formattedRecentHistory = recentHistoryData.map((opener, index) => ({
       id: index + 1,  // Convert UUID to integer for iOS compatibility
-      category: opener.category,
-      setting: opener.setting,
-      text: opener.text,
-      date: formatOpenerDate(opener.date),
-      rating: opener.rating || 0,
-      confidence: opener.confidence || 0,
-      wasUsed: Boolean(opener.wasUsed),
-      isSuccess: Boolean(opener.wasSuccessful)
-    }));
+              category: opener.category,
+              setting: opener.setting,
+              text: opener.text,
+              date: formatOpenerDate(opener.date),
+              rating: opener.rating || 0,
+              confidence: opener.confidence || 0,
+              wasUsed: Boolean(opener.wasUsed),
+              isSuccess: Boolean(opener.wasSuccessful)
+            }));
 
     // Build final response using Supabase data (same format as SQLite version)
-    const response = {
-      successRate: successRate,
+            const response = {
+              successRate: successRate,
       totalConversations: usedOpeners,
-      successfulOpeners: formattedSuccessfulOpeners,
-      recentHistory: formattedRecentHistory,
-      successByPurpose: successByPurpose,
+              successfulOpeners: formattedSuccessfulOpeners,
+              recentHistory: formattedRecentHistory,
+              successByPurpose: successByPurpose,
       totalOpeners: totalOpeners,
       totalSuccessful: successfulOpeners
-    };
+            };
 
     console.log(`📚 [SUPABASE] OPENER LIBRARY: Returning data with ${formattedSuccessfulOpeners.length} successful, ${formattedRecentHistory.length} history, ${successByPurpose.length} purposes`);
     console.log(`📚 [SUPABASE] OPENER LIBRARY: Total conversations: ${usedOpeners}, Success rate: ${successRate}%`);
     
-    res.json(response);
+            res.json(response);
 
   } catch (error) {
     console.error('❌ Error in opener library endpoint:', error);
@@ -4110,26 +3887,26 @@ app.get('/api/conversation-practice/:deviceId', async (req, res) => {
     // Handle "not found" error as expected case
     if (selectError && selectError.code !== 'PGRST116') {
       console.error('❌ [SUPABASE] Error checking existing scenarios:', selectError);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    if (existing) {
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (existing) {
       // Return existing scenarios with completion status, score, and user answers (SAME LOGIC)
       console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Found existing scenarios for ${dateKey}`);
       console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: completed=${existing.completed}, score=${existing.score}`);
-      const scenariosData = JSON.parse(existing.scenarios_json);
-      scenariosData.isCompleted = !!existing.completed;
-      scenariosData.score = existing.score || 0;
-      
-      // Include user answers if they exist (for review mode)
-      if (existing.user_answers) {
-        scenariosData.userAnswers = JSON.parse(existing.user_answers);
-      }
-      
+          const scenariosData = JSON.parse(existing.scenarios_json);
+          scenariosData.isCompleted = !!existing.completed;
+          scenariosData.score = existing.score || 0;
+          
+          // Include user answers if they exist (for review mode)
+          if (existing.user_answers) {
+            scenariosData.userAnswers = JSON.parse(existing.user_answers);
+          }
+          
       console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Returning data with isCompleted=${scenariosData.isCompleted}, score=${scenariosData.score}`);
-      return res.json(scenariosData);
-    }
-    
+          return res.json(scenariosData);
+        }
+        
     console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: No existing scenarios found for ${dateKey} - will generate new ones`);
         
         // Generate new scenarios using AI
@@ -4229,14 +4006,14 @@ Return ONLY valid JSON in this exact format:
             
             if (storageError) {
               console.error('❌ [SUPABASE] Error storing scenarios:', storageError);
-              // Still return the scenarios even if storage fails
-            } else {
+                // Still return the scenarios even if storage fails
+              } else {
               console.log(`✅ [SUPABASE] CONVERSATION PRACTICE: Stored scenarios for ${dateKey}`);
-            }
+              }
           } catch (storageErr) {
             console.error('❌ [SUPABASE] Storage error:', storageErr);
             // Continue anyway - return generated scenarios
-          }
+            }
 
           // Add completion status and return the generated scenarios
           scenariosData.isCompleted = false;
@@ -4503,43 +4280,7 @@ function calculateWeeklyActivityCounts(deviceId, referenceDate, callback) {
   });
 }
 
-function calculateAllAnalyticsStats(deviceId, callback) {
-  const analyticsQuery = `
-    SELECT 
-      -- Challenge stats
-      (SELECT COUNT(*) FROM daily_challenges WHERE device_id = ?) as total_challenges,
-      (SELECT SUM(CASE WHEN challenge_was_successful = 1 THEN 1 ELSE 0 END) FROM daily_challenges WHERE device_id = ?) as successful_challenges,
-      (SELECT AVG(challenge_confidence_level) FROM daily_challenges WHERE device_id = ? AND challenge_confidence_level IS NOT NULL) as avg_challenge_confidence,
-      
-      -- Opener stats
-      (SELECT COUNT(*) FROM openers WHERE device_id = ? AND opener_was_used = 1) as total_openers,
-      (SELECT SUM(CASE WHEN opener_was_successful = 1 THEN 1 ELSE 0 END) FROM openers WHERE device_id = ? AND opener_was_used = 1) as successful_openers,
-      (SELECT AVG(opener_rating) FROM openers WHERE device_id = ? AND opener_was_used = 1) as avg_rating,
-      
-      -- Development stats
-      (SELECT COUNT(*) FROM development_modules WHERE device_id = ?) as total_modules_started,
-      (SELECT SUM(CASE WHEN development_is_completed = 1 THEN 1 ELSE 0 END) FROM development_modules WHERE device_id = ?) as completed_modules,
-      (SELECT AVG(development_progress_percentage) FROM development_modules WHERE device_id = ?) as avg_progress,
-
-      -- Most recent activity date (used for social zone/grace calculations)
-      (
-        SELECT MAX(activity_date) FROM (
-          SELECT DATE(challenge_date) as activity_date FROM daily_challenges WHERE device_id = ?
-          UNION ALL
-          SELECT DATE(opener_date) as activity_date FROM openers WHERE device_id = ? AND opener_was_used = 1
-        )
-      ) as most_recent_activity_date
-  `;
-  
-  db.get(analyticsQuery, [deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId, deviceId], (err, stats) => {
-    if (err) {
-      return callback(err, null);
-    }
-    
-    console.log(`📊 ANALYTICS STATS DEBUG: Device ${deviceId}`, stats);
-    callback(null, stats);
-  });
-}
+// SQLite helper function removed - analytics calculations now done directly in Supabase endpoints
 
 // === END ANALYTICS FUNCTIONS ===
 
