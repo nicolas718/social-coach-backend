@@ -940,6 +940,16 @@ app.get('/api/test/auth', (req, res) => {
 // AUTHENTICATION ENDPOINTS
 // ========================================
 
+// Simple test endpoint to verify auth bypass is working
+app.get('/api/auth/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth endpoint bypass working!',
+    path: req.path,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // User registration endpoint
 app.post('/api/auth/register', async (req, res) => {
   try {
