@@ -1642,8 +1642,8 @@ app.post('/api/data/development', async (req, res) => {
   }
 });
 
-// Clear all data for a device (for testing)
-app.delete('/api/data/clear/:deviceId', (req, res) => {
+// Clear all data for a device (for testing) - NOW CLEARS SUPABASE!
+app.delete('/api/data/clear/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
 
@@ -1651,60 +1651,49 @@ app.delete('/api/data/clear/:deviceId', (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    console.log(`🗑️ CLEARING ALL DATA for device: ${deviceId}`);
+    console.log(`🗑️ [SUPABASE] CLEARING ALL DATA for device: ${deviceId}`);
 
-    // Delete all data for this device
-    db.serialize(() => {
-      // Delete from all tables
-      db.run('DELETE FROM daily_challenges WHERE device_id = ?', [deviceId], (err) => {
-        if (err) {
-          console.error('Error deleting challenges:', err);
-        } else {
-          console.log('✅ Deleted daily challenges');
-        }
-      });
+    // Delete all data for this device from SUPABASE
+    const deletePromises = [
+      supabase.from('daily_challenges').delete().eq('device_id', deviceId),
+      supabase.from('openers').delete().eq('device_id', deviceId), 
+      supabase.from('development_modules').delete().eq('device_id', deviceId),
+      supabase.from('conversation_practice_scenarios').delete().eq('device_id', deviceId)
+    ];
 
-      db.run('DELETE FROM openers WHERE device_id = ?', [deviceId], (err) => {
-        if (err) {
-          console.error('Error deleting openers:', err);
-        } else {
-          console.log('✅ Deleted openers');
-        }
-      });
+    const deleteResults = await Promise.all(deletePromises);
+    
+    // Check for errors
+    const errors = deleteResults.filter(result => result.error);
+    if (errors.length > 0) {
+      console.error('❌ [SUPABASE] Error deleting data:', errors);
+      return res.status(500).json({ error: 'Failed to clear some data tables' });
+    }
 
-      db.run('DELETE FROM development_modules WHERE device_id = ?', [deviceId], (err) => {
-        if (err) {
-          console.error('Error deleting development modules:', err);
-        } else {
-          console.log('✅ Deleted development modules');
-        }
-      });
+    console.log('✅ [SUPABASE] Deleted challenges, openers, development modules, conversation practice scenarios');
 
-      db.run('DELETE FROM conversation_practice_scenarios WHERE device_id = ?', [deviceId], function(err) {
-        if (err) {
-          console.error('❌ Error deleting conversation practice scenarios:', err);
-        } else {
-          console.log(`✅ Deleted ${this.changes} conversation practice scenario(s) for device ${deviceId}`);
-          if (this.changes === 0) {
-            console.log('⚠️  No conversation practice scenarios were found to delete');
-          }
-        }
-      });
+    // Reset user streaks to 0 in Supabase  
+    const { error: userResetError } = await supabase
+      .from('users')
+      .update({
+        current_streak: 0,
+        all_time_best_streak: 0,
+        last_completion_date: null
+      })
+      .eq('device_id', deviceId);
 
-      db.run('DELETE FROM users WHERE device_id = ?', [deviceId], (err) => {
-        if (err) {
-          console.error('Error deleting user:', err);
-        } else {
-          console.log('✅ Deleted user');
-        }
-      });
+    if (userResetError) {
+      console.error('❌ [SUPABASE] Error resetting user streak:', userResetError);
+      return res.status(500).json({ error: 'Failed to reset user streak' });
+    }
 
-      // Send success response
-      res.json({ 
-        success: true, 
-        message: 'All data cleared for testing (including conversation practice scenarios)',
-        clearedTables: ['daily_challenges', 'openers', 'development_modules', 'conversation_practice_scenarios', 'users']
-      });
+    console.log('✅ [SUPABASE] Reset user streak to 0');
+
+    // Send success response
+    res.json({ 
+      success: true, 
+      message: 'All data cleared for testing from Supabase',
+      clearedTables: ['daily_challenges', 'openers', 'development_modules', 'conversation_practice_scenarios', 'users']
     });
 
   } catch (error) {
@@ -2115,12 +2104,17 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
     
     console.log(`🎯 CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
     
-    // Step 1: Get user account creation date
-    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
-              if (err) {
-        console.error('Error getting user:', err);
-                return res.status(500).json({ error: 'Database error' });
-              }
+    // Step 1: Get user account creation date (NOW FROM SUPABASE!)
+    supabase
+      .from('users')
+      .select('*')
+      .eq('device_id', deviceId)
+      .single()
+      .then(({ data: user, error }) => {
+        if (error && error.code !== 'PGRST116') {
+          console.error('❌ [SUPABASE] Error getting user:', error);
+          return res.status(500).json({ error: 'Database error' });
+        }
 
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
       // Account creation logic for proper week bar colors
