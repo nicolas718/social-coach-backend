@@ -2089,8 +2089,8 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
   });
 });
 
-  // NEW CLEAN WEEK BAR + STREAK SYSTEM
-  app.get('/api/clean/home/:deviceId', (req, res) => {
+  // NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
+  app.get('/api/clean/home/:deviceId', async (req, res) => {
     console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
     console.log('HOME: Request received at', new Date().toISOString());
     try {
@@ -2098,30 +2098,30 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
       const { currentDate } = req.query;
       console.log('HOME: deviceId:', deviceId, 'currentDate:', currentDate);
     
-    if (!deviceId) {
-      return res.status(400).json({ error: 'deviceId is required' });
-    }
-    
-    console.log(`🎯 CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
-    
-    // Step 1: Get user account creation date (NOW FROM SUPABASE!)
-    supabase
-      .from('users')
-      .select('*')
-      .eq('device_id', deviceId)
-      .single()
-      .then(({ data: user, error }) => {
-        if (error && error.code !== 'PGRST116') {
-          console.error('❌ [SUPABASE] Error getting user:', error);
-          return res.status(500).json({ error: 'Database error' });
-        }
+      if (!deviceId) {
+        return res.status(400).json({ error: 'deviceId is required' });
+      }
+      
+      console.log(`🎯 [SUPABASE] CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
+      
+      // Step 1: Get user account creation date from SUPABASE
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('device_id', deviceId)
+        .single();
+      
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('❌ [SUPABASE] Error getting user:', userError);
+        return res.status(500).json({ error: 'Database error' });
+      }
 
-        console.log(`🎯 [SUPABASE] HOME: User data:`, user ? {
-          device_id: user.device_id,
-          current_streak: user.current_streak,
-          all_time_best_streak: user.all_time_best_streak,
-          last_completion_date: user.last_completion_date
-        } : 'No user found');
+      console.log(`🎯 [SUPABASE] HOME: User data:`, user ? {
+        device_id: user.device_id,
+        current_streak: user.current_streak,
+        all_time_best_streak: user.all_time_best_streak,
+        last_completion_date: user.last_completion_date
+      } : 'No user found');
 
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
       // Account creation logic for proper week bar colors
@@ -2140,40 +2140,54 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
       console.log(`🎯 Account creation full date: ${accountCreationDate.toISOString()}`);
       console.log(`🎯 Account creation date string for comparison: ${accountCreationDate.toISOString().split('T')[0]}`);
       
-      // Step 2: Get all activity dates (used openers + completed challenges)
-      // CRITICAL FIX: Use EXACT same query as debug endpoint (no COUNT, no GROUP BY)
-      const activityQuery = `
-        SELECT DISTINCT substr(activity_date, 1, 10) as activity_date
-        FROM (
-          SELECT opener_date as activity_date FROM openers 
-          WHERE device_id = ? AND opener_was_used = 1
-          
-          UNION ALL
-          
-          SELECT challenge_date as activity_date FROM daily_challenges 
-          WHERE device_id = ?
-        ) activities
-        ORDER BY activity_date
-      `;
-      
-      db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
-                  if (err) {
-          console.error('Error getting activities:', err);
-                    return res.status(500).json({ error: 'Database error' });
-                  }
-
-        const activityDates = activityRows.map(row => row.activity_date);
-        console.log(`🎯 Activity dates: [${activityDates.join(', ')}]`);
-        console.log(`🎯 Raw activity rows:`, activityRows);
+      // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges)
+      try {
+        console.log(`🎯 [SUPABASE] Getting activity dates for device: ${deviceId}`);
         
-        // Step 3: Build week bar (6 previous days + today)
+        // Get opener activity dates from Supabase
+        const { data: openerActivities, error: openerError } = await supabase
+          .from('openers')
+          .select('opener_date')
+          .eq('device_id', deviceId)
+          .eq('opener_was_used', true);
+        
+        if (openerError) {
+          console.error('❌ [SUPABASE] Error getting opener activities:', openerError);
+          return res.status(500).json({ error: 'Database error getting opener activities' });
+        }
+        
+        // Get challenge activity dates from Supabase  
+        const { data: challengeActivities, error: challengeError } = await supabase
+          .from('daily_challenges')
+          .select('challenge_date')
+          .eq('device_id', deviceId);
+        
+        if (challengeError) {
+          console.error('❌ [SUPABASE] Error getting challenge activities:', challengeError);
+          return res.status(500).json({ error: 'Database error getting challenge activities' });
+        }
+        
+        // Combine and format activity dates (same logic as SQLite version)
+        const allActivityDates = [
+          ...(openerActivities || []).map(row => row.opener_date?.split('T')[0]).filter(Boolean),
+          ...(challengeActivities || []).map(row => row.challenge_date?.split('T')[0]).filter(Boolean)
+        ];
+        
+        // Remove duplicates and sort (same as SQLite DISTINCT and ORDER BY)
+        const activityDates = [...new Set(allActivityDates)].sort();
+        
+        console.log(`🎯 [SUPABASE] Activity dates: [${activityDates.join(', ')}]`);
+        console.log(`🎯 [SUPABASE] Opener activities: ${(openerActivities || []).length}`);
+        console.log(`🎯 [SUPABASE] Challenge activities: ${(challengeActivities || []).length}`);
+        console.log(`🎯 [SUPABASE] Combined unique dates: ${activityDates.length}`);
+        
+        // Step 3: Build week bar using SUPABASE activity data (6 previous days + today)
         const weekBar = [];
-        let currentStreak = 0;
         
-                  for (let i = 6; i >= 0; i--) {
-                    const checkDate = new Date(today);
-                    checkDate.setDate(today.getDate() - i);
-                    const dateString = checkDate.toISOString().split('T')[0];
+        for (let i = 6; i >= 0; i--) {
+          const checkDate = new Date(today);
+          checkDate.setDate(today.getDate() - i);
+          const dateString = checkDate.toISOString().split('T')[0];
           
           let color = 'none';
           
@@ -2186,37 +2200,37 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           } else if (dateString < accountCreationDate.toISOString().split('T')[0]) {
             // Before account creation: grey
             color = 'before';
-            console.log(`🎯 BEFORE: ${dateString} < ${accountCreationDate.toISOString().split('T')[0]}`);
-          
-                      } else {
+            console.log(`🎯 [SUPABASE] BEFORE: ${dateString} < ${accountCreationDate.toISOString().split('T')[0]}`);
+          } else {
             // No activity after account creation: red
             color = 'missed';
           }
           
           weekBar.push(color);
           const accountDateStr = accountCreationDate.toISOString().split('T')[0];
-          console.log(`🎯 Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
+          console.log(`🎯 [SUPABASE] Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
         }
         
-        // Step 4: Use current streak from Supabase user data (not SQLite calculation)
+        // Step 4: Use current streak from Supabase user data (authoritative source)
         const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
-        console.log(`🔧 HOME FIX: Using referenceDate: ${referenceDate.toISOString()}, vs original today: ${today.toISOString()}`);
-        // CRITICAL FIX: Use streak from Supabase user data, not SQLite calculation
-        currentStreak = user ? (user.current_streak || 0) : 0;
-        console.log(`🔧 [SUPABASE] HOME FIX: Using Supabase streak: ${currentStreak} (not SQLite calculation)`);
+        console.log(`🔧 [SUPABASE] HOME: Using referenceDate: ${referenceDate.toISOString()}, vs today: ${today.toISOString()}`);
         
-        console.log(`🎯 Current streak: ${currentStreak}`);
-        console.log(`🎯 Week bar: [${weekBar.join(', ')}]`);
+        // Use Supabase user streak as authoritative source (not recalculated)
+        const currentStreak = user ? (user.current_streak || 0) : 0;
+        console.log(`🔧 [SUPABASE] HOME: Using authoritative Supabase streak: ${currentStreak}`);
         
-        // Compute Social Zone with grace; derive best streak from activity if user record is stale
+        console.log(`🎯 [SUPABASE] Current streak: ${currentStreak}`);
+        console.log(`🎯 [SUPABASE] Week bar: [${weekBar.join(', ')}]`);
+        
+        // Compute Social Zone with grace period using SUPABASE activity data
         const daysSinceActivity = (() => {
-          const todayStr = referenceDate.toISOString().split('T')[0];  // USE SAME REFERENCE DATE
+          const todayStr = referenceDate.toISOString().split('T')[0];
           if (activityDates.length === 0) return 999;
           const mostRecent = activityDates[activityDates.length - 1];
           const d1 = new Date(mostRecent + 'T00:00:00Z');
           const d2 = new Date(todayStr + 'T00:00:00Z');
           const daysDiff = Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
-          console.log(`🔧 HOME FIX: daysSinceActivity calculation - mostRecent: ${mostRecent}, referenceDate: ${todayStr}, daysDiff: ${daysDiff}`);
+          console.log(`🔧 [SUPABASE] HOME: daysSinceActivity calculation - mostRecent: ${mostRecent}, referenceDate: ${todayStr}, daysDiff: ${daysDiff}`);
           return daysDiff;
         })();
 
@@ -2310,21 +2324,32 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           zoneFromFunction: zone
         });
 
-        res.json({
+        // Return complete home screen data (same format iOS app expects)
+        const homeResponse = {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
-          socialZoneLevel: zone.level,  // FIX: Use zone.level to include grace period logic
-                      _DEBUG_HOME_VERSION: 'v8.2.0-GRACE-RECOVERY-PROGRESSIVE',
+          socialZoneLevel: zone.level,
+          _DEBUG_HOME_VERSION: 'v8.3.0-SUPABASE-COMPLETE',
           _DEBUG_HOME_ZONE: zone
-        });
+        };
+        
+        console.log('🎯 [SUPABASE] HOME RESPONSE:', homeResponse);
+        res.json(homeResponse);
+        
+      } catch (activityError) {
+        console.error('❌ [SUPABASE] Error getting activity data:', activityError);
+        return res.status(500).json({ error: 'Database error getting activity data' });
+      }
+      
+    } catch (error) {
+      console.error('❌ [SUPABASE] Error in clean home endpoint:', error);
+      res.status(500).json({ 
+        error: 'Server error',
+        details: error.message 
       });
-    });
-  } catch (error) {
-    console.error('Error in clean home endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+    }
+  });
 
 // Removed duplicate calculateConsecutiveStreak function - now using global version
 
