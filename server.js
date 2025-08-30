@@ -158,12 +158,6 @@ const aiRateLimit = rateLimit({
 
 // API Key Authentication Middleware function
 function requireApiKey(req, res, next) {
-  // Skip authentication for auth endpoints (they need to be publicly accessible)
-  if (req.path.startsWith('/api/auth/')) {
-    console.log(`🔐 Allowing public access to auth endpoint: ${req.path}`);
-    return next();
-  }
-  
   // Skip authentication if FRONTEND_API_KEY is not configured
   if (!process.env.FRONTEND_API_KEY) {
     console.warn('⚠️  API request received but FRONTEND_API_KEY not configured - allowing request');
@@ -194,10 +188,19 @@ function requireApiKey(req, res, next) {
   next();
 }
 
-// Apply authentication to all /api/* routes
-app.use('/api/*', requireApiKey);
+// Apply authentication to all /api/* routes EXCEPT auth endpoints
+app.use('/api/*', (req, res, next) => {
+  // Skip API key requirement for auth endpoints
+  if (req.path.startsWith('/api/auth/')) {
+    console.log(`🔐 [SECURITY] Bypassing API key for auth endpoint: ${req.path}`);
+    return next();
+  }
+  
+  // Apply normal API key check for all other endpoints
+  return requireApiKey(req, res, next);
+});
 
-console.log('✅ API key authentication middleware configured for all protected routes');
+console.log('✅ API key authentication middleware configured - auth endpoints are publicly accessible');
 
 // SQLite initialization removed - using Supabase PostgreSQL
 
