@@ -20,6 +20,11 @@ console.log('===============================================');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configure Express for better connection stability
+app.set('trust proxy', true);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 // Check if AWS Bedrock configuration is set
 if (!process.env.BEDROCK_API_KEY) {
   console.error('❌ BEDROCK_API_KEY environment variable is not set');
@@ -98,8 +103,33 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
   return data;
 }
 
-app.use(cors());
-app.use(express.json());
+// CORS with optimized settings for mobile apps
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-api-key'],
+  credentials: false
+}));
+
+// JSON parsing with larger limits for complex data
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// General rate limiting for all API endpoints (prevents connection spam)
+const generalRateLimit = rateLimit({
+  windowMs: 1000, // 1 second window
+  max: 20, // 20 requests per second per IP (generous for mobile app)
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for health checks and tests
+    return req.path === '/' || req.path.startsWith('/test-') || req.path === '/health';
+  }
+});
+
+// Apply general rate limiting to all routes
+app.use(generalRateLimit);
 
 // Rate limiting for AI endpoints (150 requests per hour per IP)
 const aiRateLimit = rateLimit({
@@ -4338,8 +4368,26 @@ app.post('/api/conversation-practice/:deviceId/complete', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// Configure server for better connection handling
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Improve server connection handling
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000; // 66 seconds (slightly more than keepAlive)
+
+// Handle server errors gracefully
+server.on('error', (err) => {
+  console.error('Server error:', err);
+});
+
+// Handle connection drops gracefully
+server.on('connection', (socket) => {
+  socket.setTimeout(30000); // 30 second timeout
+  socket.on('error', (err) => {
+    console.warn('Socket error (handled gracefully):', err.message);
+  });
 });
 
 // === ANALYTICS CALCULATION FUNCTIONS ===
