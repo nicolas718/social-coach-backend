@@ -316,6 +316,60 @@ app.get('/api/auth/test-jwt', requireAuthentication, (req, res) => {
   });
 });
 
+// Data migration endpoint (JWT authenticated)
+app.post('/api/auth/migrate-data', requireAuthentication, async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    const userId = req.userId;
+    
+    if (!deviceId) {
+      return res.status(400).json({ 
+        error: 'Missing device ID', 
+        message: 'Device ID is required for migration' 
+      });
+    }
+
+    // Validate device ID format
+    if (typeof deviceId !== 'string' || deviceId.length < 3 || deviceId.length > 100) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        message: 'Invalid device ID format' 
+      });
+    }
+
+    console.log(`🔄 [JWT AUTH] Manual data migration: ${deviceId} → ${userId}`);
+
+    const { data: migrationResult, error: migrationError } = await supabase
+      .rpc('migrate_device_data_to_user', {
+        p_device_id: deviceId,
+        p_user_id: userId
+      });
+
+    if (migrationError) {
+      console.error('❌ [JWT AUTH] Migration failed:', migrationError);
+      return res.status(500).json({ 
+        error: 'Migration failed', 
+        message: migrationError.message 
+      });
+    }
+
+    console.log('✅ [JWT AUTH] Manual migration successful:', migrationResult);
+
+    res.json({
+      success: true,
+      message: 'Data migration completed',
+      migration: migrationResult
+    });
+
+  } catch (error) {
+    console.error('❌ [JWT AUTH] Migration error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: 'Migration failed' 
+    });
+  }
+});
+
 // User registration endpoint (PUBLIC) - PRODUCTION SECURITY
 app.post('/api/auth/register', authRateLimit, async (req, res) => {
   try {
