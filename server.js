@@ -190,12 +190,15 @@ function requireApiKey(req, res, next) {
 
 // Apply authentication to all /api/* routes EXCEPT auth endpoints
 app.use('/api/*', (req, res, next) => {
+  console.log(`🔍 [DEBUG] Middleware check - Path: ${req.path}, Method: ${req.method}`);
+  
   // Skip API key requirement for auth endpoints
   if (req.path.startsWith('/api/auth/')) {
-    console.log(`🔐 [SECURITY] Bypassing API key for auth endpoint: ${req.path}`);
+    console.log(`🔐 [SECURITY] Bypassing API key for auth endpoint: ${req.path} ✅`);
     return next();
   }
   
+  console.log(`🔑 [SECURITY] Requiring API key for endpoint: ${req.path}`);
   // Apply normal API key check for all other endpoints
   return requireApiKey(req, res, next);
 });
