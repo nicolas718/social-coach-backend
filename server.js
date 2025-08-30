@@ -903,26 +903,7 @@ app.get('/api/test/auth', (req, res) => {
 
 // Debug endpoint removed for security - exposed Bedrock API key fragments
 
-// Debug all activities for a device
-app.get('/api/debug/all-activities/:deviceId', (req, res) => {
-  const { deviceId } = req.params;
-  
-  const query = `
-    SELECT 'opener' as type, opener_date as date, opener_was_used as used 
-    FROM openers WHERE device_id = ?
-    UNION ALL
-    SELECT 'challenge' as type, challenge_date as date, 1 as used 
-    FROM daily_challenges WHERE device_id = ?
-    ORDER BY date
-  `;
-  
-  db.all(query, [deviceId, deviceId], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({ activities: rows });
-  });
-});
+// Debug endpoint removed - SQLite dependency eliminated
 
 // Debug endpoint to test grace period calculation
 app.get('/api/debug/grace/:deviceId', (req, res) => {
@@ -1816,9 +1797,7 @@ app.get('/api/debug/query/:deviceId', (req, res) => {
   });
 });
 
-// Debug endpoint removed - SQLite dependency eliminated
-
-  // NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
+// NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
   app.get('/api/clean/home/:deviceId', async (req, res) => {
     console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
     console.log('HOME: Request received at', new Date().toISOString());
@@ -2285,164 +2264,56 @@ app.get('/api/test/database/:deviceId', (req, res) => {
                 });
 });
 
-// Home Screen Data API Endpoint
-app.get('/api/data/home/:deviceId', (req, res) => {
+// Home Screen Data API Endpoint - SIMPLIFIED SUPABASE FALLBACK (iOS Dependency)
+app.get('/api/data/home/:deviceId', async (req, res) => {
   try {
-    console.log('🏠 Home endpoint started');
+    console.log('🏠 [SUPABASE] Home fallback endpoint - redirecting to main clean endpoint');
     const { deviceId } = req.params;
-    const { customDate } = req.query;  // Get custom date from query parameter
+    const { customDate } = req.query;
 
-    console.log(`🏠 Device ID: ${deviceId}, Custom Date: ${customDate}`);
-
-    if (!deviceId) {
-      console.log('❌ No device ID provided');
-      return res.status(400).json({ error: 'deviceId is required' });
-    }
-
-    // Use custom date if provided (for debug mode), otherwise use current date
-    const referenceDate = customDate ? new Date(customDate + 'T00:00:00Z') : new Date();
-    console.log(`🏠 Home screen request for device: ${deviceId}`);
-    console.log(`🏠 Reference date: ${referenceDate.toISOString()}`);
-    if (customDate) {
-      console.log(`🧪 DEBUG MODE: Using custom date: ${customDate} (${referenceDate.toISOString()})`);
-    }
-
-    // Ensure user exists first
-    console.log('🏠 Calling ensureUserExists...');
-    ensureUserExists(deviceId, (err) => {
-      console.log('🏠 ensureUserExists callback called', err ? 'with error:' : 'successfully', err);
-      if (err) {
-        console.error('❌ Error ensuring user exists:', err);
-        return res.status(500).json({ error: 'Database error creating user' });
-      }
-
-      // Get user info
-      db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
-        if (err) {
-          console.error('❌ Error getting user:', err);
-          return res.status(500).json({ error: 'Database error' });
+    // This is a fallback endpoint - use the main clean home logic
+    const currentDateParam = customDate ? `?currentDate=${customDate}` : '';
+    const cleanEndpoint = `/api/clean/home/${deviceId}${currentDateParam}`;
+    
+    console.log(`🏠 [SUPABASE] Redirecting to clean endpoint: ${cleanEndpoint}`);
+    
+    // Make internal request to the main clean home endpoint (already fully Supabase)
+    const homeUrl = `${req.protocol}://${req.get('host')}${cleanEndpoint}`;
+    
+    try {
+      const response = await fetch(homeUrl, {
+        headers: {
+          'x-api-key': req.get('x-api-key') || '',
         }
-
-        if (!user) {
-          console.error('❌ User still not found after creation attempt');
-          return res.status(500).json({ error: 'User creation failed' });
-        }
-
-        console.log(`✅ User found: ${deviceId}, streak: ${user.current_streak}`);
-
-        // Get activity data for week calculation
-        // In debug mode: get ALL activities (no date filtering)
-        // In normal mode: get activities from last 30 days
-        let activityQuery;
-        let queryParams;
-        
-        // Always get ALL activities with counts, no date filtering (like debug mode)
-        console.log(`🔍 Getting ALL activities with counts for device ${deviceId}`);
-        activityQuery = `
-          SELECT 
-            activity_date,
-            COUNT(*) as activity_count
-          FROM (
-            SELECT challenge_date as activity_date
-            FROM daily_challenges 
-            WHERE device_id = ?
-            
-            UNION ALL
-            
-            SELECT opener_date as activity_date
-            FROM openers 
-            WHERE device_id = ? AND opener_was_used = 1
-          ) activities
-          GROUP BY activity_date
-          ORDER BY activity_date
-        `;
-        queryParams = [deviceId, deviceId];
-        
-        db.all(activityQuery, queryParams, (err, weeklyActivity) => {
-          if (err) {
-            console.error('❌ Error getting weekly activity:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-
-          // Create a map of dates to activity counts
-          const activityMap = {};
-          weeklyActivity.forEach(row => {
-            activityMap[row.activity_date] = row.activity_count;
-          });
-          const activityDates = Object.keys(activityMap).sort();
-          console.log('📊 Activity dates with counts found:', activityMap);
-          
-          // Build weekly activity array for last 7 days (activity counts)
-          const weeklyActivityArray = [];
-          const today = referenceDate;
-          
-          console.log(`🔍 DEBUG: Building week array for reference date: ${today.toISOString()}`);
-          
-          // Build array of the last 7 days ending today (current day on right)
-          for (let i = 6; i >= 0; i--) {
-            const checkDate = new Date(today);
-            checkDate.setDate(today.getDate() - i);
-            const dateString = checkDate.toISOString().split('T')[0];
-            const activityCount = activityMap[dateString] || 0;
-            
-            // Return the actual activity count for analytics (not status)
-            weeklyActivityArray.push(activityCount);
-          }
-
-          console.log(`🔍 DEBUG: Final weeklyActivityArray (${weeklyActivityArray.length} elements): [${weeklyActivityArray.join(', ')}]`);
-
-          // Check if user has activity today
-          const todayString = today.toISOString().split('T')[0];
-          const hasActivityToday = (activityMap[todayString] || 0) > 0;
-
-          // Calculate current streak from actual activity data
-          let calculatedStreak = 0;
-          if (activityDates.length > 0) {
-            const sortedActivityDates = activityDates.sort(); // Earliest to latest
-            const mostRecentActivityDate = sortedActivityDates[sortedActivityDates.length - 1];
-            const mostRecentActivityDateObj = new Date(mostRecentActivityDate + 'T00:00:00.000Z');
-            
-            // Check if there's a gap between most recent activity date and today
-            const today = new Date();
-            const daysBetween = Math.floor((today.getTime() - mostRecentActivityDateObj.getTime()) / (1000 * 60 * 60 * 24));
-            
-            if (daysBetween <= 1) {
-              // No gap, count consecutive days backwards
-              let checkDate = new Date(mostRecentActivityDateObj);
-              
-              // Count consecutive days backwards
-              for (let i = sortedActivityDates.length - 1; i >= 0; i--) {
-                const expectedDateString = checkDate.toISOString().split('T')[0];
-                
-                if (sortedActivityDates[i] === expectedDateString) {
-                  calculatedStreak++;
-                  checkDate.setDate(checkDate.getDate() - 1); // Go back one day
-                } else {
-                  // Gap found, streak is broken
-                  break;
-                }
-              }
-            }
-          }
-          
-          console.log(`🔍 DEBUG: Calculated streak: ${calculatedStreak} (from activity data)`);
-          console.log(`🔍 DEBUG: Database streak: ${user.current_streak || 0} (from database)`);
-
-          const response = {
-            currentStreak: calculatedStreak,
-            socialZoneLevel: "Warming Up",
-            weeklyActivity: weeklyActivityArray,
-            hasActivityToday: hasActivityToday
-          };
-
-          console.log(`✅ Returning home screen data for ${deviceId}:`, response);
-          res.json(response);
-        });
       });
-    });
+      
+      if (!response.ok) {
+        throw new Error(`Clean home endpoint failed: ${response.status}`);
+      }
+      
+      const homeData = await response.json();
+      
+      console.log('✅ [SUPABASE] Home fallback: Successfully fetched data from clean endpoint');
+      res.json(homeData);
+      
+    } catch (fetchError) {
+      console.error('❌ [SUPABASE] Error calling clean home endpoint:', fetchError);
+      
+      // Fallback to simple response
+      res.json({
+        currentStreak: 0,
+        socialZoneLevel: "Warming Up", 
+        weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
+        hasActivityToday: false
+      });
+    }
+
   } catch (error) {
-    console.error('❌ Error in home screen endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ [SUPABASE] Error in home fallback endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 
