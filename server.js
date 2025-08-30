@@ -1164,55 +1164,89 @@ app.get('/api/test/supabase', async (req, res) => {
   }
 });
 
-// Diagnostic endpoint to check all Supabase data for a device
-app.get('/api/test/supabase-data/:deviceId', async (req, res) => {
+// COMPREHENSIVE diagnostic endpoint - checks BOTH SQLite AND Supabase
+app.get('/api/test/data-comparison/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
     
-    console.log(`🔍 [DIAGNOSTIC] Checking all Supabase data for device: ${deviceId}`);
+    console.log(`🔍 [COMPREHENSIVE DIAGNOSTIC] Checking SQLite AND Supabase for device: ${deviceId}`);
     
-    // Check users table
-    const { data: userData, error: userError } = await supabase
+    // Check SQLite data (old database)
+    const sqliteData = {
+      users: await new Promise((resolve) => {
+        db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+          resolve({ data: user, error: err?.message, exists: !!user });
+        });
+      }),
+      challenges: await new Promise((resolve) => {
+        db.all("SELECT * FROM daily_challenges WHERE device_id = ?", [deviceId], (err, challenges) => {
+          resolve({ data: challenges, error: err?.message, count: challenges?.length || 0 });
+        });
+      }),
+      openers: await new Promise((resolve) => {
+        db.all("SELECT * FROM openers WHERE device_id = ?", [deviceId], (err, openers) => {
+          resolve({ data: openers, error: err?.message, count: openers?.length || 0 });
+        });
+      })
+    };
+    
+    // Check Supabase data (new database)
+    const { data: supabaseUsers, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('device_id', deviceId);
     
-    // Check challenges table
-    const { data: challengeData, error: challengeError } = await supabase
+    const { data: supabaseChallenges, error: challengeError } = await supabase
       .from('daily_challenges')
       .select('*')
       .eq('device_id', deviceId);
     
-    // Check openers table
-    const { data: openerData, error: openerError } = await supabase
+    const { data: supabaseOpeners, error: openerError } = await supabase
       .from('openers')
       .select('*')
       .eq('device_id', deviceId);
     
-    res.json({
-      diagnostic: 'Supabase Data Check',
-      deviceId: deviceId,
+    const supabaseData = {
       users: {
-        data: userData,
-        error: userError,
-        count: userData?.length || 0
+        data: supabaseUsers,
+        error: userError?.message,
+        count: supabaseUsers?.length || 0
       },
       challenges: {
-        data: challengeData,
-        error: challengeError, 
-        count: challengeData?.length || 0
+        data: supabaseChallenges,
+        error: challengeError?.message,
+        count: supabaseChallenges?.length || 0
       },
       openers: {
-        data: openerData,
-        error: openerError,
-        count: openerData?.length || 0
+        data: supabaseOpeners,
+        error: openerError?.message,
+        count: supabaseOpeners?.length || 0
+      }
+    };
+    
+    res.json({
+      diagnostic: 'SQLite vs Supabase Data Comparison',
+      deviceId: deviceId,
+      sqlite: sqliteData,
+      supabase: supabaseData,
+      analysis: {
+        dataInSQLite: {
+          users: sqliteData.users.exists,
+          challenges: sqliteData.challenges.count,
+          openers: sqliteData.openers.count
+        },
+        dataInSupabase: {
+          users: supabaseData.users.count,
+          challenges: supabaseData.challenges.count,
+          openers: supabaseData.openers.count
+        }
       },
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
     res.status(500).json({
-      error: 'Diagnostic failed',
+      error: 'Comprehensive diagnostic failed',
       details: error.message
     });
   }
@@ -3879,9 +3913,9 @@ app.get('/api/data/opener-library/:deviceId', async (req, res) => {
 
     console.log(`📚 [SUPABASE] Success by purpose calculated for ${allPurposes.length} categories`);
 
-    // Format successful openers for frontend (using Supabase data)
-    const formattedSuccessfulOpeners = successfulOpenersData.map(opener => ({
-      id: opener.id,
+    // Format successful openers for frontend (using Supabase data) - iOS expects integer IDs
+    const formattedSuccessfulOpeners = successfulOpenersData.map((opener, index) => ({
+      id: index + 1,  // Convert UUID to integer for iOS compatibility
       category: opener.category,
       setting: opener.setting,
       text: opener.text,
@@ -3891,9 +3925,9 @@ app.get('/api/data/opener-library/:deviceId', async (req, res) => {
       isSuccess: true
     }));
 
-    // Format recent history for frontend (using Supabase data)
-    const formattedRecentHistory = recentHistoryData.map(opener => ({
-      id: opener.id,
+    // Format recent history for frontend (using Supabase data) - iOS expects integer IDs
+    const formattedRecentHistory = recentHistoryData.map((opener, index) => ({
+      id: index + 1,  // Convert UUID to integer for iOS compatibility
       category: opener.category,
       setting: opener.setting,
       text: opener.text,
