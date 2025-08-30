@@ -1714,13 +1714,39 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           console.log(`🎯 [SUPABASE] Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
         }
         
-        // Step 4: Use current streak from Supabase user data (authoritative source)
+        // Step 4: Check if streak is broken due to missed days
         const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
         console.log(`🔧 [SUPABASE] HOME: Using referenceDate: ${referenceDate.toISOString()}, vs today: ${today.toISOString()}`);
         
-        // Use Supabase user streak as authoritative source (not recalculated)
-        const currentStreak = user ? (user.current_streak || 0) : 0;
-        console.log(`🔧 [SUPABASE] HOME: Using authoritative Supabase streak: ${currentStreak}`);
+        // Check if streak is broken due to missed days
+        let currentStreak = user ? (user.current_streak || 0) : 0;
+        
+        if (user && user.last_completion_date && currentStreak > 0) {
+          const lastCompletionStr = user.last_completion_date.split('T')[0];
+          const todayStr = referenceDate.toISOString().split('T')[0];
+          
+          const lastDate = new Date(lastCompletionStr + 'T00:00:00Z');
+          const currentDateObj = new Date(todayStr + 'T00:00:00Z');
+          const daysSinceLastActivity = Math.floor((currentDateObj.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+          
+          console.log(`🔧 [SUPABASE] HOME: Streak break check - Last activity: ${lastCompletionStr}, Today: ${todayStr}, Days since: ${daysSinceLastActivity}`);
+          
+          if (daysSinceLastActivity > 1) {
+            // Streak is broken - reset to 0 for "Start Streak" display
+            console.log(`🔥 [SUPABASE] HOME: Streak broken! ${daysSinceLastActivity} days since last activity. Setting streak to 0.`);
+            currentStreak = 0;
+            
+            // Update the user record to reflect broken streak
+            await supabase
+              .from('users')
+              .update({ current_streak: 0 })
+              .eq('device_id', deviceId);
+          } else {
+            console.log(`🔥 [SUPABASE] HOME: Streak intact - ${daysSinceLastActivity} days since last activity.`);
+          }
+        }
+        
+        console.log(`🔧 [SUPABASE] HOME: Final streak after gap check: ${currentStreak}`);
         
         console.log(`🎯 [SUPABASE] Current streak: ${currentStreak}`);
         console.log(`🎯 [SUPABASE] Week bar: [${weekBar.join(', ')}]`);
