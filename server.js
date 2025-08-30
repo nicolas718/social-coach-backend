@@ -188,6 +188,30 @@ function requireApiKey(req, res, next) {
   next();
 }
 
+// ========================================
+// PUBLIC AUTH ENDPOINTS (DEFINED BEFORE MIDDLEWARE)
+// ========================================
+
+// Simple test endpoint 
+app.get('/api/auth/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth endpoint working without API key!',
+    path: req.path,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// User registration endpoint (PUBLIC - no API key needed)
+app.post('/api/auth/register-test', async (req, res) => {
+  res.json({
+    success: true,
+    message: 'Registration endpoint accessible!',
+    receivedData: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Apply authentication to all /api/* routes EXCEPT auth endpoints
 app.use('/api/*', (req, res, next) => {
   console.log(`🔍 [DEBUG] Middleware check - Path: ${req.path}, Method: ${req.method}`);
@@ -204,6 +228,81 @@ app.use('/api/*', (req, res, next) => {
 });
 
 console.log('✅ API key authentication middleware configured - auth endpoints are publicly accessible');
+
+// ========================================
+// PUBLIC AUTH ENDPOINTS (BEFORE MIDDLEWARE)
+// These must be defined BEFORE the API key middleware
+// ========================================
+
+// Simple test endpoint to verify auth bypass is working
+app.get('/api/auth/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth endpoint bypass working!',
+    path: req.path,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// User registration endpoint (PUBLIC)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, fullName, deviceId } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Email and password are required' 
+      });
+    }
+
+    console.log(`🔐 Registration attempt for: ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Registration endpoint accessible - schema integration pending',
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: 'Registration failed' 
+    });
+  }
+});
+
+// User login endpoint (PUBLIC)
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Missing credentials', 
+        message: 'Email and password are required' 
+      });
+    }
+
+    console.log(`🔐 Login attempt for: ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Login endpoint accessible - schema integration pending',
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: 'Login failed' 
+    });
+  }
+});
 
 // SQLite initialization removed - using Supabase PostgreSQL
 
