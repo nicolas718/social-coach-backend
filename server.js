@@ -1820,8 +1820,8 @@ app.delete('/api/data/clear/:deviceId', async (req, res) => {
   }
 });
 
-// Get User Analytics - ORGANIZED AND CLEAN
-app.get('/api/data/analytics/:deviceId', (req, res) => {
+// Get User Analytics - NOW COMPLETELY POWERED BY SUPABASE!
+app.get('/api/data/analytics/:deviceId', async (req, res) => {
   console.log('🎯🎯🎯 ANALYTICS ENDPOINT CALLED 🎯🎯🎯');
   console.log('ANALYTICS: Request received at', new Date().toISOString());
   try {
@@ -1829,7 +1829,7 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
     const { currentDate, completed } = req.query;
     console.log('ANALYTICS: deviceId:', deviceId, 'currentDate:', currentDate);
 
-    console.log(`🚀 ANALYTICS V2 START: Device ${deviceId}, currentDate: ${currentDate}`);
+    console.log(`🚀 [SUPABASE] ANALYTICS V3 START: Device ${deviceId}, currentDate: ${currentDate}`);
 
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
@@ -1838,284 +1838,340 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
     // Use simulated date if provided, otherwise use current date
     const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
     
-    console.log(`📊 ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
+    console.log(`📊 [SUPABASE] ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
-    // Get user info
-    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
-      if (err) {
-        console.error('Error getting user:', err);
-        return res.status(500).json({ error: 'Database error' });
+    // Get user info from SUPABASE
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('device_id', deviceId)
+      .single();
+
+    if (userError && userError.code !== 'PGRST116') {
+      console.error('❌ [SUPABASE] Error getting user for analytics:', userError);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    // If no user exists, return all zeros
+    if (!user) {
+      console.log(`📊 [SUPABASE] ANALYTICS: No user found for ${deviceId}, returning all zeros`);
+      return res.json({
+        currentStreak: 0,
+        allTimeBestStreak: 0,
+        socialConfidencePercentage: 0,
+        weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
+        overallSuccessRate: 0,
+        totalChallenges: 0,
+        totalOpeners: 0,
+        successfulChallenges: 0,
+        successfulOpeners: 0,
+        improvedConfidence: 0,
+        reducedSocialAnxiety: 0,
+        enhancedCommunication: 0,
+        increasedSocialEnergy: 0,
+        betterRelationships: 0,
+        averageRating: 0,
+        totalModulesStarted: 0,
+        completedModules: 0,
+        averageModuleProgress: 0
+      });
+    }
+
+    console.log(`📊 [SUPABASE] ANALYTICS: User found - current_streak: ${user.current_streak}, best_streak: ${user.all_time_best_streak}`);
+
+    // Get ALL data from SUPABASE for analytics calculations
+    console.log(`📊 [SUPABASE] ANALYTICS: Fetching all data for comprehensive calculations`);
+
+    // Get all challenges from Supabase
+    const { data: allChallenges, error: challengesError } = await supabase
+      .from('daily_challenges')
+      .select('*')
+      .eq('device_id', deviceId);
+
+    if (challengesError) {
+      console.error('❌ [SUPABASE] Error getting challenges for analytics:', challengesError);
+      return res.status(500).json({ error: 'Database error getting challenges' });
+    }
+
+    // Get all openers from Supabase
+    const { data: allOpeners, error: openersError } = await supabase
+      .from('openers')
+      .select('*')
+      .eq('device_id', deviceId);
+
+    if (openersError) {
+      console.error('❌ [SUPABASE] Error getting openers for analytics:', openersError);
+      return res.status(500).json({ error: 'Database error getting openers' });
+    }
+
+    // Get all development modules from Supabase
+    const { data: allModules, error: modulesError } = await supabase
+      .from('development_modules')
+      .select('*')
+      .eq('device_id', deviceId);
+
+    if (modulesError) {
+      console.error('❌ [SUPABASE] Error getting development modules for analytics:', modulesError);
+      return res.status(500).json({ error: 'Database error getting modules' });
+    }
+
+    console.log(`📊 [SUPABASE] ANALYTICS DATA: Challenges: ${(allChallenges || []).length}, Openers: ${(allOpeners || []).length}, Modules: ${(allModules || []).length}`);
+
+    // Calculate analytics stats directly from Supabase data (replacing calculateAllAnalyticsStats)
+    const totalChallenges = (allChallenges || []).length;
+    const successfulChallenges = (allChallenges || []).filter(c => c.challenge_was_successful === true).length;
+    const avgChallengeConfidence = totalChallenges > 0 
+      ? (allChallenges || []).filter(c => c.challenge_confidence_level != null)
+          .reduce((sum, c) => sum + (c.challenge_confidence_level || 0), 0) / 
+        (allChallenges || []).filter(c => c.challenge_confidence_level != null).length
+      : 0;
+
+    const usedOpeners = (allOpeners || []).filter(o => o.opener_was_used === true);
+    const totalOpeners = usedOpeners.length;
+    const successfulOpeners = usedOpeners.filter(o => o.opener_was_successful === true).length;
+    const avgRating = usedOpeners.length > 0
+      ? usedOpeners.reduce((sum, o) => sum + (o.opener_rating || 0), 0) / usedOpeners.length
+      : 0;
+
+    const totalModulesStarted = (allModules || []).length;
+    const completedModules = (allModules || []).filter(m => m.development_is_completed === true).length;
+    const avgProgress = totalModulesStarted > 0
+      ? (allModules || []).reduce((sum, m) => sum + (m.development_progress_percentage || 0), 0) / totalModulesStarted
+      : 0;
+
+    console.log(`📊 [SUPABASE] CALCULATED STATS: Challenges: ${totalChallenges}/${successfulChallenges}, Openers: ${totalOpeners}/${successfulOpeners}, Modules: ${totalModulesStarted}/${completedModules}`);
+
+    // Calculate activity dates and weekly activity (replacing calculateWeeklyActivityCounts)
+    const openerActivityDates = usedOpeners.map(o => o.opener_date?.split('T')[0]).filter(Boolean);
+    const challengeActivityDates = (allChallenges || []).map(c => c.challenge_date?.split('T')[0]).filter(Boolean);
+    const allActivityDates = [...new Set([...openerActivityDates, ...challengeActivityDates])].sort();
+
+    console.log(`📊 [SUPABASE] ACTIVITY DATES: ${allActivityDates.length} unique dates: [${allActivityDates.join(', ')}]`);
+
+    // Build weekly activity array (last 7 days)
+    const weeklyActivityArray = [];
+    for (let i = 6; i >= 0; i--) {
+      const checkDate = new Date(referenceDate);
+      checkDate.setDate(referenceDate.getDate() - i);
+      const dateString = checkDate.toISOString().split('T')[0];
+      
+      // Count activities on this date
+      const dayActivityCount = 
+        (allChallenges || []).filter(c => c.challenge_date?.split('T')[0] === dateString).length +
+        usedOpeners.filter(o => o.opener_date?.split('T')[0] === dateString).length;
+      
+      weeklyActivityArray.push(dayActivityCount);
+    }
+
+    console.log(`📊 [SUPABASE] WEEKLY ACTIVITY: [${weeklyActivityArray.join(', ')}]`);
+    // Use authoritative Supabase streak instead of recalculating from activity  
+    const currentStreak = user.current_streak || 0;
+    console.log(`🔧 [SUPABASE] ANALYTICS: Using authoritative streak: ${currentStreak} (from Supabase user record)`);
+
+    // Calculate allTimeMaxStreak from activity data (same logic as other endpoints)
+    const computeMaxConsecutiveStreak = (dates) => {
+      if (!dates || dates.length === 0) return 0;
+      const sorted = [...dates].sort();
+      let maxRun = 1, run = 1;
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
+        const cur = new Date(sorted[i] + 'T00:00:00Z');
+        const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
+        if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
+        else if (diff > 1) { run = 1; }
       }
+      return maxRun;
+    };
+    const derivedBestStreak = computeMaxConsecutiveStreak(allActivityDates);
+    const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
 
-      // If no user exists, return all zeros
-      if (!user) {
-        console.log(`📊 ANALYTICS: No user found for ${deviceId}, returning all zeros`);
-        return res.json({
-          currentStreak: 0,
-          allTimeBestStreak: 0,
-          socialConfidencePercentage: 0,
-          weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
-          overallSuccessRate: 0,
-          totalChallenges: 0,
-          totalOpeners: 0,
-          successfulChallenges: 0,
-          successfulOpeners: 0,
-          improvedConfidence: 0,
-          reducedSocialAnxiety: 0,
-          enhancedCommunication: 0,
-          increasedSocialEnergy: 0,
-          betterRelationships: 0,
-          averageRating: 0,
-          totalModulesStarted: 0,
-          completedModules: 0,
-          averageModuleProgress: 0
-        });
-      }
-
-      // Use organized analytics functions
-      calculateAllAnalyticsStats(deviceId, (err, stats) => {
-        if (err) {
-          console.error('Error getting analytics stats:', err);
-          return res.status(500).json({ error: 'Database error' });
+    // Calculate lastAchievedLevel (same logic as other endpoints)  
+    const toISO = (d) => d.toISOString().split('T')[0];
+    let lastRun = 0;
+    if (allActivityDates.length > 0) {
+      // Use most recent date (allActivityDates is ASC ordered, so take last element)
+      const recent = new Date(allActivityDates[allActivityDates.length - 1] + 'T00:00:00Z');
+      let check = new Date(recent);
+      while (true) {
+        const ds = toISO(check);
+        if (allActivityDates.includes(ds)) {
+          lastRun += 1;
+          check.setDate(check.getDate() - 1);
+        } else {
+          break;
         }
+      }
+    }
 
-        calculateWeeklyActivityCounts(deviceId, referenceDate, (err, weeklyActivityArray) => {
-          if (err) {
-            console.error('Error getting weekly activity:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
+    // Use allTimeMaxStreak for highest level achieved (for grace recovery)
+    const lastAchievedLevel = allTimeMaxStreak >= 90
+      ? 'Socialite'
+      : allTimeMaxStreak >= 46
+        ? 'Charming'
+        : allTimeMaxStreak >= 21
+          ? 'Coming Alive'
+          : allTimeMaxStreak >= 7
+            ? 'Breaking Through'
+            : 'Warming Up';
 
-          // Get activity dates to calculate actual current streak (not stale DB value)
-          const activityQuery = `
-            SELECT DISTINCT substr(activity_date, 1, 10) as activity_date
-            FROM (
-              SELECT opener_date as activity_date FROM openers 
-              WHERE device_id = ? AND opener_was_used = 1
-              
-              UNION ALL
-              
-              SELECT challenge_date as activity_date FROM daily_challenges 
-              WHERE device_id = ?
-            ) activities
-            ORDER BY activity_date DESC
-          `;
-          
-          db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
-            if (err) {
-              console.error('Error getting activity dates for analytics:', err);
-              return res.status(500).json({ error: 'Database error' });
-            }
+    console.log(`🔧 [SUPABASE] ANALYTICS: Derived stats - lastRun: ${lastRun}, lastAchievedLevel: ${lastAchievedLevel}, allTimeMaxStreak: ${allTimeMaxStreak}`);
 
-            const activityDates = activityRows.map(row => row.activity_date);
-            console.log(`🔧 ANALYTICS DEBUG: Activity dates found:`, activityDates);
-            
-            // Calculate actual current streak from activity data (not stale DB value)
-            const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
-            console.log(`🔧 ANALYTICS DEBUG: Calculated currentStreak: ${currentStreak}, DB currentStreak: ${user.current_streak || 0}`);
+    // Calculate core metrics using SUPABASE data (same logic as SQLite version)
+    const totalSuccessfulActions = successfulChallenges + successfulOpeners;
+    const totalActions = totalChallenges + totalOpeners;
+    const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
+    
+    // Bayesian smoothing for success rate to reduce volatility at low volume
+    const priorCount = 12; // neutral prior ~ two weeks of mixed activity
+    const priorMean = 0.5; // assume 50% success prior
+    const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
+    // Social Confidence = function of Social Zone and streak, with graceful trickle-down
+    // Compute zone from current context using SUPABASE data
+    const todayForZone = referenceDate || new Date();
+    const daysSinceActivityForZone = (() => {
+      if (allActivityDates.length === 0) return 999;
+      const mostRecentActivity = allActivityDates[allActivityDates.length - 1]; // Last element (most recent)
+      const d1 = new Date(mostRecentActivity + 'T00:00:00Z');
+      const d2 = new Date(todayForZone);
+      return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+    })();
+    console.log(`🔧 [SUPABASE] ANALYTICS: About to call calculateSocialZoneLevel with:`, {
+      currentStreak,
+      daysSinceActivityForZone,
+      lastAchievedLevel,
+      allTimeMaxStreak,
+      'user.all_time_best_streak': user.all_time_best_streak,
+      'mostRecentActivity': allActivityDates[allActivityDates.length - 1],
+      'todayForZone': todayForZone.toISOString().split('T')[0]
+    });
 
-            // Calculate allTimeMaxStreak from activity data like clean home endpoint does
-            const computeMaxConsecutiveStreak = (dates) => {
-              if (!dates || dates.length === 0) return 0;
-              const sorted = [...dates].sort();
-              let maxRun = 1, run = 1;
-              for (let i = 1; i < sorted.length; i++) {
-                const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
-                const cur = new Date(sorted[i] + 'T00:00:00Z');
-                const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
-                if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
-                else if (diff > 1) { run = 1; }
-              }
-              return maxRun;
-            };
-            const derivedBestStreak = computeMaxConsecutiveStreak(activityDates);
-            const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
+    const zoneInfo = calculateSocialZoneLevel(
+      currentStreak,
+      daysSinceActivityForZone,
+      lastAchievedLevel,
+      allTimeMaxStreak,
+      allActivityDates
+    );
 
-            // Calculate lastAchievedLevel like clean home endpoint does
-            const toISO = (d) => d.toISOString().split('T')[0];
-            let lastRun = 0;
-            if (activityDates.length > 0) {
-              const recent = new Date(activityDates[0] + 'T00:00:00Z'); // activityDates is DESC ordered
-              let check = new Date(recent);
-              while (true) {
-                const ds = toISO(check);
-                if (activityDates.includes(ds)) {
-                  lastRun += 1;
-                  check.setDate(check.getDate() - 1);
-                } else {
-                  break;
-                }
-              }
-            }
+    console.log(`🔧 [SUPABASE] ANALYTICS: calculateSocialZoneLevel returned:`, zoneInfo);
+    
+    const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
+    const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
+    
+    // STRICT mapping: Social Confidence always matches Social Zone level
+    // Zone start/end mapping (strict per-zone band), plus within-zone progression by streak
+    const zoneStart = [4, 20, 40, 60, 80]; // entry confidence for each zone
+    const zoneEnd   = [18, 32, 52, 72, 90]; // cap within each zone
+    const zoneBaseRequirements = [0, 7, 21, 46, 90];
+    const nextRequirements = [7, 21, 46, 90, 120]; // last one effectively "infinity"
 
-            // Use allTimeMaxStreak for highest level achieved (for grace recovery)
-            const lastAchievedLevel = allTimeMaxStreak >= 90
-              ? 'Socialite'
-              : allTimeMaxStreak >= 46
-                ? 'Charming'
-                : allTimeMaxStreak >= 21
-                  ? 'Coming Alive'
-                  : allTimeMaxStreak >= 7
-                    ? 'Breaking Through'
-                    : 'Warming Up';
+    const startPct = zoneStart[zoneIndex] ?? 2;
+    const endPct   = zoneEnd[zoneIndex] ?? 90;
+    const zoneStartStreak = zoneBaseRequirements[zoneIndex] ?? 0;
+    const zoneEndStreak = nextRequirements[zoneIndex] ?? (zoneStartStreak + 30);
+    const zoneSpan = Math.max(1, zoneEndStreak - zoneStartStreak);
+    const streakWithinZone = Math.max(0, Math.min(zoneSpan, currentStreak - zoneStartStreak));
+    
+    // Calculate progress within the zone (0 to 1)
+    const linearProgress = streakWithinZone / zoneSpan;
+    // Apply conservative easing curve (^1.6) for smoother early progression
+    const progress = Math.pow(linearProgress, 1.6);
+    let socialConfidencePercentage = Math.round(startPct + (endPct - startPct) * progress);
 
-            console.log(`🔧 ANALYTICS DEBUG: Derived stats - lastRun: ${lastRun}, lastAchievedLevel: ${lastAchievedLevel}, allTimeMaxStreak: ${allTimeMaxStreak}`);
+    console.log(`💫 [SUPABASE] CONFIDENCE DEBUG:`, {
+      zone: zoneInfo.level,
+      zoneIndex,
+      currentStreak,
+      streakWithinZone,
+      linearProgress: (linearProgress * 100).toFixed(1) + '%',
+      easedProgress: (progress * 100).toFixed(1) + '%',
+      startPct,
+      endPct,
+      baseConfidence: socialConfidencePercentage,
+      isInGracePeriod: zoneInfo.isInGracePeriod
+    });
 
-            // Calculate core metrics (add stability by damping low-volume data)
-            const totalSuccessfulActions = (stats.successful_challenges || 0) + (stats.successful_openers || 0);
-            const totalActions = (stats.total_challenges || 0) + (stats.total_openers || 0);
-            const overallSuccessRate = totalActions > 0 ? Math.round((totalSuccessfulActions / totalActions) * 100) : 0;
-            // Bayesian smoothing for success rate to reduce volatility at low volume
-            const priorCount = 12; // neutral prior ~ two weeks of mixed activity
-            const priorMean = 0.5; // assume 50% success prior
-            const smoothedSuccessRate = Math.round(((totalSuccessfulActions + priorMean * priorCount) / (totalActions + priorCount)) * 100);
-            // Social Confidence = function of Social Zone and streak, with graceful trickle-down
-            // Compute zone from current context
-            const todayForZone = referenceDate || new Date();
-            const daysSinceActivityForZone = (() => {
-              const act = stats.most_recent_activity_date || null;
-              if (!act) return 999;
-              const d1 = new Date(String(act).split('T')[0] + 'T00:00:00Z');
-              const d2 = new Date(todayForZone);
-              return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
-            })();
-            console.log(`🔧 ANALYTICS DEBUG: About to call calculateSocialZoneLevel with:`, {
-              currentStreak,
-              daysSinceActivityForZone,
-              lastAchievedLevel,
-              allTimeMaxStreak,
-              'stats.highest_level_achieved': stats.highest_level_achieved,
-              'user.all_time_best_streak': user.all_time_best_streak,
-              'stats.most_recent_activity_date': stats.most_recent_activity_date,
-              'todayForZone': todayForZone.toISOString().split('T')[0]
-            });
+    // Apply decay by days since last activity (still anchored to current zone)
+    const daysMissed = Math.max(0, daysSinceActivityForZone);
+    const decayPerDayInGrace = 0.4;  // gentler decay during grace
+    const decayPerDayAfterGrace = 1.2; // faster decay after grace expires
+    const decayRate = zoneInfo.isInGracePeriod ? decayPerDayInGrace : decayPerDayAfterGrace;
+    const decayAmount = decayRate * daysMissed;
+    socialConfidencePercentage = Math.max(2, Math.round(socialConfidencePercentage - decayAmount));
 
-            const zoneInfo = calculateSocialZoneLevel(
-              currentStreak,
-              daysSinceActivityForZone,
-              lastAchievedLevel,
-              allTimeMaxStreak,
-              activityDates
-            );
+    console.log(`💫 [SUPABASE] CONFIDENCE DECAY:`, {
+      daysMissed,
+      decayRate: decayRate + '%/day',
+      totalDecay: decayAmount + '%',
+      finalConfidence: socialConfidencePercentage + '%'
+    });
 
-            console.log(`🔧 ANALYTICS DEBUG: calculateSocialZoneLevel returned:`, zoneInfo);
-          const zoneOrder = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
-          const zoneIndex = Math.max(0, zoneOrder.indexOf(zoneInfo.level));
-          // STRICT mapping: Social Confidence always matches Social Zone level
-          // Zone start/end mapping (strict per-zone band), plus within-zone progression by streak
-          const zoneStart = [4, 20, 40, 60, 80]; // entry confidence for each zone
-          const zoneEnd   = [18, 32, 52, 72, 90]; // cap within each zone
-          const zoneBaseRequirements = [0, 7, 21, 46, 90];
-          const nextRequirements = [7, 21, 46, 90, 120]; // last one effectively "infinity"
+    // Damping weights to avoid volatility with very few actions (using SUPABASE data)
+    // Logarithmic ramp up – reaches ~1 around 16+ actions
+    const effectiveVolume = Math.min(1, Math.log2((totalActions || 0) + 1) / 4);
+    const openerEffectiveVolume = Math.min(1, Math.log2(totalOpeners + 1) / 4);
 
-          const startPct = zoneStart[zoneIndex] ?? 2;
-          const endPct   = zoneEnd[zoneIndex] ?? 90;
-          const zoneStartStreak = zoneBaseRequirements[zoneIndex] ?? 0;
-          const zoneEndStreak = nextRequirements[zoneIndex] ?? (zoneStartStreak + 30);
-          const zoneSpan = Math.max(1, zoneEndStreak - zoneStartStreak);
-          const streakWithinZone = Math.max(0, Math.min(zoneSpan, currentStreak - zoneStartStreak));
-          // Calculate progress within the zone (0 to 1)
-          const linearProgress = streakWithinZone / zoneSpan;
-          // Apply conservative easing curve (^1.6) for smoother early progression
-          const progress = Math.pow(linearProgress, 1.6);
-          let socialConfidencePercentage = Math.round(startPct + (endPct - startPct) * progress);
+    // Calculate personal benefits using SUPABASE data
+    let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
+    let increasedSocialEnergy = 0, betterRelationships = 0;
 
-          console.log(`💫 CONFIDENCE DEBUG:`, {
-            zone: zoneInfo.level,
-            zoneIndex,
-            currentStreak,
-            streakWithinZone,
-            linearProgress: (linearProgress * 100).toFixed(1) + '%',
-            easedProgress: (progress * 100).toFixed(1) + '%',
-            startPct,
-            endPct,
-            baseConfidence: socialConfidencePercentage,
-            isInGracePeriod: zoneInfo.isInGracePeriod
-          });
+    // Only calculate benefits based on actual activities (stabilized growth curves)
+    if (currentStreak > 0 || totalChallenges > 0 || totalOpeners > 0) {
+      // Helper functions for smooth, bounded growth
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const logistic = (n, k, max) => max * (1 - Math.exp(-k * Math.max(0, n)));
 
-          // Apply decay by days since last activity (still anchored to current zone)
-          const daysMissed = Math.max(0, daysSinceActivityForZone);
-          const decayPerDayInGrace = 0.4;  // gentler decay during grace
-          const decayPerDayAfterGrace = 1.2; // faster decay after grace expires
-          const decayRate = zoneInfo.isInGracePeriod ? decayPerDayInGrace : decayPerDayAfterGrace;
-          const decayAmount = decayRate * daysMissed;
-          socialConfidencePercentage = Math.max(2, Math.round(socialConfidencePercentage - decayAmount));
+      const A = totalActions;              // total activity volume
+      const S = currentStreak;             // streak length
 
-          console.log(`💫 CONFIDENCE DECAY:`, {
-            daysMissed,
-            decayRate: decayRate + '%/day',
-            totalDecay: decayAmount + '%',
-            finalConfidence: socialConfidencePercentage + '%'
-          });
+      // Improved Confidence – small baseline, slow growth from streak + volume, light success influence
+      const confFromStreak = logistic(S, 0.18, 35);      // caps at 35
+      const confFromActivity = logistic(A, 0.08, 20);    // caps at 20
+      const confFromSuccess = ((smoothedSuccessRate - 50) / 100) * 10 * effectiveVolume; // ±5 at low volume
+      improvedConfidence = clamp(20 + confFromStreak + confFromActivity + confFromSuccess, 10, 85);
 
-          // Damping weights to avoid volatility with very few actions
-          // Logarithmic ramp up – reaches ~1 around 16+ actions
-          const effectiveVolume = Math.min(1, Math.log2((totalActions || 0) + 1) / 4);
-          const openerEffectiveVolume = Math.min(1, Math.log2(((stats.total_openers || 0)) + 1) / 4);
+      // Reduced Social Anxiety – similar scale, slightly different weights
+      const anxFromStreak = logistic(S, 0.15, 25);
+      const anxFromActivity = logistic(A, 0.06, 15);
+      const anxFromSuccess = ((smoothedSuccessRate - 50) / 100) * 8 * effectiveVolume;
+      reducedSocialAnxiety = clamp(20 + anxFromStreak + anxFromActivity + anxFromSuccess, 10, 85);
 
-          // Calculate personal benefits
-          let improvedConfidence = 0, reducedSocialAnxiety = 0, enhancedCommunication = 0;
-          let increasedSocialEnergy = 0, betterRelationships = 0;
+      // Increased Social Energy – very gentle curve with streak only
+      increasedSocialEnergy = clamp(12 + logistic(S, 0.12, 25), 10, 70);
 
-          // Only calculate benefits based on actual activities (stabilized growth curves)
-          if (currentStreak > 0 || stats.total_challenges > 0 || stats.total_openers > 0) {
-            // Helper functions for smooth, bounded growth
-            const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-            const logistic = (n, k, max) => max * (1 - Math.exp(-k * Math.max(0, n)));
+      // Better Relationships – based on opener success with strong damping + small streak effect
+      const openerPriorCount = 8;
+      const openerSmoothedRate = totalOpeners > 0
+        ? ((successfulOpeners + priorMean * openerPriorCount) / (totalOpeners + openerPriorCount)) * 100
+        : priorMean * 100;
+      const relFromOpeners = (openerSmoothedRate * 0.18) * openerEffectiveVolume; // capped by effective volume
+      const relFromStreak = logistic(S, 0.08, 10);
+      betterRelationships = clamp(15 + relFromOpeners + relFromStreak, 10, 80);
+    }
+    
+    // Enhanced Communication is calculated separately and includes module progress (using SUPABASE data)
+    // Module contribution scales based on number of completed modules
+    const moduleProgressScore = Math.min(100, avgProgress || 0);
+    
+    // Base contribution from modules is 30%, but increases with more modules completed
+    // 1 module = 30%, 2 modules = 40%, 3 modules = 50%, 4+ modules = 60%
+    // Module weight grows with completed modules; keep low with none
+    const moduleContribution = Math.min(40, Math.max(5, completedModules * 10));
+    // Activity contribution is damped at low volume
+    const activityContribution = (100 - moduleContribution) * effectiveVolume;
+    
+    // Calculate enhanced communication with dynamic weighting
+    enhancedCommunication = Math.round(
+      (smoothedSuccessRate * (activityContribution / 100)) +
+      (moduleProgressScore * (moduleContribution / 100))
+    );
 
-            const A = totalActions;              // total activity volume
-            const S = currentStreak;             // streak length
-
-            // Improved Confidence – small baseline, slow growth from streak + volume, light success influence
-            const confFromStreak = logistic(S, 0.18, 35);      // caps at 35
-            const confFromActivity = logistic(A, 0.08, 20);    // caps at 20
-            const confFromSuccess = ((smoothedSuccessRate - 50) / 100) * 10 * effectiveVolume; // ±5 at low volume
-            improvedConfidence = clamp(20 + confFromStreak + confFromActivity + confFromSuccess, 10, 85);
-
-            // Reduced Social Anxiety – similar scale, slightly different weights
-            const anxFromStreak = logistic(S, 0.15, 25);
-            const anxFromActivity = logistic(A, 0.06, 15);
-            const anxFromSuccess = ((smoothedSuccessRate - 50) / 100) * 8 * effectiveVolume;
-            reducedSocialAnxiety = clamp(20 + anxFromStreak + anxFromActivity + anxFromSuccess, 10, 85);
-
-            // Increased Social Energy – very gentle curve with streak only
-            increasedSocialEnergy = clamp(12 + logistic(S, 0.12, 25), 10, 70);
-
-            // Better Relationships – based on opener success with strong damping + small streak effect
-            const totalOpeners = stats.total_openers || 0;
-            const successfulOpeners = stats.successful_openers || 0;
-            const openerPriorCount = 8;
-            const openerSmoothedRate = totalOpeners > 0
-              ? ((successfulOpeners + priorMean * openerPriorCount) / (totalOpeners + openerPriorCount)) * 100
-              : priorMean * 100;
-            const relFromOpeners = (openerSmoothedRate * 0.18) * openerEffectiveVolume; // capped by effective volume
-            const relFromStreak = logistic(S, 0.08, 10);
-            betterRelationships = clamp(15 + relFromOpeners + relFromStreak, 10, 80);
-          }
-          
-          // Enhanced Communication is calculated separately and includes module progress
-          // Module contribution scales based on number of completed modules
-          const completedModules = stats.completed_modules || 0;
-          const moduleProgressScore = Math.min(100, stats.avg_progress || 0);
-          
-          // Base contribution from modules is 30%, but increases with more modules completed
-          // 1 module = 30%, 2 modules = 40%, 3 modules = 50%, 4+ modules = 60%
-          // Module weight grows with completed modules; keep low with none
-          const moduleContribution = Math.min(40, Math.max(5, completedModules * 10));
-          // Activity contribution is damped at low volume
-          const activityContribution = (100 - moduleContribution) * effectiveVolume;
-          
-          // Calculate enhanced communication with dynamic weighting
-          enhancedCommunication = Math.round(
-            (smoothedSuccessRate * (activityContribution / 100)) +
-            (moduleProgressScore * (moduleContribution / 100))
-          );
-
-          // Cap all benefits at 100
-          improvedConfidence = Math.min(100, Math.round(improvedConfidence));
-          reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
-          enhancedCommunication = Math.min(100, enhancedCommunication);
-          increasedSocialEnergy = Math.min(100, Math.round(increasedSocialEnergy));
-          betterRelationships = Math.min(100, Math.round(betterRelationships));
+    // Cap all benefits at 100
+    improvedConfidence = Math.min(100, Math.round(improvedConfidence));
+    reducedSocialAnxiety = Math.min(100, Math.round(reducedSocialAnxiety));
+    enhancedCommunication = Math.min(100, enhancedCommunication);
+    increasedSocialEnergy = Math.min(100, Math.round(increasedSocialEnergy));
+    betterRelationships = Math.min(100, Math.round(betterRelationships));
 
           // Return complete analytics data
           res.json({
@@ -2127,27 +2183,29 @@ app.get('/api/data/analytics/:deviceId', (req, res) => {
             socialConfidencePercentage: socialConfidencePercentage,
             weeklyActivity: weeklyActivityArray,
             overallSuccessRate: overallSuccessRate,
-            totalChallenges: stats.total_challenges || 0,
-            totalOpeners: stats.total_openers || 0,
-            successfulChallenges: stats.successful_challenges || 0,
-            successfulOpeners: stats.successful_openers || 0,
+            totalChallenges: totalChallenges,
+            totalOpeners: totalOpeners,
+            successfulChallenges: successfulChallenges,
+            successfulOpeners: successfulOpeners,
             improvedConfidence: improvedConfidence,
             reducedSocialAnxiety: reducedSocialAnxiety,
             enhancedCommunication: enhancedCommunication,
             increasedSocialEnergy: increasedSocialEnergy,
             betterRelationships: betterRelationships,
-            averageRating: Math.round((stats.avg_rating || 0) * 10) / 10,
-            totalModulesStarted: stats.total_modules_started || 0,
-            completedModules: stats.completed_modules || 0,
-            averageModuleProgress: Math.round((stats.avg_progress || 0) * 10) / 10
+            averageRating: Math.round(avgRating * 10) / 10,
+            totalModulesStarted: totalModulesStarted,
+            completedModules: completedModules,
+            averageModuleProgress: Math.round(avgProgress * 10) / 10
           });
-          }); // Close the new db.all callback
-        });
-      });
-    });
+
+    console.log(`📊 [SUPABASE] ANALYTICS COMPLETE: Migration successful`);
+
   } catch (error) {
-    console.error('Error in analytics endpoint:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ [SUPABASE] Error in analytics endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
   }
 });
 
