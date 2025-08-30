@@ -1164,6 +1164,60 @@ app.get('/api/test/supabase', async (req, res) => {
   }
 });
 
+// Diagnostic endpoint to check all Supabase data for a device
+app.get('/api/test/supabase-data/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    
+    console.log(`🔍 [DIAGNOSTIC] Checking all Supabase data for device: ${deviceId}`);
+    
+    // Check users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('device_id', deviceId);
+    
+    // Check challenges table
+    const { data: challengeData, error: challengeError } = await supabase
+      .from('daily_challenges')
+      .select('*')
+      .eq('device_id', deviceId);
+    
+    // Check openers table
+    const { data: openerData, error: openerError } = await supabase
+      .from('openers')
+      .select('*')
+      .eq('device_id', deviceId);
+    
+    res.json({
+      diagnostic: 'Supabase Data Check',
+      deviceId: deviceId,
+      users: {
+        data: userData,
+        error: userError,
+        count: userData?.length || 0
+      },
+      challenges: {
+        data: challengeData,
+        error: challengeError, 
+        count: challengeData?.length || 0
+      },
+      openers: {
+        data: openerData,
+        error: openerError,
+        count: openerData?.length || 0
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      error: 'Diagnostic failed',
+      details: error.message
+    });
+  }
+});
+
 // Test Supabase user creation
 app.post('/api/test/user-create', async (req, res) => {
   try {
