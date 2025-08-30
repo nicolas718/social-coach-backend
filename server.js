@@ -948,9 +948,15 @@ app.post('/api/data/opener', async (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    console.log('[SUPABASE] Opener data received:', { 
+    console.log('🔍 [SUPABASE] OPENER DEBUG - Data received:', { 
       deviceId, openerWasUsed, openerWasSuccessful, 
       openerSetting, openerPurpose, openerConfidenceLevel 
+    });
+    console.log('🔍 [SUPABASE] OPENER DEBUG - Data types:', {
+      openerWasUsed: typeof openerWasUsed,
+      openerWasSuccessful: typeof openerWasSuccessful,
+      openerWasUsedValue: openerWasUsed,
+      openerWasSuccessfulValue: openerWasSuccessful
     });
 
     // Validate confidence level is within 4-level range (1-4)
@@ -990,7 +996,9 @@ app.post('/api/data/opener', async (req, res) => {
     }
 
     // Update streak if opener was used (SAME LOGIC as SQLite version)
+    console.log(`🔍 [SUPABASE] STREAK CHECK - openerWasUsed === true? ${openerWasUsed === true} (value: ${openerWasUsed}, type: ${typeof openerWasUsed})`);
           if (openerWasUsed === true) {
+      console.log(`🔥 [SUPABASE] STREAK UPDATE TRIGGERED - Opener was used, updating streak for ${deviceId}`);
       try {
         await updateUserStreakSupabase(deviceId, openerDate);
         console.log(`✅ [SUPABASE] Opener streak updated for ${deviceId}`);
@@ -998,6 +1006,8 @@ app.post('/api/data/opener', async (req, res) => {
         console.error('❌ [SUPABASE] Error updating streak after opener:', streakErr);
         // Don't fail the request if streak update fails - opener was saved successfully
       }
+    } else {
+      console.log(`❌ [SUPABASE] STREAK NOT UPDATED - openerWasUsed was not true (${openerWasUsed})`);
     }
     
     console.log(`[SUPABASE] Opener saved: Used=${openerWasUsed}, Success=${openerWasSuccessful}`);
