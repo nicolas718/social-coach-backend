@@ -302,6 +302,20 @@ app.get('/api/auth/test', (req, res) => {
   });
 });
 
+// Test JWT validation (protected endpoint)
+app.get('/api/auth/test-jwt', requireAuthentication, (req, res) => {
+  res.json({
+    success: true,
+    message: 'JWT validation working!',
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      metadata: req.user.user_metadata
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // User registration endpoint (PUBLIC) - PRODUCTION SECURITY
 app.post('/api/auth/register', authRateLimit, async (req, res) => {
   try {
