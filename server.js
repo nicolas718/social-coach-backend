@@ -2116,6 +2116,13 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           return res.status(500).json({ error: 'Database error' });
         }
 
+        console.log(`🎯 [SUPABASE] HOME: User data:`, user ? {
+          device_id: user.device_id,
+          current_streak: user.current_streak,
+          all_time_best_streak: user.all_time_best_streak,
+          last_completion_date: user.last_completion_date
+        } : 'No user found');
+
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
       // Account creation logic for proper week bar colors
       let accountCreationDate;
