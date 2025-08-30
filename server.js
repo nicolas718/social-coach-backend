@@ -3702,8 +3702,8 @@ app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
   }
 });
 
-// Opener Library Data API Endpoint
-app.get('/api/data/opener-library/:deviceId', (req, res) => {
+// Opener Library Data API Endpoint - NOW POWERED BY SUPABASE!
+app.get('/api/data/opener-library/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate } = req.query;
@@ -3715,162 +3715,146 @@ app.get('/api/data/opener-library/:deviceId', (req, res) => {
     // Use simulated date if provided, otherwise use current date
     const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
     
-    console.log(`📚 OPENER LIBRARY: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
+    console.log(`📚 [SUPABASE] OPENER LIBRARY: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
-    // Get all opener statistics
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total_openers,
-        SUM(CASE WHEN opener_was_used = 1 THEN 1 ELSE 0 END) as used_openers,
-        SUM(CASE WHEN opener_was_used = 1 AND opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_openers
-      FROM openers 
-      WHERE device_id = ?
-    `;
+    // Get all opener statistics from Supabase
+    const { data: allOpeners, error: openersError } = await supabase
+      .from('openers')
+      .select('*')
+      .eq('device_id', deviceId);
 
-    db.get(statsQuery, [deviceId], (err, stats) => {
-      if (err) {
-        console.error('❌ Error getting opener stats:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-
-      // Calculate success rate (successful / used openers)
-      const successRate = stats.used_openers > 0 
-        ? Math.round((stats.successful_openers / stats.used_openers) * 100)
-        : 0;
-
-      console.log(`📚 STATS: Total: ${stats.total_openers}, Used: ${stats.used_openers}, Successful: ${stats.successful_openers}, Rate: ${successRate}%`);
-
-      // Get successful openers list (most recent first)
-      const successfulOpenersQuery = `
-        SELECT 
-          id,
-          opener_purpose as category,
-          opener_setting as setting,
-          opener_text as text,
-          opener_date as date,
-          opener_rating as rating,
-          opener_confidence_level as confidence
-        FROM openers 
-        WHERE device_id = ? AND opener_was_used = 1 AND opener_was_successful = 1
-        ORDER BY id DESC, opener_date DESC
-        LIMIT 20
-      `;
-
-      db.all(successfulOpenersQuery, [deviceId], (err, successfulOpeners) => {
-        if (err) {
-          console.error('❌ Error getting successful openers:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-
-        // Get recent history (all logged openers, most recent first)
-        const recentHistoryQuery = `
-          SELECT 
-            id,
-            opener_purpose as category,
-            opener_setting as setting,
-            opener_text as text,
-            opener_date as date,
-            opener_rating as rating,
-            opener_confidence_level as confidence,
-            opener_was_used as wasUsed,
-            opener_was_successful as wasSuccessful
-          FROM openers 
-          WHERE device_id = ?
-          ORDER BY id DESC, opener_date DESC
-          LIMIT 50
-        `;
-
-        db.all(recentHistoryQuery, [deviceId], (err, recentHistory) => {
-          if (err) {
-            console.error('❌ Error getting recent history:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-
-          // Get success by purpose breakdown
-          const purposeStatsQuery = `
-            SELECT 
-              opener_purpose,
-              COUNT(*) as total_count,
-              SUM(CASE WHEN opener_was_used = 1 THEN 1 ELSE 0 END) as used_count,
-              SUM(CASE WHEN opener_was_used = 1 AND opener_was_successful = 1 THEN 1 ELSE 0 END) as successful_count
-            FROM openers 
-            WHERE device_id = ?
-            GROUP BY opener_purpose
-            ORDER BY opener_purpose
-          `;
-
-          db.all(purposeStatsQuery, [deviceId], (err, purposeStats) => {
-            if (err) {
-              console.error('❌ Error getting purpose stats:', err);
-              return res.status(500).json({ error: 'Database error' });
-            }
-
-            // Define all possible purposes
-            const allPurposes = ['casual', 'romantic', 'professional'];
-            
-            // Create a map of existing stats
-            const statsMap = {};
-            purposeStats.forEach(stat => {
-              statsMap[stat.opener_purpose] = stat;
-            });
-            
-            // Calculate success rates by purpose - include all purposes
-            const successByPurpose = allPurposes.map(purpose => {
-              const stat = statsMap[purpose] || { used_count: 0, successful_count: 0 };
-              const successRate = stat.used_count > 0 
-                ? (stat.successful_count / stat.used_count)
-                : 0;
-              
-              return {
-                name: purpose.charAt(0).toUpperCase() + purpose.slice(1),
-                setting: getPurposeDescription(purpose),
-                successRate: Math.round(successRate * 100),
-                totalUsed: stat.used_count,
-                totalSuccessful: stat.successful_count
-              };
-            });
-
-            // Format successful openers for frontend
-            const formattedSuccessfulOpeners = successfulOpeners.map(opener => ({
-              id: opener.id,
-              category: opener.category,
-              setting: opener.setting,
-              text: opener.text,
-              date: formatOpenerDate(opener.date),
-              rating: opener.rating || 0,
-              confidence: opener.confidence || 0,
-              isSuccess: true
-            }));
-
-            // Format recent history for frontend
-            const formattedRecentHistory = recentHistory.map(opener => ({
-              id: opener.id,
-              category: opener.category,
-              setting: opener.setting,
-              text: opener.text,
-              date: formatOpenerDate(opener.date),
-              rating: opener.rating || 0,
-              confidence: opener.confidence || 0,
-              wasUsed: Boolean(opener.wasUsed),
-              isSuccess: Boolean(opener.wasSuccessful)
-            }));
-
-            const response = {
-              successRate: successRate,
-              totalConversations: stats.used_openers || 0,
-              successfulOpeners: formattedSuccessfulOpeners,
-              recentHistory: formattedRecentHistory,
-              successByPurpose: successByPurpose,
-              totalOpeners: stats.total_openers || 0,
-              totalSuccessful: stats.successful_openers || 0
-            };
-
-            console.log(`📚 OPENER LIBRARY: Returning data with ${formattedSuccessfulOpeners.length} successful, ${formattedRecentHistory.length} history, ${successByPurpose.length} purposes`);
-            res.json(response);
-          });
-        });
+    if (openersError) {
+      console.error('❌ [SUPABASE] Error getting opener data:', openersError);
+      return res.status(500).json({ 
+        error: 'Database error',
+        details: openersError.message 
       });
+    }
+
+    // Calculate statistics (same logic as SQLite version)
+    const totalOpeners = allOpeners?.length || 0;
+    const usedOpeners = allOpeners?.filter(o => o.opener_was_used === true).length || 0;
+    const successfulOpeners = allOpeners?.filter(o => o.opener_was_used === true && o.opener_was_successful === true).length || 0;
+
+    // Calculate success rate (successful / used openers) - same logic as SQLite version
+    const successRate = usedOpeners > 0 
+      ? Math.round((successfulOpeners / usedOpeners) * 100)
+      : 0;
+
+    console.log(`📚 [SUPABASE] STATS: Total: ${totalOpeners}, Used: ${usedOpeners}, Successful: ${successfulOpeners}, Rate: ${successRate}%`);
+
+    // Get successful openers list from Supabase (most recent first)
+    const successfulOpenersData = (allOpeners || [])
+      .filter(o => o.opener_was_used === true && o.opener_was_successful === true)
+      .sort((a, b) => new Date(b.created_at || b.opener_date) - new Date(a.created_at || a.opener_date))
+      .slice(0, 20)
+      .map(opener => ({
+        id: opener.id,
+        category: opener.opener_purpose,
+        setting: opener.opener_setting,
+        text: opener.opener_text,
+        date: opener.opener_date,
+        rating: opener.opener_rating,
+        confidence: opener.opener_confidence_level
+      }));
+
+    console.log(`📚 [SUPABASE] Found ${successfulOpenersData.length} successful openers`);
+
+    // Get recent history from Supabase (all logged openers, most recent first)
+    const recentHistoryData = (allOpeners || [])
+      .sort((a, b) => new Date(b.created_at || b.opener_date) - new Date(a.created_at || a.opener_date))
+      .slice(0, 50)
+      .map(opener => ({
+        id: opener.id,
+        category: opener.opener_purpose,
+        setting: opener.opener_setting,
+        text: opener.opener_text,
+        date: opener.opener_date,
+        rating: opener.opener_rating,
+        confidence: opener.opener_confidence_level,
+        wasUsed: opener.opener_was_used,
+        wasSuccessful: opener.opener_was_successful
+      }));
+
+    console.log(`📚 [SUPABASE] Found ${recentHistoryData.length} recent openers in history`);
+
+    // Calculate success by purpose breakdown using Supabase data
+    const allPurposes = ['casual', 'romantic', 'professional'];
+    
+    // Group openers by purpose and calculate stats (same logic as SQLite version)
+    const purposeStats = {};
+    (allOpeners || []).forEach(opener => {
+      const purpose = opener.opener_purpose;
+      if (!purposeStats[purpose]) {
+        purposeStats[purpose] = { total_count: 0, used_count: 0, successful_count: 0 };
+      }
+      purposeStats[purpose].total_count++;
+      if (opener.opener_was_used === true) {
+        purposeStats[purpose].used_count++;
+        if (opener.opener_was_successful === true) {
+          purposeStats[purpose].successful_count++;
+        }
+      }
     });
+    
+    // Calculate success rates by purpose - include all purposes (same format as SQLite version)
+    const successByPurpose = allPurposes.map(purpose => {
+      const stat = purposeStats[purpose] || { used_count: 0, successful_count: 0 };
+      const successRate = stat.used_count > 0 
+        ? (stat.successful_count / stat.used_count)
+        : 0;
+      
+      return {
+        name: purpose.charAt(0).toUpperCase() + purpose.slice(1),
+        setting: getPurposeDescription(purpose),
+        successRate: Math.round(successRate * 100),
+        totalUsed: stat.used_count,
+        totalSuccessful: stat.successful_count
+      };
+    });
+
+    console.log(`📚 [SUPABASE] Success by purpose calculated for ${allPurposes.length} categories`);
+
+    // Format successful openers for frontend (using Supabase data)
+    const formattedSuccessfulOpeners = successfulOpenersData.map(opener => ({
+      id: opener.id,
+      category: opener.category,
+      setting: opener.setting,
+      text: opener.text,
+      date: formatOpenerDate(opener.date),
+      rating: opener.rating || 0,
+      confidence: opener.confidence || 0,
+      isSuccess: true
+    }));
+
+    // Format recent history for frontend (using Supabase data)
+    const formattedRecentHistory = recentHistoryData.map(opener => ({
+      id: opener.id,
+      category: opener.category,
+      setting: opener.setting,
+      text: opener.text,
+      date: formatOpenerDate(opener.date),
+      rating: opener.rating || 0,
+      confidence: opener.confidence || 0,
+      wasUsed: Boolean(opener.wasUsed),
+      isSuccess: Boolean(opener.wasSuccessful)
+    }));
+
+    // Build final response using Supabase data (same format as SQLite version)
+    const response = {
+      successRate: successRate,
+      totalConversations: usedOpeners,
+      successfulOpeners: formattedSuccessfulOpeners,
+      recentHistory: formattedRecentHistory,
+      successByPurpose: successByPurpose,
+      totalOpeners: totalOpeners,
+      totalSuccessful: successfulOpeners
+    };
+
+    console.log(`📚 [SUPABASE] OPENER LIBRARY: Returning data with ${formattedSuccessfulOpeners.length} successful, ${formattedRecentHistory.length} history, ${successByPurpose.length} purposes`);
+    console.log(`📚 [SUPABASE] OPENER LIBRARY: Total conversations: ${usedOpeners}, Success rate: ${successRate}%`);
+    
+    res.json(response);
 
   } catch (error) {
     console.error('❌ Error in opener library endpoint:', error);
