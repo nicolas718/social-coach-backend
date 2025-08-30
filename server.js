@@ -158,6 +158,12 @@ const aiRateLimit = rateLimit({
 
 // API Key Authentication Middleware function
 function requireApiKey(req, res, next) {
+  // Skip authentication for debug endpoints during testing
+  if (req.path.startsWith('/api/debug/')) {
+    console.log(`🧪 [DEBUG] Bypassing API key for debug endpoint: ${req.path}`);
+    return next();
+  }
+  
   // Skip authentication if FRONTEND_API_KEY is not configured
   if (!process.env.FRONTEND_API_KEY) {
     console.warn('⚠️  API request received but FRONTEND_API_KEY not configured - allowing request');
