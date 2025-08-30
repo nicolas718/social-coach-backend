@@ -496,13 +496,13 @@ const calculateSocialZoneLevel = (currentStreak, daysWithoutActivity, highestLev
   };
 
   // Grace periods for each level
-  // Slightly more generous grace windows to make the zone feel steadier
+  // Official Social Zone grace period specifications
   const gracePeriods = {
     'Warming Up': 0,
-    'Breaking Through': 3,
+    'Breaking Through': 2,
     'Coming Alive': 4,
-    'Charming': 6,
-    'Socialite': 6
+    'Charming': 7,
+    'Socialite': 14
   };
 
   // Calculate level based on current streak
