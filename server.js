@@ -158,12 +158,6 @@ const aiRateLimit = rateLimit({
 
 // API Key Authentication Middleware function
 function requireApiKey(req, res, next) {
-  // Skip authentication for debug endpoints during testing
-  if (req.path.startsWith('/api/debug/')) {
-    console.log(`🧪 [DEBUG] Bypassing API key for debug endpoint: ${req.path}`);
-    return next();
-  }
-  
   // Skip authentication if FRONTEND_API_KEY is not configured
   if (!process.env.FRONTEND_API_KEY) {
     console.warn('⚠️  API request received but FRONTEND_API_KEY not configured - allowing request');
@@ -832,119 +826,14 @@ app.post('/api/test/user-create', async (req, res) => {
 
 // Test endpoint for API key authentication
 app.get('/api/test/auth', (req, res) => {
-    res.json({
+  res.json({ 
     status: 'authenticated', 
     message: 'API key is valid',
     timestamp: new Date().toISOString()
   });
 });
 
-// TEMPORARY DEBUG ENDPOINTS FOR SOCIAL ZONE BUG TESTING
-// These endpoints bypass API key for systematic testing
-
-// Reset user data for testing
-app.delete('/api/debug/reset-user/:deviceId', async (req, res) => {
-  try {
-    const { deviceId } = req.params;
-    console.log(`🧪 [DEBUG] Resetting user data for: ${deviceId}`);
-    
-    // Delete all user data from Supabase
-    await supabase.from('daily_challenges').delete().eq('device_id', deviceId);
-    await supabase.from('openers').delete().eq('device_id', deviceId);
-    await supabase.from('development_modules').delete().eq('device_id', deviceId);
-    await supabase.from('conversation_practice_scenarios').delete().eq('device_id', deviceId);
-    await supabase.from('users').delete().eq('device_id', deviceId);
-    
-    console.log(`✅ [DEBUG] User data reset complete for: ${deviceId}`);
-    res.json({ success: true, message: `User data reset for ${deviceId}` });
-  } catch (error) {
-    console.error('❌ [DEBUG] Error resetting user:', error);
-    res.status(500).json({ error: 'Failed to reset user', details: error.message });
-  }
-});
-
-// Test Social Zone calculations with custom date
-app.get('/api/debug/social-zone/:deviceId', async (req, res) => {
-  try {
-    const { deviceId } = req.params;
-    const { currentDate } = req.query;
-    
-    console.log(`🧪 [DEBUG] Testing Social Zone for: ${deviceId}, date: ${currentDate}`);
-    
-    // Get home data with custom date
-    const homeUrl = `https://social-coach-backend-production.up.railway.app/api/clean/home/${deviceId}${currentDate ? `?currentDate=${currentDate}` : ''}`;
-    console.log(`🧪 [DEBUG] Calling: ${homeUrl}`);
-    
-    const response = await fetch(homeUrl, {
-      headers: { 'x-api-key': process.env.FRONTEND_API_KEY || 'debug' }
-    });
-    const homeData = await response.json();
-    
-    res.json({
-      debug: true,
-      deviceId,
-      currentDate: currentDate || 'today',
-      socialZone: homeData.socialZoneLevel,
-      currentStreak: homeData.currentStreak,
-      weeklyActivity: homeData.weeklyActivity,
-      hasActivityToday: homeData.hasActivityToday,
-      fullHomeData: homeData
-    });
-  } catch (error) {
-    console.error('❌ [DEBUG] Error testing social zone:', error);
-    res.status(500).json({ error: 'Failed to test social zone', details: error.message });
-  }
-});
-
-// Simulate challenge without API key for testing
-app.post('/api/debug/challenge', async (req, res) => {
-  try {
-    const challengeData = req.body;
-    console.log(`🧪 [DEBUG] Simulating challenge:`, challengeData);
-    
-    // Use the internal challenge logic directly
-    const deviceId = challengeData.deviceId;
-    const challengeDate = challengeData.challengeDate || new Date().toISOString();
-    
-    // Ensure user exists
-    await ensureUserExistsSupabase(deviceId);
-    
-    // Insert challenge
-    const { data: challengeResult, error: challengeError } = await supabase
-      .from('daily_challenges')
-      .insert({
-        device_id: deviceId,
-        challenge_completed: challengeData.challengeCompleted || true,
-        challenge_was_successful: challengeData.challengeWasSuccessful || true,
-        challenge_rating: challengeData.challengeRating || 4,
-        challenge_confidence_level: challengeData.challengeConfidenceLevel || 3,
-        challenge_notes: challengeData.challengeNotes || 'Debug test challenge',
-        challenge_date: challengeDate,
-        challenge_type: challengeData.challengeType || 'daily'
-      })
-      .select()
-      .single();
-    
-    if (challengeError) {
-      throw challengeError;
-    }
-    
-    // Update streak
-    const streakResult = await updateUserStreakSupabase(deviceId, challengeDate);
-    
-    res.json({
-      success: true,
-      debug: true,
-      challengeId: challengeResult.id,
-      currentStreak: streakResult.currentStreak,
-      bestStreak: streakResult.bestStreak,
-      message: 'Debug challenge simulated successfully'
-    });
-  } catch (error) {
-    console.error('❌ [DEBUG] Error simulating challenge:', error);
-    res.status(500).json({ error: 'Failed to simulate challenge', details: error.message });
-  }
-});
+// Debug endpoints removed after successful Social Zone testing
 
 // Save Daily Challenge Data - NOW POWERED BY SUPABASE!
 app.post('/api/data/challenge', async (req, res) => {
