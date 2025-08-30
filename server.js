@@ -2324,12 +2324,22 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           zoneFromFunction: zone
         });
 
-        // Return complete home screen data (same format iOS app expects)
+        // Get total challenges count for reset dialog
+        const { data: allChallenges, error: challengeCountError } = await supabase
+          .from('daily_challenges')
+          .select('id')
+          .eq('device_id', deviceId);
+        
+        const totalChallenges = allChallenges?.length || 0;
+        console.log(`🎯 [SUPABASE] HOME: Total challenges for device: ${totalChallenges}`);
+
+        // Return complete home screen data (enhanced with challenge count for reset dialog)
         const homeResponse = {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,
+          totalChallenges: totalChallenges,  // NEW: For accurate reset dialog data
           _DEBUG_HOME_VERSION: 'v8.3.0-SUPABASE-COMPLETE',
           _DEBUG_HOME_ZONE: zone
         };
