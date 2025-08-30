@@ -2198,11 +2198,12 @@ app.get('/api/debug/activity/:deviceId', (req, res) => {
           console.log(`🎯 Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
         }
         
-        // Step 4: Calculate current streak (USE EXACT SAME LOGIC AS ANALYTICS)
+        // Step 4: Use current streak from Supabase user data (not SQLite calculation)
         const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
         console.log(`🔧 HOME FIX: Using referenceDate: ${referenceDate.toISOString()}, vs original today: ${today.toISOString()}`);
-        currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
-        console.log(`🔧 HOME FIX: calculateConsecutiveStreak returned: ${currentStreak}`);
+        // CRITICAL FIX: Use streak from Supabase user data, not SQLite calculation
+        currentStreak = user ? (user.current_streak || 0) : 0;
+        console.log(`🔧 [SUPABASE] HOME FIX: Using Supabase streak: ${currentStreak} (not SQLite calculation)`);
         
         console.log(`🎯 Current streak: ${currentStreak}`);
         console.log(`🎯 Week bar: [${weekBar.join(', ')}]`);
