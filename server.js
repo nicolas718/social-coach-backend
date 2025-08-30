@@ -370,6 +370,40 @@ app.post('/api/auth/migrate-data', requireAuthentication, async (req, res) => {
   }
 });
 
+// Get user profile (JWT authenticated)
+app.get('/api/auth/profile', requireAuthentication, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('❌ [JWT AUTH] Profile fetch error:', error);
+      return res.status(500).json({ 
+        error: 'Database error', 
+        message: 'Failed to fetch profile' 
+      });
+    }
+
+    res.json({
+      success: true,
+      user: req.user,
+      profile: profile || null
+    });
+
+  } catch (error) {
+    console.error('❌ [JWT AUTH] Profile error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: 'Failed to get profile' 
+    });
+  }
+});
+
 // User registration endpoint (PUBLIC) - PRODUCTION SECURITY
 app.post('/api/auth/register', authRateLimit, async (req, res) => {
   try {
