@@ -202,14 +202,108 @@ app.get('/api/auth/test', (req, res) => {
   });
 });
 
-// User registration endpoint (PUBLIC - no API key needed)
-app.post('/api/auth/register-test', async (req, res) => {
-  res.json({
-    success: true,
-    message: 'Registration endpoint accessible!',
-    receivedData: req.body,
-    timestamp: new Date().toISOString()
-  });
+// User registration endpoint (PUBLIC)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, fullName, deviceId } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Email and password are required' 
+      });
+    }
+
+    console.log(`🔐 Registration attempt for: ${email}`);
+    
+    // Create user with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: { 
+        full_name: fullName || null 
+      },
+      email_confirm: false // For development - set to true in production
+    });
+
+    if (authError) {
+      console.error('❌ Registration failed:', authError);
+      return res.status(400).json({ 
+        error: 'Registration failed', 
+        message: authError.message 
+      });
+    }
+
+    const user = authData.user;
+    console.log(`✅ User created: ${user.id} (${email})`);
+
+    // If deviceId provided, migrate existing data
+    let migrationResult = null;
+    if (deviceId) {
+      console.log(`🔄 Migrating data from device: ${deviceId} to user: ${user.id}`);
+      
+      const { data: migrationData, error: migrationError } = await supabase
+        .rpc('migrate_device_data_to_user', {
+          p_device_id: deviceId,
+          p_user_id: user.id
+        });
+
+      if (migrationError) {
+        console.error('❌ Data migration failed:', migrationError);
+      } else {
+        migrationResult = migrationData;
+        console.log('✅ Data migration successful:', migrationResult);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.user_metadata?.full_name || null
+      },
+      migration: migrationResult
+    });
+
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: 'Registration failed' 
+    });
+  }
+});
+
+// User login endpoint (PUBLIC)
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Missing credentials', 
+        message: 'Email and password are required' 
+      });
+    }
+
+    console.log(`🔐 Login attempt for: ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Login endpoint working - Supabase integration ready',
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: 'Login failed' 
+    });
+  }
 });
 
 // Apply authentication to all /api/* routes EXCEPT auth endpoints
