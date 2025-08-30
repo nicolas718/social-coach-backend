@@ -257,12 +257,56 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     console.log(`🔐 Registration attempt for: ${email}`);
+    
+    // Create user with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: { 
+        full_name: fullName || null 
+      },
+      email_confirm: false // For development - set to true in production
+    });
 
-    res.json({
+    if (authError) {
+      console.error('❌ Registration failed:', authError);
+      return res.status(400).json({ 
+        error: 'Registration failed', 
+        message: authError.message 
+      });
+    }
+
+    const user = authData.user;
+    console.log(`✅ User created: ${user.id} (${email})`);
+
+    // If deviceId provided, migrate existing data
+    let migrationResult = null;
+    if (deviceId) {
+      console.log(`🔄 Migrating data from device: ${deviceId} to user: ${user.id}`);
+      
+      const { data: migrationData, error: migrationError } = await supabase
+        .rpc('migrate_device_data_to_user', {
+          p_device_id: deviceId,
+          p_user_id: user.id
+        });
+
+      if (migrationError) {
+        console.error('❌ Data migration failed:', migrationError);
+      } else {
+        migrationResult = migrationData;
+        console.log('✅ Data migration successful:', migrationResult);
+      }
+    }
+
+    res.status(201).json({
       success: true,
-      message: 'Registration endpoint accessible - schema integration pending',
-      email: email,
-      timestamp: new Date().toISOString()
+      message: 'Registration successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.user_metadata?.full_name || null
+      },
+      migration: migrationResult
     });
 
   } catch (error) {
