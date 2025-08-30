@@ -4061,41 +4061,49 @@ function calculateWeeklyActivityCounts(deviceId, referenceDate, callback) {
 // === END ANALYTICS FUNCTIONS ===
 
 // Get development module progress for a device
-app.get('/api/data/development-progress/:deviceId', (req, res) => {
-  const { deviceId } = req.params;
-  
-  console.log(`📊 Fetching development progress for device: ${deviceId}`);
-  
-  db.all(
-    `SELECT 
-      development_module_id as moduleId,
-      development_screen_reached as screenReached,
-      development_is_completed as isCompleted,
-      development_progress_percentage as progressPercentage,
-      development_date as lastUpdated
-    FROM development_modules 
-    WHERE device_id = ?`,
-    [deviceId],
-    (err, modules) => {
-      if (err) {
-        console.error('Error fetching development progress:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      console.log(`✅ Found ${modules ? modules.length : 0} module records`);
-      
-      // Convert SQLite integer to boolean for isCompleted
-      const formattedModules = (modules || []).map(module => ({
-        ...module,
-        isCompleted: module.isCompleted === 1
-      }));
-      
-      res.json({
-        modules: formattedModules,
-        totalModules: formattedModules.length
+app.get('/api/data/development-progress/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    
+    console.log(`📊 [SUPABASE] Fetching development progress for device: ${deviceId}`);
+    
+    // Get all development modules from Supabase with proper field mapping
+    const { data: modules, error: modulesError } = await supabase
+      .from('development_modules')
+      .select('development_module_id, development_screen_reached, development_is_completed, development_progress_percentage, development_date')
+      .eq('device_id', deviceId);
+
+    if (modulesError) {
+      console.error('❌ [SUPABASE] Error fetching development progress:', modulesError);
+      return res.status(500).json({ 
+        error: 'Database error',
+        details: modulesError.message 
       });
     }
-  );
+    
+    console.log(`✅ [SUPABASE] Found ${modules ? modules.length : 0} module records`);
+    
+    // Format for iOS app with exact same field names as SQLite version
+    const formattedModules = (modules || []).map(module => ({
+      moduleId: module.development_module_id,
+      screenReached: module.development_screen_reached,
+      isCompleted: module.development_is_completed === true,  // Convert boolean properly
+      progressPercentage: module.development_progress_percentage,
+      lastUpdated: module.development_date
+    }));
+    
+    res.json({
+      modules: formattedModules,
+      totalModules: formattedModules.length
+    });
+
+  } catch (error) {
+    console.error('❌ [SUPABASE] Error in development progress endpoint:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
+  }
 });
 
 // Debug endpoint to check user data
