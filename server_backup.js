@@ -205,103 +205,6 @@ console.log('✅ Supabase client initialized');
 console.log('🔗 Supabase URL:', process.env.SUPABASE_URL);
 console.log('🔑 Service key configured:', !!process.env.SUPABASE_SERVICE_KEY);
 
-// ========================================
-// AUTHENTICATION MIDDLEWARE
-// ========================================
-
-// Supabase Auth middleware for protected routes
-async function requireAuthentication(req, res, next) {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader) {
-      return res.status(401).json({ 
-        error: 'Unauthorized', 
-        message: 'Missing authorization header' 
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verify JWT token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) {
-      return res.status(401).json({ 
-        error: 'Unauthorized', 
-        message: 'Invalid or expired token' 
-      });
-    }
-
-    // Add user info to request
-    req.user = user;
-    req.userId = user.id;
-    
-    console.log(`🔐 Authenticated user: ${user.id} (${user.email})`);
-    next();
-    
-  } catch (error) {
-    console.error('❌ Authentication error:', error);
-    return res.status(401).json({ 
-      error: 'Unauthorized', 
-      message: 'Authentication failed' 
-    });
-  }
-}
-
-// Helper function to get user from token (without middleware)
-async function getUserFromToken(authHeader) {
-  try {
-    if (!authHeader) return null;
-    
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) return null;
-    return user;
-  } catch (error) {
-    console.error('❌ Error getting user from token:', error);
-    return null;
-  }
-}
-
-// Dual auth middleware - supports both API key (legacy) and user auth (new)
-async function requireApiKeyOrAuth(req, res, next) {
-  // Try API key authentication first (legacy support)
-  const apiKey = req.headers['x-api-key'];
-  
-  if (apiKey && apiKey === process.env.FRONTEND_API_KEY) {
-    console.log('🔑 Legacy API key authentication successful');
-    req.authMethod = 'api_key';
-    return next();
-  }
-  
-  // Try user authentication
-  const authHeader = req.headers.authorization;
-  if (authHeader) {
-    try {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      
-      if (!error && user) {
-        req.user = user;
-        req.userId = user.id;
-        req.authMethod = 'user_auth';
-        console.log(`🔐 User authentication successful: ${user.id}`);
-        return next();
-      }
-    } catch (error) {
-      console.error('❌ User authentication failed:', error);
-    }
-  }
-  
-  // No valid authentication found
-  return res.status(401).json({ 
-    error: 'Unauthorized', 
-    message: 'Valid API key or user authentication required' 
-  });
-}
-
 // SQLite table creation removed - all tables now exist in Supabase
 
 
@@ -825,6 +728,71 @@ const calculateDaysWithoutActivity = (lastActivityDate) => {
 };
 
 // NEW: Calculate current streak based on both challenges and openers
+const calculateCurrentStreak = (deviceId, callback) => {
+  // Get all activity dates (both challenges and used openers)
+  db.all(`
+    SELECT DISTINCT date(activity_date) as activity_date
+    FROM (
+      SELECT challenge_date as activity_date
+      FROM daily_challenges 
+      WHERE device_id = ? AND challenge_completed = 1
+      
+      UNION
+      
+      SELECT opener_date as activity_date
+      FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+    ) activities
+    ORDER BY activity_date DESC
+  `, [deviceId, deviceId], (err, activityDates) => {
+    if (err) {
+      console.error('Error getting activity dates for streak calculation:', err);
+      return callback(err);
+    }
+
+    console.log(`=== STREAK CALCULATION for ${deviceId} ===`);
+    console.log('Activity dates found:', activityDates.map(d => d.activity_date));
+
+    if (activityDates.length === 0) {
+      console.log('No activity found - streak is 0');
+      return callback(null, 0);
+    }
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    console.log('Today:', todayStr);
+
+    let currentStreak = 0;
+    let checkDate = new Date(today);
+    
+    // Count consecutive days backwards from today
+    while (true) {
+      const checkDateStr = checkDate.toISOString().split('T')[0];
+      console.log(`Checking date: ${checkDateStr}`);
+      
+      // Check if this date has activity
+      const hasActivity = activityDates.some(activity => activity.activity_date === checkDateStr);
+      
+      if (hasActivity) {
+        currentStreak++;
+        console.log(`✅ Activity found on ${checkDateStr}, streak: ${currentStreak}`);
+      } else {
+        console.log(`❌ No activity on ${checkDateStr}, streak ends at ${currentStreak}`);
+        break; // Streak broken
+      }
+      
+      // Move to previous day
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    console.log(`Final streak calculation: ${currentStreak}`);
+    console.log('=== END STREAK CALCULATION ===');
+    
+    callback(null, currentStreak);
+  });
+};
 
 app.get('/', (req, res) => {
   res.json({ 
@@ -923,296 +891,127 @@ app.post('/api/test/user-create', async (req, res) => {
 
 // Test endpoint for API key authentication
 app.get('/api/test/auth', (req, res) => {
-    res.json({
+  res.json({ 
     status: 'authenticated', 
     message: 'API key is valid',
     timestamp: new Date().toISOString()
   });
 });
 
-// ========================================
-// AUTHENTICATION ENDPOINTS
-// ========================================
+// Debug endpoint removed for security - exposed API key fragments
 
-// User registration endpoint
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { email, password, fullName, deviceId } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        message: 'Email and password are required' 
-      });
-    }
+// Debug endpoint removed for security - exposed Bedrock API key fragments
 
-    console.log(`🔐 Registration attempt for: ${email}`);
-    
-    // Create user with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: { 
-        full_name: fullName || null 
-      },
-      email_confirm: false // For development - set to true in production
-    });
+// Debug endpoint removed - SQLite dependency eliminated
 
-    if (authError) {
-      console.error('❌ Registration failed:', authError);
-      return res.status(400).json({ 
-        error: 'Registration failed', 
-        message: authError.message 
-      });
-    }
-
-    const user = authData.user;
-    console.log(`✅ User created: ${user.id} (${email})`);
-
-    // If deviceId provided, migrate existing data
-    let migrationResult = null;
-    if (deviceId) {
-      console.log(`🔄 Migrating data from device: ${deviceId} to user: ${user.id}`);
+// Debug endpoint to test grace period calculation
+app.get('/api/debug/grace/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  const { currentDate } = req.query;
+  
+  const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+  
+  // Get activity dates (EXACTLY like home endpoint)
+  const activityQuery = `
+    SELECT DISTINCT substr(activity_date, 1, 10) as activity_date
+    FROM (
+      SELECT opener_date as activity_date FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
       
-      const { data: migrationData, error: migrationError } = await supabase
-        .rpc('migrate_device_data_to_user', {
-          p_device_id: deviceId,
-          p_user_id: user.id
-        });
-
-      if (migrationError) {
-        console.error('❌ Data migration failed:', migrationError);
-      } else {
-        migrationResult = migrationData;
-        console.log('✅ Data migration successful:', migrationResult);
+      UNION ALL
+      
+      SELECT challenge_date as activity_date FROM daily_challenges 
+      WHERE device_id = ?
+    ) activities
+    ORDER BY activity_date
+  `;
+  
+  db.all(activityQuery, [deviceId, deviceId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    const activityDates = rows.map(r => r.activity_date);
+    
+    // Calculate lastRun
+    let lastRun = 0;
+    if (activityDates.length > 0) {
+      const recent = new Date(activityDates[activityDates.length - 1] + 'T00:00:00Z');
+      let check = new Date(recent);
+      while (true) {
+        const ds = check.toISOString().split('T')[0];
+        if (activityDates.includes(ds)) {
+          lastRun += 1;
+          check.setDate(check.getDate() - 1);
+        } else {
+          break;
+        }
       }
     }
-
-    // Create session token
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-      type: 'signup',
-      email: user.email,
-      password
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.user_metadata?.full_name || null
-      },
-      migration: migrationResult,
-      // Note: In production, handle session creation differently
-      requiresLogin: true
-    });
-
-  } catch (error) {
-    console.error('❌ Registration error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: 'Registration failed' 
-    });
-  }
-});
-
-// User login endpoint
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
     
-    if (!email || !password) {
-      return res.status(400).json({ 
-        error: 'Missing credentials', 
-        message: 'Email and password are required' 
-      });
-    }
-
-    console.log(`🔐 Login attempt for: ${email}`);
-
-    // Sign in with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (authError) {
-      console.error('❌ Login failed:', authError);
-      return res.status(401).json({ 
-        error: 'Authentication failed', 
-        message: authError.message 
-      });
-    }
-
-    const { user, session } = authData;
-    console.log(`✅ Login successful: ${user.id} (${email})`);
-
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    res.json({
-      success: true,
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: profile?.full_name || user.user_metadata?.full_name || null
-      },
-      session: {
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        expires_at: session.expires_at,
-        expires_in: session.expires_in
-      },
-      profile: profile || null
-    });
-
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: 'Login failed' 
-    });
-  }
-});
-
-// Data migration endpoint (for existing users)
-app.post('/api/auth/migrate-data', requireAuthentication, async (req, res) => {
-  try {
-    const { deviceId } = req.body;
-    const userId = req.userId;
+    // Calculate days since activity
+    const daysSinceActivity = (() => {
+      if (activityDates.length === 0) return 999;
+      const mostRecent = activityDates[activityDates.length - 1];
+      const d1 = new Date(mostRecent + 'T00:00:00Z');
+      const d2 = new Date(referenceDate);
+      return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+    })();
     
-    if (!deviceId) {
-      return res.status(400).json({ 
-        error: 'Missing device ID', 
-        message: 'Device ID is required for migration' 
-      });
-    }
-
-    console.log(`🔄 Manual data migration: ${deviceId} → ${userId}`);
-
-    const { data: migrationResult, error: migrationError } = await supabase
-      .rpc('migrate_device_data_to_user', {
-        p_device_id: deviceId,
-        p_user_id: userId
-      });
-
-    if (migrationError) {
-      console.error('❌ Migration failed:', migrationError);
-      return res.status(500).json({ 
-        error: 'Migration failed', 
-        message: migrationError.message 
-      });
-    }
-
-    console.log('✅ Manual migration successful:', migrationResult);
-
-    res.json({
-      success: true,
-      message: 'Data migration completed',
-      migration: migrationResult
-    });
-
-  } catch (error) {
-    console.error('❌ Migration error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: 'Migration failed' 
-    });
-  }
-});
-
-// Get user profile
-app.get('/api/auth/profile', requireAuthentication, async (req, res) => {
-  try {
-    const userId = req.userId;
+    // Calculate current streak (now using global function)
+    const currentStreak = calculateConsecutiveStreak(activityDates, referenceDate);
     
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('❌ Profile fetch error:', error);
-      return res.status(500).json({ 
-        error: 'Database error', 
-        message: 'Failed to fetch profile' 
-      });
+    // Calculate allTimeMaxStreak first (needed for determining highest level achieved)
+    const computeMaxConsecutiveStreak = (dates) => {
+      if (!dates || dates.length === 0) return 0;
+      const sorted = [...dates].sort();
+      let maxRun = 1, run = 1;
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = new Date(sorted[i - 1] + 'T00:00:00Z');
+        const cur = new Date(sorted[i] + 'T00:00:00Z');
+        const diff = Math.floor((cur - prev) / (1000 * 60 * 60 * 24));
+        if (diff === 1) { run += 1; maxRun = Math.max(maxRun, run); }
+        else if (diff > 1) { run = 1; }
+      }
+      return maxRun;
+    };
+    const allTimeMaxStreak = computeMaxConsecutiveStreak(activityDates);
+    
+    // Determine highest level ever achieved (based on all-time max, not last run)
+    // This ensures grace recovery works correctly when user resumes after a break
+    const lastAchievedLevel = allTimeMaxStreak >= 90 ? 'Socialite'
+      : allTimeMaxStreak >= 46 ? 'Charming'
+      : allTimeMaxStreak >= 21 ? 'Coming Alive'
+      : allTimeMaxStreak >= 7 ? 'Breaking Through'
+      : 'Warming Up';
+    
+    // Call the actual function (with allTimeMaxStreak, not lastRun)
+    const zone = calculateSocialZoneLevel(currentStreak, daysSinceActivity, lastAchievedLevel, allTimeMaxStreak, activityDates);
+    
+    // If user achieved a higher level through grace continuation, update their achieved level for future calculations
+    if (zone.newHighestAchieved) {
+      const achievedLevelRequirements = { 'Breaking Through': 7, 'Coming Alive': 21, 'Charming': 46, 'Socialite': 90 };
+      const achievedRequirement = achievedLevelRequirements[zone.newHighestAchieved] || 0;
+      
+      // Use the higher of their raw streak or grace-continuation achievement for future grace calculations
+      const effectiveAchievementLevel = zone.newHighestAchieved;
+      console.log(`🔧 GRACE UPDATE: User achieved ${effectiveAchievementLevel} through grace continuation - updating for future grace periods`);
     }
-
+    
     res.json({
-      success: true,
-      user: req.user,
-      profile: profile || null
+      activityDates,
+      lastRun,
+      daysSinceActivity,
+      lastAchievedLevel,
+      currentStreak,
+      allTimeMaxStreak,
+      referenceDate: referenceDate.toISOString().split('T')[0],
+      mostRecentActivity: activityDates[activityDates.length - 1] || null,
+      calculatedZone: zone,
+      shouldBe: lastRun >= 7 && daysSinceActivity <= 3 ? 'Breaking Through (in grace)' : 'Check calculation'
     });
-
-  } catch (error) {
-    console.error('❌ Profile error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: 'Failed to get profile' 
-    });
-  }
+  });
 });
-
-// Update user profile
-app.put('/api/auth/profile', requireAuthentication, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { fullName, subscriptionStatus } = req.body;
-
-    const updates = {};
-    if (fullName !== undefined) updates.full_name = fullName;
-    if (subscriptionStatus !== undefined) updates.subscription_status = subscriptionStatus;
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ 
-        error: 'No updates provided', 
-        message: 'At least one field must be provided' 
-      });
-    }
-
-    updates.updated_at = new Date().toISOString();
-
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Profile update error:', error);
-      return res.status(500).json({ 
-        error: 'Database error', 
-        message: 'Failed to update profile' 
-      });
-    }
-
-    console.log(`✅ Profile updated for user: ${userId}`);
-
-    res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      profile
-    });
-
-  } catch (error) {
-    console.error('❌ Profile update error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: 'Failed to update profile' 
-    });
-  }
-});
-
-// Debug endpoints removed after successful Social Zone testing
 
 // Save Daily Challenge Data - NOW POWERED BY SUPABASE!
 app.post('/api/data/challenge', async (req, res) => {
@@ -1964,6 +1763,38 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
 });
 
 // DEBUG ENDPOINT FOR ACTIVITY QUERY TEST
+app.get('/api/debug/query/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  const activityQuery = `
+    SELECT DISTINCT substr(activity_date, 1, 10) as activity_date, COUNT(*) as activity_count
+                FROM (
+      SELECT opener_date as activity_date FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+                  
+                  UNION ALL
+                  
+      SELECT challenge_date as activity_date FROM daily_challenges 
+      WHERE device_id = ?
+                ) activities
+    GROUP BY substr(activity_date, 1, 10)
+                ORDER BY activity_date
+  `;
+  
+  db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+                if (err) {
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    const activityDates = activityRows.map(row => row.activity_date);
+    
+    res.json({
+      rawRows: activityRows,
+      activityDates: activityDates,
+      query: activityQuery
+    });
+  });
+});
 
 // NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
   app.get('/api/clean/home/:deviceId', async (req, res) => {
@@ -2087,39 +1918,13 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           console.log(`🎯 [SUPABASE] Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
         }
         
-        // Step 4: Check if streak is broken due to missed days
+        // Step 4: Use current streak from Supabase user data (authoritative source)
         const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
         console.log(`🔧 [SUPABASE] HOME: Using referenceDate: ${referenceDate.toISOString()}, vs today: ${today.toISOString()}`);
         
-        // Check if streak is broken due to missed days
-        let currentStreak = user ? (user.current_streak || 0) : 0;
-        
-        if (user && user.last_completion_date && currentStreak > 0) {
-          const lastCompletionStr = user.last_completion_date.split('T')[0];
-          const todayStr = referenceDate.toISOString().split('T')[0];
-          
-          const lastDate = new Date(lastCompletionStr + 'T00:00:00Z');
-          const currentDateObj = new Date(todayStr + 'T00:00:00Z');
-          const daysSinceLastActivity = Math.floor((currentDateObj.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          console.log(`🔧 [SUPABASE] HOME: Streak break check - Last activity: ${lastCompletionStr}, Today: ${todayStr}, Days since: ${daysSinceLastActivity}`);
-          
-          if (daysSinceLastActivity > 1) {
-            // Streak is broken - reset to 0 for "Start Streak" display
-            console.log(`🔥 [SUPABASE] HOME: Streak broken! ${daysSinceLastActivity} days since last activity. Setting streak to 0.`);
-            currentStreak = 0;
-            
-            // Update the user record to reflect broken streak
-            await supabase
-              .from('users')
-              .update({ current_streak: 0 })
-              .eq('device_id', deviceId);
-          } else {
-            console.log(`🔥 [SUPABASE] HOME: Streak intact - ${daysSinceLastActivity} days since last activity.`);
-          }
-        }
-        
-        console.log(`🔧 [SUPABASE] HOME: Final streak after gap check: ${currentStreak}`);
+        // Use Supabase user streak as authoritative source (not recalculated)
+        const currentStreak = user ? (user.current_streak || 0) : 0;
+        console.log(`🔧 [SUPABASE] HOME: Using authoritative Supabase streak: ${currentStreak}`);
         
         console.log(`🎯 [SUPABASE] Current streak: ${currentStreak}`);
         console.log(`🎯 [SUPABASE] Week bar: [${weekBar.join(', ')}]`);
@@ -2254,7 +2059,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         return res.status(500).json({ error: 'Database error getting activity data' });
       }
       
-    } catch (error) {
+  } catch (error) {
       console.error('❌ [SUPABASE] Error in clean home endpoint:', error);
       res.status(500).json({ 
         error: 'Server error',
@@ -2266,6 +2071,197 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
 // Removed duplicate calculateConsecutiveStreak function - now using global version
 
 // ORIGINAL SIMULATED ENDPOINT (BACKUP)
+app.get('/api/simulated/home/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { currentDate, completed } = req.query;
+    
+    console.log(`🧪 SIMULATED HOME: Device ${deviceId}, Current Date: ${currentDate}`);
+    
+    // Get completed dates from query parameter (comma-separated list)
+    const completedDates = completed ? completed.split(',').filter(d => d.length > 0) : [];
+    console.log(`🧪 SIMULATED HOME: Completed dates: [${completedDates.join(', ')}]`);
+    
+    // Get all activity dates from database (both challenges and openers)
+    console.log(`🧪 SIMULATED HOME: Querying database for all activity dates with deviceId: ${deviceId}`);
+    
+    // Use the same query structure as the analytics endpoint
+    const activityQuery = `
+      SELECT DISTINCT date(activity_date) as activity_date
+                FROM (
+        SELECT challenge_date as activity_date
+                  FROM daily_challenges 
+        WHERE device_id = ?
+                  
+        UNION
+                  
+        SELECT opener_date as activity_date
+                  FROM openers 
+        WHERE device_id = ? AND opener_was_used = 1
+                ) activities
+                ORDER BY activity_date
+    `;
+    
+    console.log(`🧪 SIMULATED HOME: Executing query: ${activityQuery}`);
+    console.log(`🧪 SIMULATED HOME: Query parameters: [${deviceId}, ${deviceId}]`);
+    
+    db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+                  if (err) {
+        console.error('❌ Error fetching activity dates:', err);
+        res.status(500).json({ error: 'Database error' });
+        return;
+      }
+      
+      console.log(`🧪 SIMULATED HOME: Database query completed. Error: ${err}, Rows found: ${activityRows ? activityRows.length : 0}`);
+      
+      // Get activity dates from database
+      const dbActivityDates = activityRows.map(row => row.activity_date);
+      // Combine with completed dates from query parameter (remove duplicates)
+      const allActivityDates = [...new Set([...completedDates, ...dbActivityDates])];
+      
+      console.log(`🧪 SIMULATED HOME: DB activity dates: [${dbActivityDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Completed dates: [${completedDates.join(', ')}]`);
+      console.log(`🧪 SIMULATED HOME: Combined activity dates: [${allActivityDates.join(', ')}]`);
+      
+      // Use combined dates for week bar calculation
+      const activityDates = allActivityDates;
+    
+    // Parse current date
+    const currentDateObj = new Date(currentDate + 'T00:00:00.000Z');
+    
+    // Build week array - 7 days ending with current date
+    const weeklyActivity = [];
+    const calendar = [];
+    
+                  for (let i = 6; i >= 0; i--) {
+      const checkDate = new Date(currentDateObj);
+      checkDate.setDate(checkDate.getDate() - i);
+      const checkDateString = checkDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      calendar.push(checkDateString);
+      
+      if (activityDates.includes(checkDateString)) {
+        // Completed day - GREEN
+        weeklyActivity.push('streak');
+      } else if (activityDates.length === 0) {
+        // New user - all previous days should be grey
+        weeklyActivity.push('none');
+                      } else {
+        // Find the first completed date to determine if this is before start or missed
+        const firstCompletedDate = activityDates.sort()[0];
+        if (checkDateString < firstCompletedDate) {
+          // Before user started - GREY
+          weeklyActivity.push('none');
+        } else if (checkDateString > currentDate) {
+          // Future day - don't mark as missed yet - GREY
+          weeklyActivity.push('none');
+        } else if (checkDateString === currentDate) {
+          // Current day - always GREY (will be white in frontend)
+          weeklyActivity.push('none');
+                    } else {
+          // Past day after user started but not completed - RED
+          weeklyActivity.push('missed');
+        }
+      }
+    }
+    
+    // Calculate current streak - consecutive completed days working backwards from most recent
+    let currentStreak = 0;
+    
+    if (activityDates.length > 0) {
+      const sortedActivityDates = activityDates.sort(); // Earliest to latest
+      const mostRecentActivityDate = sortedActivityDates[sortedActivityDates.length - 1];
+      const mostRecentActivityDateObj = new Date(mostRecentActivityDate + 'T00:00:00.000Z');
+      
+      // Check if there's a gap between most recent activity date and current date
+      // If user missed days, streak should be 0
+      const daysBetween = Math.floor((currentDateObj.getTime() - mostRecentActivityDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysBetween > 1) {
+        // There are missed days between most recent activity and current date
+        // Streak is broken, reset to 0
+        currentStreak = 0;
+        console.log(`🧪 SIMULATED HOME: Streak broken - ${daysBetween} days between ${mostRecentActivityDate} and ${currentDate}`);
+      } else {
+        // No gap, count consecutive days backwards
+        let checkDate = new Date(mostRecentActivityDateObj);
+        
+        // Count consecutive days backwards
+        for (let i = sortedActivityDates.length - 1; i >= 0; i--) {
+          const expectedDateString = checkDate.toISOString().split('T')[0];
+          
+          if (sortedActivityDates[i] === expectedDateString) {
+            currentStreak++;
+            checkDate.setDate(checkDate.getDate() - 1); // Go back one day
+          } else {
+            // Gap found, streak is broken
+            break;
+          }
+        }
+      }
+    }
+    
+    console.log(`🧪 SIMULATED HOME: Calendar: [${calendar.join(', ')}]`);
+    console.log(`🧪 SIMULATED HOME: Week array: [${weeklyActivity.join(', ')}]`);
+    console.log(`🧪 SIMULATED HOME: Current streak: ${currentStreak}`);
+    
+    const response = {
+      currentStreak: currentStreak,
+      socialZoneLevel: "Warming Up",
+      weeklyActivity: weeklyActivity,
+      hasActivityToday: activityDates.includes(currentDate)
+    };
+    
+    console.log(`🧪 SIMULATED HOME: Response:`, response);
+    res.json(response);
+      });
+    } catch (error) {
+      console.error('❌ Error in simulated home endpoint:', error);
+      res.status(500).json({ error: 'Simulated endpoint error' });
+    }
+  });
+
+// Test endpoint to check database queries
+app.get('/api/test/database/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  console.log(`🧪 TEST: Testing database queries for device: ${deviceId}`);
+  
+  // Test the same query that the simulated home endpoint uses
+  const activityQuery = `
+    SELECT DISTINCT date(activity_date) as activity_date
+    FROM (
+      SELECT challenge_date as activity_date
+      FROM daily_challenges 
+      WHERE device_id = ?
+      
+      UNION
+      
+      SELECT opener_date as activity_date
+      FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+    ) activities
+    ORDER BY activity_date
+  `;
+  
+  db.all(activityQuery, [deviceId, deviceId], (err, activityRows) => {
+    if (err) {
+      console.error('❌ TEST: Error in database query:', err);
+      res.status(500).json({ error: 'Database error', details: err.message });
+      return;
+    }
+    
+    console.log(`🧪 TEST: Query successful. Rows found: ${activityRows ? activityRows.length : 0}`);
+    console.log(`🧪 TEST: Raw rows:`, activityRows);
+    
+    res.json({
+      deviceId: deviceId,
+      rowsFound: activityRows ? activityRows.length : 0,
+      activityDates: activityRows ? activityRows.map(row => row.activity_date) : [],
+      rawRows: activityRows
+                  });
+                });
+});
 
 // Home Screen Data API Endpoint - SIMPLIFIED SUPABASE FALLBACK (iOS Dependency)
 app.get('/api/data/home/:deviceId', async (req, res) => {
@@ -2321,12 +2317,279 @@ app.get('/api/data/home/:deviceId', async (req, res) => {
 });
 
 // DEBUG ENDPOINT - Check weekly activity calculation
+app.get('/api/debug/weekly-activity/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    // Get user info
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        console.error('Error getting user:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get ALL activity data, no date filtering (for simulated environment)
+      db.all(`
+        SELECT DISTINCT date(activity_date) as activity_date
+        FROM (
+          SELECT challenge_date as activity_date
+          FROM daily_challenges 
+          WHERE device_id = ?
+          
+          UNION
+          
+          SELECT opener_date as activity_date
+          FROM openers 
+          WHERE device_id = ? AND opener_was_used = 1
+        ) activities
+        ORDER BY activity_date
+      `, [deviceId, deviceId], (err, weeklyActivity) => {
+        if (err) {
+          console.error('Error getting weekly activity:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Calculate the streak start date (working backwards from last completion)
+        const currentStreak = user.current_streak || 0;
+        let streakStartDate = null;
+        
+        if (user.last_completion_date && currentStreak > 0) {
+          const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
+          streakStartDate = new Date(lastCompletionDate);
+          streakStartDate.setDate(lastCompletionDate.getDate() - (currentStreak - 1));
+        }
+
+        // Generate debug info for each day
+        // Use the currentDate parameter from frontend for simulated environment
+        const activityDates = weeklyActivity.map(row => row.activity_date);
+        
+        // Use currentDate parameter if provided, otherwise use current date
+        let today = new Date();
+        if (currentDate) {
+          today = new Date(currentDate + 'T00:00:00.000Z');
+          console.log(`🧪 SIMULATED HOME: Using provided currentDate: ${currentDate} (FIXED VERSION)`);
+        } else {
+          console.log(`🧪 SIMULATED HOME: No currentDate provided, using current date`);
+        }
+        
+        const weeklyActivityArray = [];
+        const debugInfo = [];
+
+        for (let i = 6; i >= 0; i--) {
+          const checkDate = new Date(today);
+          checkDate.setDate(today.getDate() - i);
+          const dateString = checkDate.toISOString().split('T')[0];
+          
+          console.log(`📅 Position ${6-i}: ${dateString} (today-${i})`);
+          
+          let activityStatus = 'none';
+          
+          // If this date has activity, it's green (streak)
+              if (activityDates.includes(dateString)) {
+                activityStatus = 'streak';
+          }
+          // If user has a current streak, check if this date should be red (missed)
+          else if (user.current_streak > 0 && user.last_completion_date) {
+            const lastCompletionDate = new Date(user.last_completion_date.split('T')[0] + 'T00:00:00Z');
+            const currentDate = new Date(dateString + 'T00:00:00Z');
+            const todayDate = new Date(today.toISOString().split('T')[0] + 'T00:00:00Z');
+            
+            // If this date is between the last completion and today (exclusive), it's missed
+            if (currentDate > lastCompletionDate && currentDate < todayDate) {
+                activityStatus = 'missed';
+            }
+          }
+          
+          weeklyActivityArray.push(activityStatus);
+          debugInfo.push({
+            date: dateString,
+            dayOfWeek: checkDate.toLocaleDateString('en-US', { weekday: 'short' }),
+            status: activityStatus,
+            reasoning: reasoning,
+            hasActivity: activityDates.includes(dateString)
+          });
+        }
+
+        res.json({
+          user: {
+            current_streak: user.current_streak,
+            last_completion_date: user.last_completion_date,
+            all_time_best_streak: user.all_time_best_streak
+          },
+          streakCalculation: {
+            currentStreak,
+            streakStartDate: streakStartDate?.toISOString().split('T')[0],
+            lastCompletionDate: user.last_completion_date?.split('T')[0]
+          },
+          activityDates,
+          weeklyActivityArray,
+          debugInfo
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in weekly activity debug endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // DEBUG ENDPOINT - Test streak updates with specific dates
+app.post('/api/debug/test-streak/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { challengeDate, resetStreak = false } = req.body;
+
+    if (!deviceId || !challengeDate) {
+      return res.status(400).json({ error: 'deviceId and challengeDate are required' });
+    }
+
+    console.log(`\n🧪 TESTING STREAK UPDATE for ${deviceId} with date: ${challengeDate}`);
+
+    // If resetStreak is true, reset the user's streak first
+    if (resetStreak) {
+      db.run(
+        "UPDATE users SET current_streak = 0, last_completion_date = NULL WHERE device_id = ?",
+        [deviceId],
+        (err) => {
+          if (err) {
+            console.error('Error resetting streak:', err);
+            return res.status(500).json({ error: 'Failed to reset streak' });
+          }
+          console.log(`🔄 Reset streak for ${deviceId}`);
+          
+          // Now update the streak with the test date
+          updateUserStreak(deviceId, challengeDate);
+          
+          // Return current user data after a short delay
+          setTimeout(() => {
+            db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+              if (err) {
+                return res.status(500).json({ error: 'Database error' });
+              }
+              res.json({
+                message: 'Streak test completed (with reset)',
+                testDate: challengeDate,
+                userAfterUpdate: user
+              });
+            });
+          }, 100);
+        }
+      );
+    } else {
+      // Just update the streak with the test date
+      updateUserStreak(deviceId, challengeDate);
+      
+      // Return current user data after a short delay
+      setTimeout(() => {
+        db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+          if (err) {
+            return res.status(500).json({ error: 'Database error' });
+          }
+          res.json({
+            message: 'Streak test completed',
+            testDate: challengeDate,
+            userAfterUpdate: user
+          });
+        });
+      }, 100);
+    }
+  } catch (error) {
+    console.error('Error in streak test endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // DEBUG ENDPOINT - Check streak-contributing actions
+app.get('/api/debug/streak/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  // Get all streak-contributing actions
+  db.all(`
+    SELECT 'challenge' as type, challenge_date as date, challenge_completed as contributed, 
+           challenge_was_successful as was_successful, 'N/A' as was_used
+    FROM daily_challenges 
+    WHERE device_id = ? AND challenge_completed = 1
+    
+    UNION ALL
+    
+    SELECT 'opener' as type, opener_date as date, opener_was_used as contributed,
+           opener_was_successful as was_successful, opener_was_used as was_used
+    FROM openers 
+    WHERE device_id = ? AND opener_was_used = 1
+    
+    ORDER BY date DESC
+  `, [deviceId, deviceId], (err, actions) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      res.json({
+        user: user,
+        streak_contributing_actions: actions,
+        explanation: {
+          challenges: "All completed challenges count toward streak (regardless of success)",
+          openers: "Only USED openers count toward streak (regardless of conversation success)", 
+          unused_openers: "Unused openers are saved but don't contribute to streak"
+        }
+      });
+    });
+  });
+});
 
 // RAW DATA DEBUG ENDPOINT - See all collected form data
+app.get('/api/debug/raw-data/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  // Get all challenge data with form responses
+  db.all(`
+    SELECT id, challenge_was_successful, challenge_rating, challenge_confidence_level, 
+           challenge_notes, challenge_date, challenge_type, created_at
+    FROM daily_challenges 
+    WHERE device_id = ?
+    ORDER BY created_at DESC
+  `, [deviceId], (err, challenges) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    // Get all opener data with form responses
+    db.all(`
+      SELECT id, opener_was_used, opener_was_successful, opener_rating, 
+             opener_confidence_level, opener_notes, opener_date, opener_setting, 
+             opener_purpose, created_at
+      FROM openers 
+      WHERE device_id = ?
+      ORDER BY created_at DESC
+    `, [deviceId], (err, openers) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      res.json({
+        deviceId: deviceId,
+        challenges: challenges,
+        openers: openers,
+        summary: {
+          total_challenges: challenges.length,
+          total_openers: openers.length
+        }
+      });
+    });
+  });
+});
 
 
 
@@ -2905,8 +3168,103 @@ Return ONLY a plain text response, no JSON formatting.`;
 
 
 // DEBUG ENDPOINT - Reset all user data
+app.post('/api/debug/reset-user/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    console.log(`🧪 RESETTING ALL DATA for device: ${deviceId}`);
+
+    // Reset user data
+    db.run(
+      "UPDATE users SET current_streak = 0, all_time_best_streak = 0, last_completion_date = NULL WHERE device_id = ?",
+      [deviceId],
+      (err) => {
+        if (err) {
+          console.error('Error resetting user data:', err);
+          return res.status(500).json({ error: 'Failed to reset user data' });
+        }
+
+        // Delete all challenge history
+        db.run(
+          "DELETE FROM daily_challenges WHERE device_id = ?",
+          [deviceId],
+          (err) => {
+            if (err) {
+              console.error('Error deleting challenges:', err);
+              return res.status(500).json({ error: 'Failed to delete challenge history' });
+            }
+
+            // Delete all opener history
+            db.run(
+              "DELETE FROM openers WHERE device_id = ?",
+              [deviceId],
+              (err) => {
+                if (err) {
+                  console.error('Error deleting openers:', err);
+                  return res.status(500).json({ error: 'Failed to delete opener history' });
+                }
+
+                console.log(`✅ Successfully reset all data for ${deviceId}`);
+                res.json({
+                  message: 'All user data reset successfully',
+                  deviceId: deviceId
+                });
+              }
+            );
+          }
+        );
+      }
+    );
+  } catch (error) {
+    console.error('Error in reset user endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // Debug endpoint to see conversation practice data
+app.get('/api/debug/conversation-practice/:deviceId', (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`🔍 DEBUG: Getting all conversation practice data for device: ${deviceId}`);
+    
+    db.all('SELECT * FROM conversation_practice_scenarios WHERE device_id = ? ORDER BY practice_date DESC', [deviceId], (err, rows) => {
+      if (err) {
+        console.error('Error fetching conversation practice data:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      console.log(`🔍 DEBUG: Found ${rows.length} conversation practice records:`);
+      rows.forEach(row => {
+        console.log(`  - Date: ${row.practice_date}, Completed: ${row.completed}, Score: ${row.score}`);
+      });
+      
+      res.json({
+        deviceId: deviceId,
+        totalRecords: rows.length,
+        records: rows.map(row => ({
+          practice_date: row.practice_date,
+          completed: row.completed,
+          score: row.score,
+          created_at: row.created_at,
+          completed_at: row.completed_at
+        }))
+      });
+    });
+    
+  } catch (error) {
+    console.error('Error in debug conversation practice endpoint:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // AWS Bedrock API health check endpoint
 app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
@@ -3515,6 +3873,58 @@ server.on('connection', (socket) => {
 
 // === ANALYTICS CALCULATION FUNCTIONS ===
 
+function calculateWeeklyActivityCounts(deviceId, referenceDate, callback) {
+  const weeklyActivityQuery = `
+    SELECT 
+      activity_date,
+      COUNT(*) as activity_count
+    FROM (
+      SELECT DATE(challenge_date) as activity_date
+      FROM daily_challenges 
+      WHERE device_id = ?
+      
+      UNION ALL
+      
+      SELECT DATE(opener_date) as activity_date
+      FROM openers 
+      WHERE device_id = ? AND opener_was_used = 1
+    ) activities
+    GROUP BY activity_date
+    ORDER BY activity_date
+  `;
+  
+  db.all(weeklyActivityQuery, [deviceId, deviceId], (err, weeklyActivity) => {
+    if (err) {
+      return callback(err, null);
+    }
+
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Device ${deviceId}`);
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Raw data:`, weeklyActivity);
+
+    // Build activity map
+    const activityMap = {};
+    weeklyActivity.forEach(row => {
+      activityMap[row.activity_date] = row.activity_count;
+    });
+
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Activity map:`, activityMap);
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Reference date: ${referenceDate.toISOString()}`);
+
+    // Build 7-day array (current day on right)
+    const weeklyActivityArray = [];
+    for (let i = 6; i >= 0; i--) {
+      const checkDate = new Date(referenceDate);
+      checkDate.setDate(referenceDate.getDate() - i);
+      const dateString = checkDate.toISOString().split('T')[0];
+      const activityCount = activityMap[dateString] || 0;
+      console.log(`📊 WEEKLY ACTIVITY DEBUG: Day ${i}: ${dateString} -> ${activityCount} activities`);
+      weeklyActivityArray.push(activityCount);
+    }
+
+    console.log(`📊 WEEKLY ACTIVITY DEBUG: Final array:`, weeklyActivityArray);
+    callback(null, weeklyActivityArray);
+  });
+}
 
 // SQLite helper function removed - analytics calculations now done directly in Supabase endpoints
 
@@ -3567,8 +3977,57 @@ app.get('/api/data/development-progress/:deviceId', async (req, res) => {
 });
 
 // Debug endpoint to check user data
+app.get('/api/debug/user/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  
+  db.get("SELECT * FROM users WHERE device_id = ?", [deviceId], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    
+    res.json({
+      user: user || null,
+      userExists: !!user,
+      created_at: user ? user.created_at : null,
+      current_streak: user ? user.current_streak : null
+    });
+  });
+});
 
 // Force fix user creation date
+app.post('/api/debug/fix-user/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  const { creationDate } = req.body; // Accept custom date from request
+  
+  console.log(`🔧 FORCE FIX: Updating user creation date for ${deviceId}`);
+  
+  // Use provided date or current date
+  let dateToSet;
+  if (creationDate) {
+    // Use provided date
+    const customDate = new Date(creationDate + 'T00:00:00Z');
+    dateToSet = customDate.toISOString().replace('T', ' ').substring(0, 19);
+  } else {
+    // Use current date
+    const now = new Date();
+    dateToSet = now.toISOString().replace('T', ' ').substring(0, 19);
+  }
+  
+  db.run("UPDATE users SET created_at = ? WHERE device_id = ?", [dateToSet, deviceId], (err) => {
+    if (err) {
+      console.error('Error updating user:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    console.log(`✅ User creation date fixed for ${deviceId} to ${dateToSet}`);
+    res.json({ 
+      success: true, 
+      message: `User creation date updated to ${dateToSet}`,
+      deviceId: deviceId,
+      createdAt: dateToSet
+    });
+  });
+});
 // Force rebuild Thu Aug 14 16:21:28 PDT 2025
 // Force rebuild Thu Aug 14 18:08:08 PDT 2025
 // Force rebuild Thu Aug 14 19:18:46 PDT 2025 - Grace period critical fix

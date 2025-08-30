@@ -1,0 +1,16 @@
+Debug Endpoints to Remove (Verified Safe - Not Used by iOS):
+
+Line 908: app.get('/api/debug/grace/:deviceId'
+Line 1766: app.get('/api/debug/query/:deviceId' 
+Line 2320: app.get('/api/debug/weekly-activity/:deviceId'
+Line 2445: app.post('/api/debug/test-streak/:deviceId'
+Line 2511: app.get('/api/debug/streak/:deviceId'
+Line 2553: app.get('/api/debug/raw-data/:deviceId'
+Line 3171: app.post('/api/debug/reset-user/:deviceId'
+Line 3229: app.get('/api/debug/conversation-practice/:deviceId'
+Line 3980: app.get('/api/debug/user/:deviceId'
+Line 3998: app.post('/api/debug/fix-user/:deviceId'
+
+Plus: calculateCurrentStreak function and any updateUserStreak references in debug endpoints
+
+All verified as DEBUG ONLY - no iOS app dependencies
