@@ -2225,7 +2225,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
 // DEBUG ENDPOINT FOR ACTIVITY QUERY TEST
 
 // NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
-  app.get('/api/clean/home/:deviceId', async (req, res) => {
+  app.get('/api/clean/home/:deviceId', requireApiKeyOrAuth, async (req, res) => {
     console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
     console.log('HOME: Request received at', new Date().toISOString());
     try {
@@ -2240,21 +2240,35 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
       console.log(`🎯 [SUPABASE] CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
       
       // Step 1: Get user account creation date from SUPABASE
-      // Try to find user by device_id first (legacy) then by user_id if authenticated
+      // Handle both API key (legacy) and user authentication (new) methods
       let user = null;
       let userError = null;
       
-      // First try device_id lookup (legacy)
-      const { data: deviceUser, error: deviceUserError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('device_id', deviceId)
-        .single();
-      
-      user = deviceUser;
-      userError = deviceUserError;
-      
-      console.log(`🎯 [SUPABASE] Device lookup result: ${user ? 'Found user' : 'No user'} (error: ${userError?.code || 'none'})`);
+      if (req.authMethod === 'user_auth' && req.userId) {
+        // Authenticated user - get user by user_id from auth
+        console.log(`🔐 [SUPABASE] Using authenticated user: ${req.userId}`);
+        const { data: authUser, error: authUserError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('user_id', req.userId)
+          .single();
+        
+        user = authUser;
+        userError = authUserError;
+        console.log(`🎯 [SUPABASE] Auth user lookup result: ${user ? 'Found user' : 'No user'} (error: ${userError?.code || 'none'})`);
+      } else {
+        // API key authentication - use device_id lookup (legacy)
+        console.log(`🔑 [SUPABASE] Using API key auth, device lookup: ${deviceId}`);
+        const { data: deviceUser, error: deviceUserError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('device_id', deviceId)
+          .single();
+        
+        user = deviceUser;
+        userError = deviceUserError;
+        console.log(`🎯 [SUPABASE] Device lookup result: ${user ? 'Found user' : 'No user'} (error: ${userError?.code || 'none'})`);
+      }
       
       if (userError && userError.code !== 'PGRST116') {
         console.error('❌ [SUPABASE] Error getting user:', userError);
@@ -2289,49 +2303,68 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
       try {
         console.log(`🎯 [SUPABASE] Getting activity dates for device: ${deviceId}`);
         
-        // Check if we have an authenticated user or need to fall back to device_id
-        if (!user) {
-          console.log(`⚠️ [SUPABASE] No user record found for device: ${deviceId}`);
-          console.log(`⚠️ [SUPABASE] This might be a device that hasn't been migrated yet`);
-          return res.status(404).json({ 
-            error: 'User not found', 
-            message: 'No user record found for this device. User may need to authenticate first.' 
-          });
-        }
+        // Handle activity queries based on authentication method
+        let openerActivities = null;
+        let challengeActivities = null;
         
-        if (!user.user_id) {
-          console.log(`⚠️ [SUPABASE] User record exists but no user_id (not authenticated): ${JSON.stringify(user)}`);
-          return res.status(401).json({ 
-            error: 'User not authenticated', 
-            message: 'User exists but is not authenticated. Please sign in.' 
-          });
-        }
-        
-        console.log(`🎯 [SUPABASE] Authenticated user found (${user.user_id}), querying by user_id`);
-        
-        // Query activity data by user_id (migrated data)
-        const { data: openerActivities, error: openerError } = await supabase
-          .from('openers')
-          .select('opener_date')
-          .eq('user_id', user.user_id)
-          .eq('opener_was_used', true);
+        if (req.authMethod === 'user_auth' && user?.user_id) {
+          // Authenticated user - query by user_id
+          console.log(`🔐 [SUPABASE] Querying activities by user_id: ${user.user_id}`);
           
-        if (openerError) {
-          console.error('❌ [SUPABASE] Error getting opener activities:', openerError);
-          return res.status(500).json({ error: 'Database error getting opener activities' });
-        }
+          const { data: userOpeners, error: openerError } = await supabase
+            .from('openers')
+            .select('opener_date')
+            .eq('user_id', user.user_id)
+            .eq('opener_was_used', true);
+            
+          if (openerError) {
+            console.error('❌ [SUPABASE] Error getting opener activities by user_id:', openerError);
+            return res.status(500).json({ error: 'Database error getting opener activities' });
+          }
+            
+          const { data: userChallenges, error: challengeError } = await supabase
+            .from('daily_challenges')
+            .select('challenge_date')
+            .eq('user_id', user.user_id);
+            
+          if (challengeError) {
+            console.error('❌ [SUPABASE] Error getting challenge activities by user_id:', challengeError);
+            return res.status(500).json({ error: 'Database error getting challenge activities' });
+          }
           
-        const { data: challengeActivities, error: challengeError } = await supabase
-          .from('daily_challenges')
-          .select('challenge_date')
-          .eq('user_id', user.user_id);
+          openerActivities = userOpeners;
+          challengeActivities = userChallenges;
+          console.log(`✅ [SUPABASE] Found activities by user_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
           
-        if (challengeError) {
-          console.error('❌ [SUPABASE] Error getting challenge activities:', challengeError);
-          return res.status(500).json({ error: 'Database error getting challenge activities' });
+        } else {
+          // API key authentication - query by device_id (legacy)
+          console.log(`🔑 [SUPABASE] Querying activities by device_id: ${deviceId}`);
+          
+          const { data: deviceOpeners, error: openerError } = await supabase
+            .from('openers')
+            .select('opener_date')
+            .eq('device_id', deviceId)
+            .eq('opener_was_used', true);
+            
+          if (openerError) {
+            console.error('❌ [SUPABASE] Error getting opener activities by device_id:', openerError);
+            return res.status(500).json({ error: 'Database error getting opener activities' });
+          }
+            
+          const { data: deviceChallenges, error: challengeError } = await supabase
+            .from('daily_challenges')
+            .select('challenge_date')
+            .eq('device_id', deviceId);
+            
+          if (challengeError) {
+            console.error('❌ [SUPABASE] Error getting challenge activities by device_id:', challengeError);
+            return res.status(500).json({ error: 'Database error getting challenge activities' });
+          }
+          
+          openerActivities = deviceOpeners;
+          challengeActivities = deviceChallenges;
+          console.log(`✅ [SUPABASE] Found activities by device_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
         }
-        
-        console.log(`✅ [SUPABASE] Found activities by user_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
         
         // Combine and format activity dates (same logic as SQLite version)
         const allActivityDates = [
