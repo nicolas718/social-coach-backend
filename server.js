@@ -12,13 +12,7 @@ const helmet = require('helmet');
 const validator = require('validator');
 require('dotenv').config();
 
-console.log('===============================================');
-console.log('🚨🚨🚨 SERVER STARTING - VERSION 9.0.0-SUPABASE-COMPLETE 🚨🚨🚨');
-console.log('DEPLOYMENT TIME:', new Date().toISOString());
-console.log('GRACE PERIOD FIX: ACTIVE');
-console.log('daysSinceActivity calculation: FIXED');
-console.log('lastRun calculation: FIXED');
-console.log('===============================================');
+console.log('🚀 Social Coach Backend v9.0.0 - Starting...');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,32 +22,12 @@ app.set('trust proxy', true);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Check if AWS Bedrock configuration is set
-if (!process.env.BEDROCK_API_KEY) {
-  console.error('❌ BEDROCK_API_KEY environment variable is not set');
-  console.log('🔧 AWS Bedrock-dependent endpoints will fail');
-} else {
-  console.log('✅ AWS Bedrock API key is configured');
-}
-
-if (!process.env.BEDROCK_ENDPOINT) {
-  console.error('❌ BEDROCK_ENDPOINT environment variable is not set');
-} else {
-  console.log('✅ AWS Bedrock endpoint is configured:', process.env.BEDROCK_ENDPOINT);
-}
-
-if (!process.env.MODEL_ID) {
-  console.error('❌ MODEL_ID environment variable is not set');
-} else {
-  console.log('✅ Model ID is configured:', process.env.MODEL_ID);
-}
-
-// Check if Frontend API key is configured
+// Validate essential environment variables
 if (!process.env.FRONTEND_API_KEY) {
-  console.error('❌ FRONTEND_API_KEY environment variable is not set');
-  console.log('⚠️  API routes will be unprotected!');
-} else {
-  console.log('✅ Frontend API key is configured');
+  console.error('❌ FRONTEND_API_KEY not configured - API routes unprotected!');
+}
+if (!process.env.BEDROCK_API_KEY) {
+  console.error('❌ BEDROCK_API_KEY not configured - AI endpoints will fail');
 }
 
 // Helper function to call AWS Bedrock API
@@ -74,10 +48,7 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
   // AWS Bedrock API Key uses Bearer token authentication
   const apiKey = process.env.BEDROCK_API_KEY;
   
-  // Debug: Check for whitespace issues
-  console.log('🔍 API Key from environment');
-  console.log('🔍 API Key configured:', !!apiKey);
-  console.log('🔍 Endpoint:', endpoint);
+
   
   const headers = {
     'Content-Type': 'application/json',
@@ -100,8 +71,7 @@ async function callBedrockAPI(messages, maxTokens = 400, systemPrompt = null) {
   
   const data = await response.json();
   
-  // Log the response to debug format differences
-  console.log('🔍 Raw Bedrock response:', JSON.stringify(data, null, 2));
+
   
   return data;
 }
@@ -608,15 +578,10 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
 
 // Apply authentication to all /api/* routes EXCEPT auth endpoints
 app.use('/api/*', (req, res, next) => {
-  console.log(`🔍 [DEBUG] Middleware check - Path: ${req.path}, Method: ${req.method}`);
-  
-  // Skip API key requirement for auth endpoints
+    // Skip API key requirement for auth endpoints
   if (req.path.startsWith('/api/auth/')) {
-    console.log(`🔐 [SECURITY] Bypassing API key for auth endpoint: ${req.path} ✅`);
     return next();
   }
-  
-  console.log(`🔑 [SECURITY] Requiring API key for endpoint: ${req.path}`);
   // Apply normal API key check for all other endpoints
   return requireApiKey(req, res, next);
 });
@@ -624,113 +589,8 @@ app.use('/api/*', (req, res, next) => {
 console.log('✅ API key authentication middleware configured - auth endpoints are publicly accessible');
 
 // ========================================
-// PUBLIC AUTH ENDPOINTS (BEFORE MIDDLEWARE)
-// These must be defined BEFORE the API key middleware
+// Supabase Database Configuration
 // ========================================
-
-// User registration endpoint (PUBLIC)
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { email, password, fullName, deviceId } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        message: 'Email and password are required' 
-      });
-    }
-
-    console.log(`🔐 Registration attempt for: ${email}`);
-    
-    // Create user with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: { 
-        full_name: fullName || null 
-      },
-      email_confirm: false // For development - set to true in production
-    });
-
-    if (authError) {
-      console.error('❌ Registration failed:', authError);
-      return res.status(400).json({ 
-        error: 'Registration failed', 
-        message: authError.message 
-      });
-    }
-
-    const user = authData.user;
-    console.log(`✅ User created: ${user.id} (${email})`);
-
-    // If deviceId provided, migrate existing data
-    let migrationResult = null;
-    if (deviceId) {
-      console.log(`🔄 Migrating data from device: ${deviceId} to user: ${user.id}`);
-      
-      const { data: migrationData, error: migrationError } = await supabase
-        .rpc('migrate_device_data_to_user', {
-          p_device_id: deviceId,
-          p_user_id: user.id
-        });
-
-      if (migrationError) {
-        console.error('❌ Data migration failed:', migrationError);
-      } else {
-        migrationResult = migrationData;
-        console.log('✅ Data migration successful:', migrationResult);
-      }
-    }
-
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.user_metadata?.full_name || null
-      },
-      migration: migrationResult
-    });
-
-  } catch (error) {
-    console.error('❌ Registration error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: 'Registration failed' 
-    });
-  }
-});
-
-// User login endpoint (PUBLIC)
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ 
-        error: 'Missing credentials', 
-        message: 'Email and password are required' 
-      });
-    }
-
-    console.log(`🔐 Login attempt for: ${email}`);
-
-    res.json({
-      success: true,
-      message: 'Login endpoint accessible - schema integration pending',
-      email: email,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: 'Login failed' 
-    });
-  }
-});
 
 // SQLite initialization removed - using Supabase PostgreSQL
 
@@ -741,8 +601,6 @@ const supabase = createClient(
 );
 
 console.log('✅ Supabase client initialized');
-console.log('🔗 Supabase URL:', process.env.SUPABASE_URL);
-console.log('🔑 Service key configured:', !!process.env.SUPABASE_SERVICE_KEY);
 
 // ========================================
 // AUTHENTICATION MIDDLEWARE
