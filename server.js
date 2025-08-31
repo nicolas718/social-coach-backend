@@ -2315,6 +2315,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         console.log(`🎯 [SUPABASE] Opener activities: ${(openerActivities || []).length}`);
         console.log(`🎯 [SUPABASE] Challenge activities: ${(challengeActivities || []).length}`);
         console.log(`🎯 [SUPABASE] Combined unique dates: ${activityDates.length}`);
+        console.log(`🎯 [SUPABASE] Activity dates for week bar: [${activityDates.join(', ')}]`);
         
         // Step 3: Build week bar using SUPABASE activity data (6 previous days + today)
         const weekBar = [];
@@ -2326,17 +2327,17 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           
           let color = 'none';
           
-          if (i === 0) {
-            // Position 6: Today is always white
-            color = 'today';
-          } else if (activityDates.includes(dateString)) {
-            // Has activity: green (check activity FIRST, before account creation logic)
+          if (activityDates.includes(dateString)) {
+            // Has activity: green (check activity FIRST, always prioritize this)
             color = 'activity';
           } else if (dateString < accountCreationDate.toISOString().split('T')[0]) {
             // Before account creation: grey
             color = 'before';
             console.log(`🎯 [SUPABASE] BEFORE: ${dateString} < ${accountCreationDate.toISOString().split('T')[0]}`);
-                      } else {
+          } else if (i === 0) {
+            // Today with no activity: special today color (blue)
+            color = 'today';
+          } else {
             // No activity after account creation: red
             color = 'missed';
           }
@@ -2381,7 +2382,8 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         console.log(`🔧 [SUPABASE] HOME: Final streak after gap check: ${currentStreak}`);
         
         console.log(`🎯 [SUPABASE] Current streak: ${currentStreak}`);
-        console.log(`🎯 [SUPABASE] Week bar: [${weekBar.join(', ')}]`);
+        console.log(`🎯 [SUPABASE] Week bar FINAL: [${weekBar.join(', ')}]`);
+        console.log(`🎯 [SUPABASE] Expected for 7-day streak: ['activity', 'activity', 'activity', 'activity', 'activity', 'activity', 'activity'] or similar with 'today' for current day without activity`);
         
         // Compute Social Zone with grace period using SUPABASE activity data
         const daysSinceActivity = (() => {
