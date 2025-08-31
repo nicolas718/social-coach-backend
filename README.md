@@ -25,11 +25,13 @@ The app includes a comprehensive debug system that allows testing streak mechani
 ### Debug Controls Location
 ```swift
 // In HomeView.swift - Debug Controls Section
-if isDevelopment {
-    // Skip to Next Day button
+#if DEBUG
+private var debugSkipDayButton: some View {
+    // Skip Day button
     // Reset Streak button  
     // Current simulated date display
 }
+#endif
 ```
 
 ### Key Files
@@ -47,21 +49,21 @@ const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
 
 #### Grace Period Testing
 1. Build a 7-day streak to reach "Breaking Through"
-2. Use "Skip to Next Day" to miss 1-3 days
+2. Use "Skip Day" to miss 1-3 days
 3. Verify zone stays "Breaking Through" (grace period)
 4. Skip 4th day → Zone drops to "Warming Up"
 
 #### Streak Building
 1. Start with "Reset Streak" 
 2. Complete challenges/openers
-3. Use "Skip to Next Day" to advance
+3. Use "Skip Day" to advance
 4. Watch zone progression: Warming Up → Breaking Through → Coming Alive...
 
 ### Production vs Debug Mode
 
 #### Debug Mode (Current)
 - Simulated date can be set to any date
-- "Skip to Next Day" advances simulated date
+- "Skip Day" advances simulated date
 - All calculations use simulated date
 - Date persists across app restarts
 
@@ -77,9 +79,11 @@ const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
 ### Step 1: Remove Debug UI
 ```swift
 // In HomeView.swift, remove or comment out:
-if isDevelopment {
+#if DEBUG
+private var debugSkipDayButton: some View {
     // ... debug controls section
 }
+#endif
 ```
 
 ### Step 2: Modify SimulatedDateService
@@ -124,8 +128,8 @@ VStack {
     Text("🛠️ DEBUG CONTROLS")
     Text("Simulated Date: \(formatDate(simulatedDate))")
     
-    Button("Skip to Next Day") {
-        // Implementation
+    Button("Skip Day") {
+        // Implementation  
     }
     
     Button("Reset Streak") {
@@ -137,14 +141,12 @@ VStack {
 
 ### Step 3: Environment-Based Toggle
 ```swift
-// Production-safe approach
-private var isDevelopment: Bool {
-    #if DEBUG
-    return true
-    #else
-    return false  
-    #endif
-}
+// Production-safe approach - use compiler directives
+#if DEBUG
+// Debug controls are automatically included in debug builds
+#else  
+// Debug controls are automatically excluded in release builds
+#endif
 ```
 
 ---
