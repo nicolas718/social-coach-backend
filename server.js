@@ -2289,63 +2289,37 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
       try {
         console.log(`🎯 [SUPABASE] Getting activity dates for device: ${deviceId}`);
         
-        // Query strategy: If user exists, try user_id first (migrated data), then device_id (legacy)
-        let openerActivities = null;
-        let challengeActivities = null;
-        
-        if (user?.user_id) {
-          console.log(`🎯 [SUPABASE] Authenticated user found (${user.user_id}), querying by user_id first`);
-          
-          // Try querying by user_id (migrated data)
-          const { data: userOpeners, error: userOpenerError } = await supabase
-            .from('openers')
-            .select('opener_date')
-            .eq('user_id', user.user_id)
-            .eq('opener_was_used', true);
-            
-          const { data: userChallenges, error: userChallengeError } = await supabase
-            .from('daily_challenges')
-            .select('challenge_date')
-            .eq('user_id', user.user_id);
-            
-          if (!userOpenerError && !userChallengeError) {
-            openerActivities = userOpeners;
-            challengeActivities = userChallenges;
-            console.log(`✅ [SUPABASE] Found activities by user_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
-          } else {
-            console.log(`⚠️ [SUPABASE] user_id query failed, falling back to device_id`);
-          }
+        // Users are always authenticated - query by user_id only
+        if (!user?.user_id) {
+          console.error('❌ [SUPABASE] No authenticated user found');
+          return res.status(401).json({ error: 'User not authenticated' });
         }
         
-        // Fallback to device_id query if no user_id data found
-        if (!openerActivities || !challengeActivities) {
-          console.log(`🎯 [SUPABASE] Querying by device_id (legacy or fallback)`);
+        console.log(`🎯 [SUPABASE] Authenticated user found (${user.user_id}), querying by user_id`);
+        
+        // Query activity data by user_id (migrated data)
+        const { data: openerActivities, error: openerError } = await supabase
+          .from('openers')
+          .select('opener_date')
+          .eq('user_id', user.user_id)
+          .eq('opener_was_used', true);
           
-          const { data: deviceOpeners, error: openerError } = await supabase
-            .from('openers')
-            .select('opener_date')
-            .eq('device_id', deviceId)
-            .eq('opener_was_used', true);
-          
-          if (openerError) {
-            console.error('❌ [SUPABASE] Error getting opener activities:', openerError);
-            return res.status(500).json({ error: 'Database error getting opener activities' });
-          }
-          
-          const { data: deviceChallenges, error: challengeError } = await supabase
-            .from('daily_challenges')
-            .select('challenge_date')
-            .eq('device_id', deviceId);
-            
-          if (challengeError) {
-            console.error('❌ [SUPABASE] Error getting challenge activities:', challengeError);
-            return res.status(500).json({ error: 'Database error getting challenge activities' });
-          }
-            
-          openerActivities = deviceOpeners;
-          challengeActivities = deviceChallenges;
-          console.log(`✅ [SUPABASE] Found activities by device_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
+        if (openerError) {
+          console.error('❌ [SUPABASE] Error getting opener activities:', openerError);
+          return res.status(500).json({ error: 'Database error getting opener activities' });
         }
+          
+        const { data: challengeActivities, error: challengeError } = await supabase
+          .from('daily_challenges')
+          .select('challenge_date')
+          .eq('user_id', user.user_id);
+          
+        if (challengeError) {
+          console.error('❌ [SUPABASE] Error getting challenge activities:', challengeError);
+          return res.status(500).json({ error: 'Database error getting challenge activities' });
+        }
+        
+        console.log(`✅ [SUPABASE] Found activities by user_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
         
         // Combine and format activity dates (same logic as SQLite version)
         const allActivityDates = [
