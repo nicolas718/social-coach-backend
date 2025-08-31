@@ -2283,23 +2283,8 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
       } : 'No user found');
 
       const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
-      // Account creation logic for proper week bar colors
-      let accountCreationDate;
-      if (user && user.created_at) {
-        // Always use the stored creation date
-        accountCreationDate = new Date(user.created_at);
-      } else {
-        // No user record = treat as created today
-        // This shows all past days as grey (before account creation)
-        accountCreationDate = new Date(today); // Account created "today" in simulation
-      }
       
-      console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
-      console.log(`🎯 Current date: ${today.toISOString().split('T')[0]}`);
-      console.log(`🎯 Account creation full date: ${accountCreationDate.toISOString()}`);
-      console.log(`🎯 Account creation date string for comparison: ${accountCreationDate.toISOString().split('T')[0]}`);
-      
-      // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges)
+      // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges) - MOVED BEFORE ACCOUNT CREATION
       try {
         console.log(`🎯 [SUPABASE] Getting activity dates for device: ${deviceId}`);
         
@@ -2404,6 +2389,28 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         
         // Remove duplicates and sort (same as SQLite DISTINCT and ORDER BY)
         const activityDates = [...new Set(allActivityDates)].sort();
+        
+        // FIXED: Account creation logic for proper week bar colors - NOW USES ACTIVITY DATA
+        let accountCreationDate;
+        if (user && user.created_at) {
+          // For migrated users with activity, set account creation to earliest activity date
+          if (user.user_id && activityDates.length > 0) {
+            // Use earliest activity date as account creation for migrated users
+            const earliestActivity = new Date(activityDates[0] + 'T00:00:00Z');
+            accountCreationDate = earliestActivity;
+            console.log(`🔧 [SUPABASE] MIGRATED USER: Setting account creation to earliest activity: ${accountCreationDate.toISOString().split('T')[0]}`);
+          } else {
+            // Use stored creation date for non-migrated users
+            accountCreationDate = new Date(user.created_at);
+          }
+        } else {
+          // No user record = treat as created today
+          accountCreationDate = new Date(today);
+        }
+        
+        console.log(`🎯 Account created: ${accountCreationDate.toISOString().split('T')[0]}`);
+        console.log(`🎯 Current date: ${today.toISOString().split('T')[0]}`);
+        console.log(`🎯 Activity dates: [${activityDates.join(', ')}]`);
         
         console.log(`🎯 [SUPABASE] Activity dates: [${activityDates.join(', ')}]`);
         console.log(`🎯 [SUPABASE] Opener activities: ${(openerActivities || []).length}`);
