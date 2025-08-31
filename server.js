@@ -2316,6 +2316,9 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         console.log(`🎯 [SUPABASE] Challenge activities: ${(challengeActivities || []).length}`);
         console.log(`🎯 [SUPABASE] Combined unique dates: ${activityDates.length}`);
         console.log(`🎯 [SUPABASE] Activity dates for week bar: [${activityDates.join(', ')}]`);
+        console.log(`🎯 [SUPABASE] Device ID: ${deviceId}`);
+        console.log(`🎯 [SUPABASE] Current date for calculation: ${today.toISOString()}`);
+        console.log(`🎯 [SUPABASE] Account creation date: ${accountCreationDate.toISOString()}`);
         
         // Step 3: Build week bar using SUPABASE activity data (6 previous days + today)
         const weekBar = [];
@@ -2337,7 +2340,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           } else if (i === 0) {
             // Today with no activity: special today color (blue)
             color = 'today';
-          } else {
+                      } else {
             // No activity after account creation: red
             color = 'missed';
           }
