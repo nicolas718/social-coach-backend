@@ -2289,10 +2289,22 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
       try {
         console.log(`🎯 [SUPABASE] Getting activity dates for device: ${deviceId}`);
         
-        // Users are always authenticated - query by user_id only
-        if (!user?.user_id) {
-          console.error('❌ [SUPABASE] No authenticated user found');
-          return res.status(401).json({ error: 'User not authenticated' });
+        // Check if we have an authenticated user or need to fall back to device_id
+        if (!user) {
+          console.log(`⚠️ [SUPABASE] No user record found for device: ${deviceId}`);
+          console.log(`⚠️ [SUPABASE] This might be a device that hasn't been migrated yet`);
+          return res.status(404).json({ 
+            error: 'User not found', 
+            message: 'No user record found for this device. User may need to authenticate first.' 
+          });
+        }
+        
+        if (!user.user_id) {
+          console.log(`⚠️ [SUPABASE] User record exists but no user_id (not authenticated): ${JSON.stringify(user)}`);
+          return res.status(401).json({ 
+            error: 'User not authenticated', 
+            message: 'User exists but is not authenticated. Please sign in.' 
+          });
         }
         
         console.log(`🎯 [SUPABASE] Authenticated user found (${user.user_id}), querying by user_id`);
