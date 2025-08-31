@@ -2229,7 +2229,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
     console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
     console.log('HOME: Request received at', new Date().toISOString());
     try {
-      const { deviceId } = req.params;
+  const { deviceId } = req.params;
       const { currentDate } = req.query;
       console.log('HOME: deviceId:', deviceId, 'currentDate:', currentDate);
     
@@ -2322,36 +2322,52 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           console.log(`✅ [SUPABASE] Found activities by user_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
           
         } else {
-          // API key authentication - if user has user_id (migrated), query by user_id; otherwise device_id
+          // API key authentication - if user has user_id (migrated), query by BOTH user_id AND device_id to find all activity
           if (user?.user_id) {
-            console.log(`🔑 [SUPABASE] API key auth but user is migrated, querying by user_id: ${user.user_id}`);
+            console.log(`🔑 [SUPABASE] API key auth but user is migrated, querying by BOTH user_id AND device_id for complete activity history`);
             
+            // Query by user_id (post-migration activity)
             const { data: userOpeners, error: openerError } = await supabase
               .from('openers')
               .select('opener_date')
               .eq('user_id', user.user_id)
               .eq('opener_was_used', true);
               
-            if (openerError) {
-              console.error('❌ [SUPABASE] Error getting opener activities by user_id (API key auth):', openerError);
+            // Query by device_id (pre-migration activity) 
+            const { data: deviceOpeners, error: deviceOpenerError } = await supabase
+              .from('openers')
+              .select('opener_date')
+              .eq('device_id', deviceId)
+              .eq('opener_was_used', true);
+              
+            if (openerError || deviceOpenerError) {
+              console.error('❌ [SUPABASE] Error getting opener activities:', { openerError, deviceOpenerError });
               return res.status(500).json({ error: 'Database error getting opener activities' });
             }
               
+            // Query by user_id (post-migration challenges)
             const { data: userChallenges, error: challengeError } = await supabase
               .from('daily_challenges')
               .select('challenge_date')
               .eq('user_id', user.user_id);
               
-            if (challengeError) {
-              console.error('❌ [SUPABASE] Error getting challenge activities by user_id (API key auth):', challengeError);
+            // Query by device_id (pre-migration challenges)
+            const { data: deviceChallenges, error: deviceChallengeError } = await supabase
+              .from('daily_challenges')
+              .select('challenge_date')
+              .eq('device_id', deviceId);
+              
+            if (challengeError || deviceChallengeError) {
+              console.error('❌ [SUPABASE] Error getting challenge activities:', { challengeError, deviceChallengeError });
               return res.status(500).json({ error: 'Database error getting challenge activities' });
             }
             
-            openerActivities = userOpeners;
-            challengeActivities = userChallenges;
-            console.log(`✅ [SUPABASE] Found activities by user_id (API key auth): openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
+            // Combine all activities (user_id + device_id)
+            openerActivities = [...(userOpeners || []), ...(deviceOpeners || [])];
+            challengeActivities = [...(userChallenges || []), ...(deviceChallenges || [])];
+            console.log(`✅ [SUPABASE] Found COMBINED activities: openers=${openerActivities?.length || 0} (user: ${userOpeners?.length || 0}, device: ${deviceOpeners?.length || 0}), challenges=${challengeActivities?.length || 0} (user: ${userChallenges?.length || 0}, device: ${deviceChallenges?.length || 0})`);
             
-          } else {
+      } else {
             console.log(`🔑 [SUPABASE] API key auth, querying by device_id: ${deviceId}`);
             
             const { data: deviceOpeners, error: openerError } = await supabase
