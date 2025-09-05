@@ -2483,9 +2483,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           weeklyActivity: weekBar,
           hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,
-          totalChallenges: totalChallenges,  // NEW: For accurate reset dialog data
-          _DEBUG_HOME_VERSION: 'v8.3.0-SUPABASE-COMPLETE',
-          _DEBUG_HOME_ZONE: zone
+          totalChallenges: totalChallenges  // NEW: For accurate reset dialog data
         };
         
         console.log('🎯 [SUPABASE] HOME RESPONSE:', homeResponse);
