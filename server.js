@@ -2083,7 +2083,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
 // DEBUG ENDPOINT FOR ACTIVITY QUERY TEST
 
 // NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
-  app.get('/api/clean/home/:deviceId', requireApiKeyOrAuth, async (req, res) => {
+  app.get('/api/clean/home/:deviceId', async (req, res) => {
     console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
     console.log('HOME: Request received at', new Date().toISOString());
     try {
@@ -2313,8 +2313,8 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
             color = 'before';
             console.log(`🎯 [SUPABASE] BEFORE: ${dateString} < ${accountCreationDate.toISOString().split('T')[0]}`);
           } else if (i === 0) {
-            // Today with no activity: special today color (blue)
-            color = 'today';
+            // Today with no activity: none (frontend handles today styling separately)
+            color = 'none';
                       } else {
             // No activity after account creation: red
             color = 'missed';
