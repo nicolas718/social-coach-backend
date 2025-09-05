@@ -2508,6 +2508,20 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
 
 // ORIGINAL SIMULATED ENDPOINT (BACKUP)
 
+// DEBUG: Test endpoint without auth to isolate JSON parsing issue
+app.get('/api/debug/home-test/:deviceId', async (req, res) => {
+  console.log('🔍 DEBUG TEST ENDPOINT CALLED');
+  const testResponse = {
+    currentStreak: 3,
+    socialZoneLevel: "Warming Up",
+    weeklyActivity: ["activity", "activity", "activity", "activity", "activity", "activity", "activity"],
+    hasActivityToday: true,
+    totalChallenges: 4
+  };
+  console.log('🔍 DEBUG TEST RESPONSE:', testResponse);
+  res.json(testResponse);
+});
+
 // Home Screen Data API Endpoint - SIMPLIFIED SUPABASE FALLBACK (iOS Dependency)
 app.get('/api/data/home/:deviceId', async (req, res) => {
   try {
