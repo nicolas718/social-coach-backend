@@ -2086,6 +2086,9 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
   app.get('/api/clean/home/:deviceId', async (req, res) => {
     console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
     console.log('HOME: Request received at', new Date().toISOString());
+    console.log('HOME: Request headers:', req.headers);
+    console.log('HOME: Request parameters:', req.params);
+    console.log('HOME: Request query:', req.query);
     try {
   const { deviceId } = req.params;
       const { currentDate } = req.query;
@@ -2486,6 +2489,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         };
         
         console.log('🎯 [SUPABASE] HOME RESPONSE:', homeResponse);
+        console.log('✅ [SUPABASE] HOME: Sending successful response to client');
         res.json(homeResponse);
         
       } catch (activityError) {
