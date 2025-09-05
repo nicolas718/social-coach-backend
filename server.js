@@ -2083,7 +2083,7 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
 // DEBUG ENDPOINT FOR ACTIVITY QUERY TEST
 
 // NEW CLEAN WEEK BAR + STREAK SYSTEM - NOW FULLY SUPABASE!
-  app.get('/api/clean/home/:deviceId', async (req, res) => {
+  app.get('/api/clean/home/:deviceId', requireApiKeyOrAuth, async (req, res) => {
     console.log('🚨🚨🚨 HOME ENDPOINT CALLED 🚨🚨🚨');
     console.log('HOME: Request received at', new Date().toISOString());
     console.log('HOME: Request headers:', req.headers);
