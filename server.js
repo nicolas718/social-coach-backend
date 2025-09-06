@@ -3939,6 +3939,56 @@ app.post('/api/emergency/sync-user-data', requireApiKeyOrAuth, async (req, res) 
   }
 });
 
+// EMERGENCY: Direct migration using API key (bypasses JWT issues)
+app.post('/api/emergency/direct-migration', requireApiKey, async (req, res) => {
+  try {
+    const { phoneDeviceId, userId } = req.body;
+    
+    if (!phoneDeviceId || !userId) {
+      return res.status(400).json({ error: 'phoneDeviceId and userId required' });
+    }
+    
+    console.log(`🚨 DIRECT MIGRATION: Phone=${phoneDeviceId}, User=${userId}`);
+    
+    // Update openers
+    const { data: openers, error: openerError } = await supabase
+      .from('openers')
+      .update({ user_id: userId })
+      .eq('device_id', phoneDeviceId)
+      .is('user_id', null)
+      .select();
+    
+    // Update challenges  
+    const { data: challenges, error: challengeError } = await supabase
+      .from('daily_challenges')
+      .update({ user_id: userId })
+      .eq('device_id', phoneDeviceId)
+      .is('user_id', null)
+      .select();
+    
+    if (openerError || challengeError) {
+      console.error('❌ Migration errors:', { openerError, challengeError });
+      return res.status(500).json({ error: 'Migration failed' });
+    }
+    
+    console.log(`🚨 DIRECT MIGRATION COMPLETE: ${openers?.length || 0} openers, ${challenges?.length || 0} challenges`);
+    
+    res.json({
+      success: true,
+      message: 'Direct migration completed',
+      migrated: {
+        openers: openers?.length || 0,
+        challenges: challenges?.length || 0,
+        total: (openers?.length || 0) + (challenges?.length || 0)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Direct migration failed:', error);
+    res.status(500).json({ error: 'Direct migration failed' });
+  }
+});
+
 // DEBUG: Find all device IDs with actual data
 app.get('/api/debug/find-devices', requireApiKey, async (req, res) => {
   try {
