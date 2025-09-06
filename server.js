@@ -2201,55 +2201,34 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         let openerActivities = null;
         let challengeActivities = null;
         
-        if (req.authMethod === 'user_auth' && user?.user_id) {
-          // Authenticated user - query by BOTH user_id AND device_id to get ALL data
-          console.log(`🔐 [SUPABASE] CRITICAL FIX: Querying activities by BOTH user_id AND device_id for complete history`);
+        if (req.authMethod === 'user_auth' && req.userId) {
+          // EMERGENCY FIX: Force query by user_id ONLY (all data is migrated)
+          console.log(`🚨 EMERGENCY FIX: Querying activities by user_id ONLY: ${req.userId}`);
           
-          // Get openers by user_id (new data)
+          // Get ALL openers by user_id
           const { data: userOpeners, error: userOpenerError } = await supabase
             .from('openers')
             .select('opener_date')
-            .eq('user_id', user.user_id)
+            .eq('user_id', req.userId)
             .eq('opener_was_used', true);
           
-          // Get openers by device_id (legacy data) - exclude already migrated records
-          const { data: deviceOpeners, error: deviceOpenerError } = await supabase
-            .from('openers')
-            .select('opener_date')
-            .eq('device_id', deviceId)
-            .is('user_id', null)
-            .eq('opener_was_used', true);
-          
-          // Get challenges by user_id (new data)  
+          // Get ALL challenges by user_id  
           const { data: userChallenges, error: userChallengeError } = await supabase
             .from('daily_challenges')
             .select('challenge_date')
-            .eq('user_id', user.user_id);
+            .eq('user_id', req.userId);
           
-          // Get challenges by device_id (legacy data) - exclude already migrated records
-          const { data: deviceChallenges, error: deviceChallengeError } = await supabase
-            .from('daily_challenges')
-            .select('challenge_date')
-            .eq('device_id', deviceId)
-            .is('user_id', null);
+          // Use user data directly (no device data needed)
+          openerActivities = userOpeners || [];
+          challengeActivities = userChallenges || [];
           
-          // Combine all data
-          openerActivities = [
-            ...(userOpeners || []),
-            ...(deviceOpeners || [])
-          ];
-          challengeActivities = [
-            ...(userChallenges || []),
-            ...(deviceChallenges || [])
-          ];
+          console.log(`🚨 [SUPABASE] USER DATA ONLY: openers=${openerActivities.length}, challenges=${challengeActivities.length}`);
           
-          console.log(`🔥 [SUPABASE] COMBINED DATA: openers(user=${userOpeners?.length || 0} + device=${deviceOpeners?.length || 0} = ${openerActivities.length}), challenges(user=${userChallenges?.length || 0} + device=${deviceChallenges?.length || 0} = ${challengeActivities.length})`);
-          
-          if (openerError || userOpenerError || deviceOpenerError) {
-            console.error('❌ [SUPABASE] Error getting opener activities:', { openerError, userOpenerError, deviceOpenerError });
+          if (userOpenerError) {
+            console.error('❌ [SUPABASE] Error getting opener activities:', userOpenerError);
           }
-          if (challengeError || userChallengeError || deviceChallengeError) {
-            console.error('❌ [SUPABASE] Error getting challenge activities:', { challengeError, userChallengeError, deviceChallengeError });
+          if (userChallengeError) {
+            console.error('❌ [SUPABASE] Error getting challenge activities:', userChallengeError);
           }
           
           if (openerActivities?.length > 0) {
