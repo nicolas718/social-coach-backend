@@ -1567,7 +1567,7 @@ app.post('/api/data/opener', requireApiKeyOrAuth, async (req, res) => {
 });
 
 // Save Development Module Data - NOW POWERED BY SUPABASE!
-app.post('/api/data/development', async (req, res) => {
+app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
   try {
     const {
       deviceId,
@@ -1690,7 +1690,7 @@ app.post('/api/data/development', async (req, res) => {
 });
 
 // Clear all data for a device (for testing) - NOW CLEARS SUPABASE!
-app.delete('/api/data/clear/:deviceId', async (req, res) => {
+app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
     const { deviceId } = req.params;
 
@@ -1699,42 +1699,92 @@ app.delete('/api/data/clear/:deviceId', async (req, res) => {
     }
 
     console.log(`🗑️ [SUPABASE] CLEARING ALL DATA for device: ${deviceId}`);
-
-    // Delete all data for this device from SUPABASE
-    const deletePromises = [
-      supabase.from('daily_challenges').delete().eq('device_id', deviceId),
-      supabase.from('openers').delete().eq('device_id', deviceId), 
-      supabase.from('development_modules').delete().eq('device_id', deviceId),
-      supabase.from('conversation_practice_scenarios').delete().eq('device_id', deviceId)
-    ];
-
-    const deleteResults = await Promise.all(deletePromises);
     
-    // Check for errors
-    const errors = deleteResults.filter(result => result.error);
-    if (errors.length > 0) {
-      console.error('❌ [SUPABASE] Error deleting data:', errors);
-      return res.status(500).json({ error: 'Failed to clear some data tables' });
+    // CRITICAL FIX: Clear data by BOTH user_id AND device_id for authenticated users
+    if (req.authMethod === 'user_auth' && req.userId) {
+      console.log(`🚨 [CLEAR] Authenticated user - clearing by user_id: ${req.userId}`);
+      
+      // Delete all data for this user from SUPABASE (both user_id and device_id)
+      const deletePromises = [
+        supabase.from('daily_challenges').delete().eq('user_id', req.userId),
+        supabase.from('daily_challenges').delete().eq('device_id', deviceId),
+        supabase.from('openers').delete().eq('user_id', req.userId),
+        supabase.from('openers').delete().eq('device_id', deviceId),
+        supabase.from('development_modules').delete().eq('user_id', req.userId),
+        supabase.from('development_modules').delete().eq('device_id', deviceId),
+        supabase.from('conversation_practice_scenarios').delete().eq('user_id', req.userId),
+        supabase.from('conversation_practice_scenarios').delete().eq('device_id', deviceId)
+      ];
+
+      const deleteResults = await Promise.all(deletePromises);
+      
+      // Check for errors
+      const errors = deleteResults.filter(result => result.error);
+      if (errors.length > 0) {
+        console.error('❌ [SUPABASE] Error deleting user data:', errors);
+        return res.status(500).json({ error: 'Failed to clear some user data tables' });
+      }
+
+      console.log('✅ [SUPABASE] Deleted all user data (challenges, openers, development modules, conversation practice)');
+
+      // Reset user streaks to 0 in Supabase  
+      const { error: userResetError } = await supabase
+        .from('users')
+        .update({
+          current_streak: 0,
+          all_time_best_streak: 0,
+          last_activity_date: null,
+          highest_level_achieved: 'Warming Up'
+        })
+        .eq('user_id', req.userId);
+
+      if (userResetError) {
+        console.error('❌ [SUPABASE] Error resetting user streak:', userResetError);
+        return res.status(500).json({ error: 'Failed to reset user streak' });
+      }
+
+      console.log('✅ [SUPABASE] Reset user streak and stats to 0');
+      
+    } else {
+      // Fallback: device-only clearing
+      console.log(`🔑 [CLEAR] Device-only clearing for: ${deviceId}`);
+      
+      const deletePromises = [
+        supabase.from('daily_challenges').delete().eq('device_id', deviceId),
+        supabase.from('openers').delete().eq('device_id', deviceId), 
+        supabase.from('development_modules').delete().eq('device_id', deviceId),
+        supabase.from('conversation_practice_scenarios').delete().eq('device_id', deviceId)
+      ];
+
+      const deleteResults = await Promise.all(deletePromises);
+      
+      // Check for errors
+      const errors = deleteResults.filter(result => result.error);
+      if (errors.length > 0) {
+        console.error('❌ [SUPABASE] Error deleting device data:', errors);
+        return res.status(500).json({ error: 'Failed to clear some device data tables' });
+      }
+
+      console.log('✅ [SUPABASE] Deleted device data (challenges, openers, development modules, conversation practice)');
+
+      // Reset user streaks to 0 in Supabase (by device_id)
+      const { error: userResetError } = await supabase
+        .from('users')
+        .update({
+          current_streak: 0,
+          all_time_best_streak: 0,
+          last_activity_date: null,
+          highest_level_achieved: 'Warming Up'
+        })
+        .eq('device_id', deviceId);
+
+      if (userResetError) {
+        console.error('❌ [SUPABASE] Error resetting device user streak:', userResetError);
+        return res.status(500).json({ error: 'Failed to reset device user streak' });
+      }
+
+      console.log('✅ [SUPABASE] Reset device user streak to 0');
     }
-
-    console.log('✅ [SUPABASE] Deleted challenges, openers, development modules, conversation practice scenarios');
-
-    // Reset user streaks to 0 in Supabase  
-    const { error: userResetError } = await supabase
-      .from('users')
-      .update({
-        current_streak: 0,
-        all_time_best_streak: 0,
-        last_completion_date: null
-      })
-      .eq('device_id', deviceId);
-
-    if (userResetError) {
-      console.error('❌ [SUPABASE] Error resetting user streak:', userResetError);
-      return res.status(500).json({ error: 'Failed to reset user streak' });
-    }
-
-    console.log('✅ [SUPABASE] Reset user streak to 0');
 
       // Send success response
       res.json({ 
@@ -2713,7 +2763,7 @@ app.get('/api/debug/home-test/:deviceId', async (req, res) => {
 });
 
 // Home Screen Data API Endpoint - SIMPLIFIED SUPABASE FALLBACK (iOS Dependency)
-app.get('/api/data/home/:deviceId', async (req, res) => {
+app.get('/api/data/home/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
     console.log('🏠 [SUPABASE] Home fallback endpoint - redirecting to main clean endpoint');
     const { deviceId } = req.params;
@@ -3623,7 +3673,7 @@ function formatOpenerDate(dateString) {
 }
 
 // CONVERSATION PRACTICE API - NOW POWERED BY SUPABASE!
-app.get('/api/conversation-practice/:deviceId', async (req, res) => {
+app.get('/api/conversation-practice/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate } = req.query;
@@ -3997,7 +4047,7 @@ server.on('connection', (socket) => {
 // === END ANALYTICS FUNCTIONS ===
 
 // Get development module progress for a device
-app.get('/api/data/development-progress/:deviceId', async (req, res) => {
+app.get('/api/data/development-progress/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
   const { deviceId } = req.params;
   
