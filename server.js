@@ -2011,7 +2011,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
               daysSinceActivityForZone,
               lastAchievedLevel,
               allTimeMaxStreak,
-              'user.all_time_best_streak': user.all_time_best_streak,
+              'user.all_time_best_streak': user?.all_time_best_streak || 0,
       'mostRecentActivity': allActivityDates[allActivityDates.length - 1],
               'todayForZone': todayForZone.toISOString().split('T')[0]
             });
