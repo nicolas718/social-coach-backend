@@ -2205,31 +2205,31 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
           // REMOVED: Emergency override section - using nuclear fix instead
           console.log(`🔍 [ANALYTICS] AUTH INFO: userId=${req.userId}, user.id=${req.user?.id}, authMethod=${req.authMethod}`);
 
-          // NUCLEAR FIX: Force correct values for production
-          const finalCurrentStreak = 7;
-          const finalAllTimeMaxStreak = 7;
-          const finalTotalChallenges = 15; // Updated after latest test
-          const finalTotalOpeners = 6; // Updated after latest test
-          const finalSuccessfulChallenges = 14;
-          const finalSuccessfulOpeners = 5;
+          // NUCLEAR FIX: Force correct values for production (DISABLED FOR RESET TESTING)
+          // const finalCurrentStreak = 7;
+          // const finalAllTimeMaxStreak = 7;
+          // const finalTotalChallenges = 15; // Updated after latest test
+          // const finalTotalOpeners = 6; // Updated after latest test
+          // const finalSuccessfulChallenges = 14;
+          // const finalSuccessfulOpeners = 5;
           
-          console.log(`🚨 [ANALYTICS] NUCLEAR FIX: Forcing production values`);
+          console.log(`🚨 [ANALYTICS] USING REAL DATABASE VALUES (nuclear fix disabled for reset testing)`);
 
-          // Return complete analytics data
+          // Return complete analytics data with REAL values from database
           res.json({
             _DEBUG_NEW_VERSION: 'v8.2.0-GRACE-RECOVERY-PROGRESSIVE',
-            _DEBUG_NUCLEAR_FIX_DEPLOYED: 'YES-NUCLEAR-FIX-ACTIVE',
+            _DEBUG_NUCLEAR_FIX_DEPLOYED: 'DISABLED-FOR-RESET-TESTING',
             _DEBUG_GRACE_WORKING: zoneInfo,
-            currentStreak: finalCurrentStreak,
-            allTimeBestStreak: finalAllTimeMaxStreak,
-            socialZoneLevel: "Breaking Through",
-            socialConfidencePercentage: 65,
-            weeklyActivity: [1, 1, 1, 1, 0, 1, 1],
-            overallSuccessRate: 90,
-            totalChallenges: finalTotalChallenges,
-            totalOpeners: finalTotalOpeners,
-            successfulChallenges: finalSuccessfulChallenges,
-            successfulOpeners: finalSuccessfulOpeners,
+            currentStreak: currentStreak,
+            allTimeBestStreak: allTimeMaxStreak,
+            socialZoneLevel: zone.level,
+            socialConfidencePercentage: Math.round(socialConfidencePercentage),
+            weeklyActivity: weeklyActivityArray,
+            overallSuccessRate: Math.round(overallSuccessRate),
+            totalChallenges: totalChallenges,
+            totalOpeners: totalOpeners,
+            successfulChallenges: successfulChallenges,
+            successfulOpeners: successfulOpeners,
             improvedConfidence: improvedConfidence,
             reducedSocialAnxiety: reducedSocialAnxiety,
             enhancedCommunication: enhancedCommunication,
@@ -2680,11 +2680,11 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         const ordered = ['Warming Up', 'Breaking Through', 'Coming Alive', 'Charming', 'Socialite'];
         const softenedLevel = zone.level;
 
-        // NUCLEAR FIX: Force correct weekly activity for production user
-        if (req.userId === "28b13687-d7df-4af7-babc-2010042f2319") {
-          console.log(`🚨 [HOME] NUCLEAR FIX: Forcing correct weekly activity for production user`);
-          weekBar = ['activity', 'activity', 'activity', 'activity', 'none', 'activity', 'activity'];
-        }
+        // NUCLEAR FIX: Force correct weekly activity for production user (DISABLED FOR RESET TESTING)
+        // if (req.userId === "28b13687-d7df-4af7-babc-2010042f2319") {
+        //   console.log(`🚨 [HOME] NUCLEAR FIX: Forcing correct weekly activity for production user`);
+        //   weekBar = ['activity', 'activity', 'activity', 'activity', 'none', 'activity', 'activity'];
+        // }
 
         console.log('!!!!! HOME RESPONSE BEING SENT:', {
           currentStreak: currentStreak,
