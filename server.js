@@ -1740,6 +1740,12 @@ app.delete('/api/data/clear/:deviceId', async (req, res) => {
 app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   console.log('🎯🎯🎯 ANALYTICS ENDPOINT CALLED 🎯🎯🎯');
   console.log('ANALYTICS: Request received at', new Date().toISOString());
+  console.log('🔍 [ANALYTICS] AUTH DEBUG:', {
+    authMethod: req.authMethod,
+    userId: req.userId,
+    deviceId: req.params.deviceId,
+    hasUser: !!req.user
+  });
   try {
     const { deviceId } = req.params;
     const { currentDate, completed } = req.query;
