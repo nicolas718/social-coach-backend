@@ -3996,14 +3996,14 @@ app.get('/api/debug/find-devices', requireApiKey, async (req, res) => {
     
     // Get all challenge activities with device IDs and dates
     const { data: challenges, error: cError } = await supabase
-      .from('challenge_activities')
-      .select('device_id, challenge_date, created_at')
+      .from('daily_challenges')
+      .select('device_id, user_id, challenge_date, created_at')
       .order('created_at', { ascending: false });
     
     // Get all opener activities with device IDs and dates  
     const { data: openers, error: oError } = await supabase
-      .from('opener_activities')
-      .select('device_id, opener_date, created_at')
+      .from('openers')
+      .select('device_id, user_id, opener_date, created_at')
       .order('created_at', { ascending: false });
     
     if (cError) throw cError;
@@ -4045,9 +4045,18 @@ app.get('/api/debug/find-devices', requireApiKey, async (req, res) => {
     
     console.log(`🔍 Found ${deviceList.length} devices with activity data`);
     
+    // Also show user_id data
+    const userChallenges = challenges?.filter(c => c.user_id) || [];
+    const userOpeners = openers?.filter(o => o.user_id) || [];
+    
     res.json({
       devices: deviceList,
-      current_simulator_device: "D9191CF1-7488-4C04-A984-E92C07744F64"
+      current_simulator_device: "D9191CF1-7488-4C04-A984-E92C07744F64",
+      user_data: {
+        challenges_by_user: userChallenges.length,
+        openers_by_user: userOpeners.length,
+        user_ids: [...new Set([...userChallenges.map(c => c.user_id), ...userOpeners.map(o => o.user_id)])]
+      }
     });
     
   } catch (error) {
