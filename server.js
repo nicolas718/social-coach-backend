@@ -1278,7 +1278,7 @@ app.get('/api/test/analytics-fix', (req, res) => {
 });
 
 // Test Supabase connection
-app.get('/api/test/supabase', async (req, res) => {
+app.get('/api/test/supabase', requireApiKey, async (req, res) => {
   try {
     console.log('🧪 Testing Supabase connection...');
     
@@ -1318,7 +1318,7 @@ app.get('/api/test/supabase', async (req, res) => {
 // Diagnostic endpoint removed - SQLite dependency eliminated
 
 // Test Supabase user creation
-app.post('/api/test/user-create', async (req, res) => {
+app.post('/api/test/user-create', requireApiKey, async (req, res) => {
   try {
     const { deviceId, customDate } = req.body;
     
@@ -2745,7 +2745,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
 // ORIGINAL SIMULATED ENDPOINT (BACKUP)
 
 // DEBUG: Test endpoint without auth to isolate JSON parsing issue
-app.get('/api/debug/home-test/:deviceId', async (req, res) => {
+app.get('/api/debug/home-test/:deviceId', requireApiKey, async (req, res) => {
   console.log('🔍 DEBUG TEST ENDPOINT CALLED');
   const testResponse = {
     currentStreak: 3,
@@ -3322,7 +3322,7 @@ No markdown formatting, no extra text, just the JSON object.`;
   }
 });
 
-app.post('/api/ai-coach/chat', aiRateLimit, async (req, res) => {
+app.post('/api/ai-coach/chat', requireApiKeyOrAuth, aiRateLimit, async (req, res) => {
   try {
     const { message, context = {} } = req.body;
     console.log('Received AI coach chat request:', { message, context });
@@ -3400,7 +3400,7 @@ Return ONLY a plain text response, no JSON formatting.`;
 // Debug endpoint to see conversation practice data
 
 // AWS Bedrock API health check endpoint
-app.get('/api/bedrock/health', aiRateLimit, async (req, res) => {
+app.get('/api/bedrock/health', requireApiKey, aiRateLimit, async (req, res) => {
   try {
     console.log('🔍 Testing AWS Bedrock API connection...');
     
@@ -3958,7 +3958,7 @@ Return ONLY valid JSON in this exact format:
 });
 
 // Mark conversation practice as completed - NOW POWERED BY SUPABASE!
-app.post('/api/conversation-practice/:deviceId/complete', async (req, res) => {
+app.post('/api/conversation-practice/:deviceId/complete', requireApiKeyOrAuth, async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { currentDate, score, userAnswers } = req.body;
