@@ -3994,6 +3994,43 @@ app.post('/api/emergency/direct-migration', requireApiKey, async (req, res) => {
   }
 });
 
+// DEBUG: Show exact user data
+app.get('/api/debug/user-data/:userId', requireApiKey, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`🔍 Searching for user data: ${userId}`);
+    
+    // Get challenges by user_id
+    const { data: challenges, error: cError } = await supabase
+      .from('daily_challenges')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    // Get openers by user_id  
+    const { data: openers, error: oError } = await supabase
+      .from('openers')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (cError) throw cError;
+    if (oError) throw oError;
+    
+    res.json({
+      user_id: userId,
+      challenges: challenges || [],
+      openers: openers || [],
+      total_challenges: challenges?.length || 0,
+      total_openers: openers?.length || 0
+    });
+    
+  } catch (error) {
+    console.error('❌ Error finding user data:', error);
+    res.status(500).json({ error: 'Failed to find user data' });
+  }
+});
+
 // DEBUG: Find all device IDs with actual data
 app.get('/api/debug/find-devices', requireApiKey, async (req, res) => {
   try {
