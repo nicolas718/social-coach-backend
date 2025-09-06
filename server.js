@@ -1733,8 +1733,7 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
         .update({
           current_streak: 0,
           all_time_best_streak: 0,
-          last_activity_date: null,
-          highest_level_achieved: 'Warming Up'
+          last_completion_date: null
         })
         .eq('user_id', req.userId);
 
@@ -1773,8 +1772,7 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
         .update({
           current_streak: 0,
           all_time_best_streak: 0,
-          last_activity_date: null,
-          highest_level_achieved: 'Warming Up'
+          last_completion_date: null
         })
         .eq('device_id', deviceId);
 
