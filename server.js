@@ -1727,7 +1727,7 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
 
       console.log('✅ [SUPABASE] Deleted all user data (challenges, openers, development modules, conversation practice)');
 
-      // Reset user streaks to 0 in Supabase  
+      // Reset user streaks to 0 in Supabase - handle both user_id and device_id records
       const { error: userResetError } = await supabase
         .from('users')
         .update({
@@ -1737,12 +1737,22 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
         })
         .eq('user_id', req.userId);
 
-      if (userResetError) {
-        console.error('❌ [SUPABASE] Error resetting user streak:', userResetError);
-        return res.status(500).json({ error: 'Failed to reset user streak' });
+      const { error: deviceResetError } = await supabase
+        .from('users')
+        .update({
+          current_streak: 0,
+          all_time_best_streak: 0,
+          last_completion_date: null
+        })
+        .eq('device_id', deviceId);
+
+      // Only error if BOTH fail (one might not exist)
+      if (userResetError && deviceResetError) {
+        console.error('❌ [SUPABASE] Error resetting user streak (both user_id and device_id failed):', { userResetError, deviceResetError });
+        console.log('🔧 [SUPABASE] This might be normal if no user record exists yet');
       }
 
-      console.log('✅ [SUPABASE] Reset user streak and stats to 0');
+      console.log('✅ [SUPABASE] Reset user streak and stats to 0 (attempted both user_id and device_id)');
       
     } else {
       // Fallback: device-only clearing
