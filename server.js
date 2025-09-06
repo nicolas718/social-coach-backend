@@ -903,16 +903,18 @@ const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
         }, {
           onConflict: 'device_id'
         })
-        .select()
-        .single();
+        .select();
       
+      // Handle the response properly
       if (insertError) {
         console.error('❌ [SUPABASE] Error creating user record with user_id:', insertError);
         throw insertError;
       }
       
-      console.log(`✅ [SUPABASE] Created/updated user record for user_id: ${userId}`, newUser);
-      return newUser;
+      const userRecord = Array.isArray(newUser) ? newUser[0] : newUser;
+      
+      console.log(`✅ [SUPABASE] Created/updated user record for user_id: ${userId}`, userRecord);
+      return userRecord;
     }
     
   } catch (error) {
