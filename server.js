@@ -1336,7 +1336,7 @@ app.get('/api/test/auth', (req, res) => {
 // Debug endpoints removed after successful Social Zone testing
 
 // Save Daily Challenge Data - NOW POWERED BY SUPABASE!
-app.post('/api/data/challenge', async (req, res) => {
+app.post('/api/data/challenge', requireApiKeyOrAuth, async (req, res) => {
   try {
     const {
       deviceId,
@@ -1373,19 +1373,31 @@ app.post('/api/data/challenge', async (req, res) => {
     
     console.log(`✅ [SUPABASE] User exists/created, proceeding with challenge for: ${deviceId}`);
 
+    // Determine data storage method based on authentication
+    let insertData = {
+      challenge_completed: challengeCompleted,
+      challenge_was_successful: challengeWasSuccessful,
+      challenge_rating: challengeRating,
+      challenge_confidence_level: challengeConfidenceLevel,
+      challenge_notes: challengeNotes,
+      challenge_date: challengeDate,
+      challenge_type: challengeType
+    };
+
+    if (req.authMethod === 'user_auth' && req.userId) {
+      // Authenticated user - store by user_id (PROPER ARCHITECTURE)
+      insertData.user_id = req.userId;
+      console.log(`📊 [SUPABASE] Storing challenge by user_id: ${req.userId}`);
+    } else {
+      // Fallback to device_id for backward compatibility
+      insertData.device_id = deviceId;
+      console.log(`📊 [SUPABASE] Storing challenge by device_id: ${deviceId} (fallback)`);
+    }
+
     // Insert challenge data into Supabase
     const { data: challengeData, error: challengeError } = await supabase
       .from('daily_challenges')
-      .insert({
-        device_id: deviceId,
-        challenge_completed: challengeCompleted,
-        challenge_was_successful: challengeWasSuccessful,
-        challenge_rating: challengeRating,
-        challenge_confidence_level: challengeConfidenceLevel,
-        challenge_notes: challengeNotes,
-        challenge_date: challengeDate,
-        challenge_type: challengeType
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -1423,7 +1435,7 @@ app.post('/api/data/challenge', async (req, res) => {
 
 
 // Save Opener Data - NOW POWERED BY SUPABASE!
-app.post('/api/data/opener', async (req, res) => {
+app.post('/api/data/opener', requireApiKeyOrAuth, async (req, res) => {
   try {
     const {
       deviceId,
@@ -1457,21 +1469,33 @@ app.post('/api/data/opener', async (req, res) => {
     // Ensure user exists (Supabase version)
     await ensureUserExistsSupabase(deviceId);
 
-      // ALWAYS insert opener data (save everything regardless of usage)
+    // Determine data storage method based on authentication
+    let insertData = {
+      opener_text: openerText,
+      opener_setting: openerSetting,
+      opener_purpose: openerPurpose,
+      opener_was_used: openerWasUsed,
+      opener_was_successful: openerWasSuccessful,
+      opener_rating: openerRating,
+      opener_confidence_level: openerConfidenceLevel,
+      opener_notes: openerNotes,
+      opener_date: openerDate
+    };
+
+    if (req.authMethod === 'user_auth' && req.userId) {
+      // Authenticated user - store by user_id (PROPER ARCHITECTURE)
+      insertData.user_id = req.userId;
+      console.log(`📊 [SUPABASE] Storing opener by user_id: ${req.userId}`);
+    } else {
+      // Fallback to device_id for backward compatibility
+      insertData.device_id = deviceId;
+      console.log(`📊 [SUPABASE] Storing opener by device_id: ${deviceId} (fallback)`);
+    }
+
+    // ALWAYS insert opener data (save everything regardless of usage)
     const { data: openerData, error: openerError } = await supabase
       .from('openers')
-      .insert({
-        device_id: deviceId,
-        opener_text: openerText,
-        opener_setting: openerSetting,
-        opener_purpose: openerPurpose,
-        opener_was_used: openerWasUsed,
-        opener_was_successful: openerWasSuccessful,
-        opener_rating: openerRating,
-        opener_confidence_level: openerConfidenceLevel,
-        opener_notes: openerNotes,
-        opener_date: openerDate
-      })
+      .insert(insertData)
       .select()
       .single();
 
