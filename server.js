@@ -830,7 +830,7 @@ const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
   try {
     console.log(`🔧 [SUPABASE] Ensuring user record exists for user_id: ${userId}`);
     
-    // Check if user record exists with user_id
+    // First, check if user record exists with user_id
     const { data: existingUser, error: selectError } = await supabase
       .from('users')
       .select('*')
@@ -849,47 +849,59 @@ const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
     
     console.log(`🔧 [SUPABASE] No user record found for user_id: ${userId}, checking for device_id record...`);
     
-    // Check if there's an existing record with this device_id that needs user_id added
-    const { data: deviceUser, error: deviceError } = await supabase
+    // Check if there's an existing record with this device_id
+    const { data: deviceUsers, error: deviceError } = await supabase
       .from('users')
       .select('*')
-      .eq('device_id', deviceId)
-      .single();
+      .eq('device_id', deviceId);
     
-    if (deviceUser && !deviceUser.user_id) {
-      console.log(`🔧 [SUPABASE] Found existing device record, updating with user_id: ${userId}`);
-      
-      // Update existing device record with user_id
-      const { data: updatedUser, error: updateError } = await supabase
-        .from('users')
-        .update({ user_id: userId })
-        .eq('device_id', deviceId)
-        .select()
-        .single();
-      
-      if (updateError) {
-        console.error('❌ [SUPABASE] Error updating device record with user_id:', updateError);
-        throw updateError;
-      }
-      
-      console.log(`✅ [SUPABASE] Updated existing device record with user_id: ${userId}`, updatedUser);
-      return updatedUser;
-    } else if (deviceError && deviceError.code !== 'PGRST116') {
-      console.error('❌ [SUPABASE] Error checking device record:', deviceError);
+    if (deviceError) {
+      console.error('❌ [SUPABASE] Error checking device records:', deviceError);
       throw deviceError;
+    }
+    
+    if (deviceUsers && deviceUsers.length > 0) {
+      // Find a record without user_id to update
+      const deviceUserToUpdate = deviceUsers.find(user => !user.user_id);
+      
+      if (deviceUserToUpdate) {
+        console.log(`🔧 [SUPABASE] Found existing device record without user_id, updating with user_id: ${userId}`);
+        
+        // Update existing device record with user_id
+        const { data: updatedUser, error: updateError } = await supabase
+          .from('users')
+          .update({ user_id: userId })
+          .eq('device_id', deviceId)
+          .is('user_id', null)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error('❌ [SUPABASE] Error updating device record with user_id:', updateError);
+          throw updateError;
+        }
+        
+        console.log(`✅ [SUPABASE] Updated existing device record with user_id: ${userId}`, updatedUser);
+        return updatedUser;
+      } else {
+        console.log(`🔧 [SUPABASE] Device record exists but already has user_id, using existing record`);
+        return deviceUsers[0]; // Return the first record
+      }
     } else {
       console.log(`🔧 [SUPABASE] No device record found, creating new user record...`);
       
-      // Create new user record with user_id
+      // Create new user record with user_id - use UPSERT to handle conflicts
       const { data: newUser, error: insertError } = await supabase
         .from('users')
-        .insert({
+        .upsert({
+          device_id: deviceId, // Primary key
           user_id: userId,
-          device_id: deviceId, // Keep device_id for reference
           current_streak: 0,
           all_time_best_streak: 0,
           last_completion_date: null,
           created_at: new Date().toISOString()
+        }, {
+          onConflict: 'device_id'
         })
         .select()
         .single();
@@ -899,7 +911,7 @@ const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
         throw insertError;
       }
       
-      console.log(`✅ [SUPABASE] Created new user record for user_id: ${userId}`, newUser);
+      console.log(`✅ [SUPABASE] Created/updated user record for user_id: ${userId}`, newUser);
       return newUser;
     }
     
