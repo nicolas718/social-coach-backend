@@ -2279,33 +2279,46 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         let challengeActivities = null;
         
         if (req.authMethod === 'user_auth' && req.userId) {
-          // EMERGENCY FIX: Force query by user_id ONLY (all data is migrated)
-          console.log(`🚨 EMERGENCY FIX: Querying activities by user_id ONLY: ${req.userId}`);
+          // CRITICAL FIX: Query by BOTH user_id AND device_id to get all activity data
+          console.log(`🚨 CRITICAL FIX: Querying activities by BOTH user_id AND device_id for complete data`);
           
-          // Get ALL openers by user_id
+          // Get openers by user_id
           const { data: userOpeners, error: userOpenerError } = await supabase
             .from('openers')
             .select('opener_date')
             .eq('user_id', req.userId)
             .eq('opener_was_used', true);
-          
-          // Get ALL challenges by user_id  
+            
+          // Get openers by device_id
+          const { data: deviceOpeners, error: deviceOpenerError } = await supabase
+            .from('openers')
+            .select('opener_date')
+            .eq('device_id', deviceId)
+            .eq('opener_was_used', true);
+            
+          // Get challenges by user_id
           const { data: userChallenges, error: userChallengeError } = await supabase
             .from('daily_challenges')
             .select('challenge_date')
             .eq('user_id', req.userId);
+            
+          // Get challenges by device_id
+          const { data: deviceChallenges, error: deviceChallengeError } = await supabase
+            .from('daily_challenges')
+            .select('challenge_date')
+            .eq('device_id', deviceId);
           
-          // Use user data directly (no device data needed)
-          openerActivities = userOpeners || [];
-          challengeActivities = userChallenges || [];
+          // Combine all activities (user_id + device_id)
+          openerActivities = [...(userOpeners || []), ...(deviceOpeners || [])];
+          challengeActivities = [...(userChallenges || []), ...(deviceChallenges || [])];
           
-          console.log(`🚨 [SUPABASE] USER DATA ONLY: openers=${openerActivities.length}, challenges=${challengeActivities.length}`);
+          console.log(`🚨 [SUPABASE] COMBINED DATA: openers=${openerActivities.length} (user: ${userOpeners?.length || 0}, device: ${deviceOpeners?.length || 0}), challenges=${challengeActivities.length} (user: ${userChallenges?.length || 0}, device: ${deviceChallenges?.length || 0})`);
           
-          if (userOpenerError) {
-            console.error('❌ [SUPABASE] Error getting opener activities:', userOpenerError);
+          if (userOpenerError || deviceOpenerError) {
+            console.error('❌ [SUPABASE] Error getting opener activities:', { userOpenerError, deviceOpenerError });
           }
-          if (userChallengeError) {
-            console.error('❌ [SUPABASE] Error getting challenge activities:', userChallengeError);
+          if (userChallengeError || deviceChallengeError) {
+            console.error('❌ [SUPABASE] Error getting challenge activities:', { userChallengeError, deviceChallengeError });
           }
           
           if (openerActivities?.length > 0) {
