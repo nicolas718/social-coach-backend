@@ -2057,25 +2057,39 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
     let user = null;
     if (req.authMethod === 'user_auth' && req.userId) {
       console.log(`🚨 [ANALYTICS] Using authenticated user: ${req.userId}`);
-      const { data: authUser, error: authUserError } = await supabase
+      const { data: authUsers, error: authUserError } = await supabase
         .from('users')
         .select('*')
-        .eq('user_id', req.userId)
-        .single();
-      user = authUser;
-      if (authUserError && authUserError.code !== 'PGRST116') {
+        .eq('user_id', req.userId);
+      
+      if (authUserError) {
         console.error('❌ [ANALYTICS] Error getting authenticated user:', authUserError);
+      } else if (authUsers && authUsers.length > 0) {
+        user = authUsers[0];
+        console.log(`✅ [ANALYTICS] Found authenticated user record:`, {
+          user_id: user.user_id,
+          device_id: user.device_id,
+          current_streak: user.current_streak,
+          last_completion_date: user.last_completion_date
+        });
       }
     } else {
       console.log(`🔑 [ANALYTICS] Using device lookup: ${deviceId}`);
-      const { data: deviceUser, error: deviceUserError } = await supabase
+      const { data: deviceUsers, error: deviceUserError } = await supabase
         .from('users')
         .select('*')
-        .eq('device_id', deviceId)
-        .single();
-      user = deviceUser;
-      if (deviceUserError && deviceUserError.code !== 'PGRST116') {
+        .eq('device_id', deviceId);
+      
+      if (deviceUserError) {
         console.error('❌ [ANALYTICS] Error getting device user:', deviceUserError);
+      } else if (deviceUsers && deviceUsers.length > 0) {
+        user = deviceUsers[0];
+        console.log(`✅ [ANALYTICS] Found device user record:`, {
+          user_id: user.user_id,
+          device_id: user.device_id,
+          current_streak: user.current_streak,
+          last_completion_date: user.last_completion_date
+        });
       }
     }
 
@@ -2494,14 +2508,24 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
       if (req.authMethod === 'user_auth' && req.userId) {
         // Authenticated user - get user by user_id from auth
         console.log(`🔐 [SUPABASE] Using authenticated user: ${req.userId}`);
-        const { data: authUser, error: authUserError } = await supabase
+        const { data: authUsers, error: authUserError } = await supabase
           .from('users')
           .select('*')
-          .eq('user_id', req.userId)
-          .single();
+          .eq('user_id', req.userId);
         
-        user = authUser;
-        userError = authUserError;
+        if (authUserError) {
+          userError = authUserError;
+          console.error('❌ [HOME] Error getting authenticated user:', authUserError);
+        } else if (authUsers && authUsers.length > 0) {
+          user = authUsers[0];
+          console.log(`✅ [HOME] Found authenticated user record:`, {
+            user_id: user.user_id,
+            device_id: user.device_id,
+            current_streak: user.current_streak,
+            last_completion_date: user.last_completion_date
+          });
+        }
+        
         console.log(`🎯 [SUPABASE] Auth user lookup result: ${user ? 'Found user' : 'No user'} (error: ${userError?.code || 'none'})`);
         if (user) {
           console.log(`🎯 [SUPABASE] User details: device_id=${user.device_id}, user_id=${user.user_id}, created=${user.created_at}`);
@@ -2509,14 +2533,24 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
       } else {
         // API key authentication - use device_id lookup (legacy)
         console.log(`🔑 [SUPABASE] Using API key auth, device lookup: ${deviceId}`);
-        const { data: deviceUser, error: deviceUserError } = await supabase
+        const { data: deviceUsers, error: deviceUserError } = await supabase
           .from('users')
           .select('*')
-          .eq('device_id', deviceId)
-          .single();
+          .eq('device_id', deviceId);
         
-        user = deviceUser;
-        userError = deviceUserError;
+        if (deviceUserError) {
+          userError = deviceUserError;
+          console.error('❌ [HOME] Error getting device user:', deviceUserError);
+        } else if (deviceUsers && deviceUsers.length > 0) {
+          user = deviceUsers[0];
+          console.log(`✅ [HOME] Found device user record:`, {
+            user_id: user.user_id,
+            device_id: user.device_id,
+            current_streak: user.current_streak,
+            last_completion_date: user.last_completion_date
+          });
+        }
+        
         console.log(`🎯 [SUPABASE] Device lookup result: ${user ? 'Found user' : 'No user'} (error: ${userError?.code || 'none'})`);
       }
       
