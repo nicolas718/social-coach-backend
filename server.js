@@ -3996,6 +3996,181 @@ app.post('/api/emergency/direct-migration', requireApiKey, async (req, res) => {
   }
 });
 
+// DEBUG: Show user record from users table
+app.get('/api/debug/user-record/:userId', requireApiKey, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(`🔍 Searching for user record: ${userId}`);
+    
+    // Get user record by user_id
+    const { data: userRecord, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (userError && userError.code !== 'PGRST116') {
+      console.error('❌ Error getting user record:', userError);
+      return res.status(500).json({ error: 'Failed to get user record' });
+    }
+    
+    res.json({
+      user_id: userId,
+      user_record: userRecord || null,
+      exists: !!userRecord
+    });
+    
+  } catch (error) {
+    console.error('❌ Error finding user record:', error);
+    res.status(500).json({ error: 'Failed to find user record' });
+  }
+});
+
+// EMERGENCY: Create/update user record with correct streak data
+app.post('/api/emergency/fix-user-streak', requireApiKey, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+    
+    console.log(`🚨 FIXING USER STREAK: ${userId}`);
+    
+    // Get all challenges for this user to calculate correct streak
+    const { data: challenges, error: challengeError } = await supabase
+      .from('daily_challenges')
+      .select('challenge_date, created_at')
+      .eq('user_id', userId)
+      .order('challenge_date', { ascending: false });
+    
+    if (challengeError) {
+      console.error('❌ Error getting challenges:', challengeError);
+      return res.status(500).json({ error: 'Failed to get challenges' });
+    }
+    
+    // Calculate current streak from challenge dates
+    const challengeDates = challenges.map(c => c.challenge_date).sort().reverse();
+    let currentStreak = 0;
+    let allTimeMaxStreak = 0;
+    let lastCompletionDate = null;
+    
+    if (challengeDates.length > 0) {
+      lastCompletionDate = challengeDates[0];
+      
+      // Calculate current streak (consecutive days from most recent)
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      if (challengeDates.includes(today) || challengeDates.includes(yesterday)) {
+        // Start counting from most recent date
+        const sortedDates = [...new Set(challengeDates)].sort().reverse();
+        const startDate = new Date(sortedDates[0]);
+        
+        for (let i = 0; i < sortedDates.length; i++) {
+          const currentDate = new Date(sortedDates[i]);
+          const expectedDate = new Date(startDate);
+          expectedDate.setDate(startDate.getDate() - i);
+          
+          if (currentDate.toISOString().split('T')[0] === expectedDate.toISOString().split('T')[0]) {
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+      
+      // Calculate all-time max streak
+      let tempStreak = 0;
+      const uniqueDates = [...new Set(challengeDates)].sort();
+      for (let i = 0; i < uniqueDates.length; i++) {
+        if (i === 0) {
+          tempStreak = 1;
+        } else {
+          const prevDate = new Date(uniqueDates[i-1]);
+          const currDate = new Date(uniqueDates[i]);
+          const dayDiff = (currDate - prevDate) / (1000 * 60 * 60 * 24);
+          
+          if (dayDiff === 1) {
+            tempStreak++;
+          } else {
+            allTimeMaxStreak = Math.max(allTimeMaxStreak, tempStreak);
+            tempStreak = 1;
+          }
+        }
+      }
+      allTimeMaxStreak = Math.max(allTimeMaxStreak, tempStreak);
+    }
+    
+    console.log(`🚨 CALCULATED STREAKS: current=${currentStreak}, max=${allTimeMaxStreak}, lastDate=${lastCompletionDate}`);
+    
+    // Check if user record exists
+    const { data: existingUser, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    let result;
+    if (userError && userError.code === 'PGRST116') {
+      // User doesn't exist, create new record
+      console.log(`🚨 Creating new user record for ${userId}`);
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert({
+          user_id: userId,
+          current_streak: currentStreak,
+          all_time_best_streak: allTimeMaxStreak,
+          last_completion_date: lastCompletionDate,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('❌ Error creating user:', insertError);
+        return res.status(500).json({ error: 'Failed to create user' });
+      }
+      result = newUser;
+    } else {
+      // User exists, update record
+      console.log(`🚨 Updating existing user record for ${userId}`);
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({
+          current_streak: currentStreak,
+          all_time_best_streak: allTimeMaxStreak,
+          last_completion_date: lastCompletionDate
+        })
+        .eq('user_id', userId)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error('❌ Error updating user:', updateError);
+        return res.status(500).json({ error: 'Failed to update user' });
+      }
+      result = updatedUser;
+    }
+    
+    res.json({
+      success: true,
+      message: 'User streak fixed',
+      user_record: result,
+      calculated_streaks: {
+        current_streak: currentStreak,
+        all_time_best_streak: allTimeMaxStreak,
+        last_completion_date: lastCompletionDate,
+        total_challenges: challenges.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Fix user streak failed:', error);
+    res.status(500).json({ error: 'Fix user streak failed' });
+  }
+});
+
 // DEBUG: Show exact user data
 app.get('/api/debug/user-data/:userId', requireApiKey, async (req, res) => {
   try {
