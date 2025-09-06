@@ -826,6 +826,111 @@ app.get('/api/test/social-zones', requireApiKey, (req, res) => {
 // SQLite helper function removed - using ensureUserExistsSupabase() instead
 
 // Supabase version of streak update - 100% accurate replication of SQLite logic
+// Update user streak by user_id (for authenticated users)
+const updateUserStreakSupabaseByUserId = async (userId, actionDate) => {
+  console.log(`=== SUPABASE STREAK DEBUG for user_id ${userId} ===`);
+  
+  try {
+    // Get user data from Supabase by user_id
+    const { data: user, error: selectError } = await supabase
+      .from('users')
+      .select('current_streak, all_time_best_streak, last_completion_date')
+      .eq('user_id', userId)
+      .single();
+    
+    if (selectError) {
+      console.error('❌ [SUPABASE] Error getting user by user_id for streak update:', selectError);
+      throw selectError;
+    }
+
+    console.log('[SUPABASE] Current user data (by user_id):', {
+      current_streak: user.current_streak,
+      all_time_best_streak: user.all_time_best_streak,
+      last_completion_date: user.last_completion_date
+    });
+    console.log('[SUPABASE] New action date:', actionDate);
+
+    let newStreak = 1;
+    let newBestStreak = user.all_time_best_streak || 0;
+    
+    if (user.last_completion_date) {
+      // EXACT SAME date parsing logic as SQLite version
+      const lastDateStr = user.last_completion_date.split('T')[0]; // Get YYYY-MM-DD part
+      const currentDateStr = actionDate.split('T')[0]; // Get YYYY-MM-DD part
+      
+      const lastDate = new Date(lastDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
+      const currentDate = new Date(currentDateStr + 'T00:00:00Z'); // Normalize to UTC midnight
+      
+      // Calculate difference in days (EXACT SAME calculation)
+      const timeDiff = currentDate.getTime() - lastDate.getTime();
+      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+      
+      console.log('[SUPABASE] Date comparison (by user_id):', {
+        lastDateStr,
+        currentDateStr,
+        lastDate: lastDate.toISOString(),
+        currentDate: currentDate.toISOString(),
+        timeDiff,
+        daysDiff
+      });
+      
+      // EXACT SAME streak logic as SQLite version
+      if (daysDiff === 1) {
+        // Consecutive day - increment streak
+        newStreak = (user.current_streak || 0) + 1;
+        console.log(`[SUPABASE] Consecutive day detected! Incrementing streak: ${user.current_streak} → ${newStreak}`);
+      } else if (daysDiff === 0) {
+        // Same day - keep current streak, don't increment for same-day actions
+        newStreak = user.current_streak || 1;
+        console.log(`[SUPABASE] Same day detected. Keeping streak at: ${newStreak}`);
+      } else {
+        // Gap > 1 day - streak resets to 1
+        console.log(`[SUPABASE] Gap detected (${daysDiff} days). Resetting streak to 1`);
+        newStreak = 1;
+      }
+    } else {
+      console.log('[SUPABASE] No previous completion date. Starting new streak at 1');
+    }
+    
+    // Update best streak if current is higher (EXACT SAME logic)
+    if (newStreak > newBestStreak) {
+      newBestStreak = newStreak;
+      console.log(`[SUPABASE] New best streak! ${newBestStreak}`);
+    }
+    
+    console.log(`[SUPABASE] Final streak values (by user_id): current=${newStreak}, best=${newBestStreak}`);
+    
+    // Update user record in Supabase (equivalent to SQLite UPDATE)
+    const { data: updateData, error: updateError } = await supabase
+      .from('users')
+      .update({
+        current_streak: newStreak,
+        all_time_best_streak: newBestStreak,
+        last_completion_date: actionDate
+      })
+      .eq('user_id', userId)
+      .select();
+    
+    if (updateError) {
+      console.error('❌ [SUPABASE] Error updating user streak by user_id:', updateError);
+      throw updateError;
+    }
+    
+    console.log(`✅ [SUPABASE] User streak updated successfully by user_id: ${userId}`, updateData);
+    
+    return {
+      success: true,
+      newStreak,
+      newBestStreak,
+      actionDate
+    };
+    
+  } catch (error) {
+    console.error(`❌ [SUPABASE] Error in updateUserStreakSupabaseByUserId for ${userId}:`, error);
+    throw error;
+  }
+};
+
 const updateUserStreakSupabase = async (deviceId, actionDate) => {
   console.log(`=== SUPABASE STREAK DEBUG for ${deviceId} ===`);
   
@@ -1441,8 +1546,15 @@ app.post('/api/data/challenge', requireApiKeyOrAuth, async (req, res) => {
 
     console.log(`✅ [SUPABASE] Challenge saved successfully for ${deviceId}, now updating streak...`);
 
-    // Update streak using Supabase version - 100% accurate replication
-    const streakResult = await updateUserStreakSupabase(deviceId, challengeDate);
+    // Update streak using Supabase version - use correct identifier based on auth method
+    let streakResult;
+    if (req.authMethod === 'user_auth' && req.userId) {
+      console.log(`🚨 [SUPABASE] Updating streak by user_id: ${req.userId}`);
+      streakResult = await updateUserStreakSupabaseByUserId(req.userId, challengeDate);
+    } else {
+      console.log(`🔑 [SUPABASE] Updating streak by device_id: ${deviceId}`);
+      streakResult = await updateUserStreakSupabase(deviceId, challengeDate);
+    }
     
     console.log(`✅ [SUPABASE] Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
 
