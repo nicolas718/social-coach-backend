@@ -1828,7 +1828,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         console.log(`📊 [SUPABASE] ANALYTICS: No user found but authenticated user detected, continuing...`);
       }
 
-    console.log(`📊 [SUPABASE] ANALYTICS: User found - current_streak: ${user.current_streak}, best_streak: ${user.all_time_best_streak}`);
+    console.log(`📊 [SUPABASE] ANALYTICS: User data - current_streak: ${user?.current_streak || 0}, best_streak: ${user?.all_time_best_streak || 0}`);
 
     // Get ALL data from SUPABASE for analytics calculations
     console.log(`📊 [SUPABASE] ANALYTICS: Fetching all data for comprehensive calculations`);
