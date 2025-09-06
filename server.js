@@ -2185,39 +2185,61 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         let challengeActivities = null;
         
         if (req.authMethod === 'user_auth' && user?.user_id) {
-          // Authenticated user - query by user_id
-          console.log(`🔐 [SUPABASE] Querying activities by user_id: ${user.user_id}`);
+          // Authenticated user - query by BOTH user_id AND device_id to get ALL data
+          console.log(`🔐 [SUPABASE] CRITICAL FIX: Querying activities by BOTH user_id AND device_id for complete history`);
           
-          const { data: userOpeners, error: openerError } = await supabase
+          // Get openers by user_id (new data)
+          const { data: userOpeners, error: userOpenerError } = await supabase
             .from('openers')
             .select('opener_date')
             .eq('user_id', user.user_id)
             .eq('opener_was_used', true);
-            
-          if (openerError) {
-            console.error('❌ [SUPABASE] Error getting opener activities by user_id:', openerError);
-            return res.status(500).json({ error: 'Database error getting opener activities' });
-          }
-            
-          const { data: userChallenges, error: challengeError } = await supabase
+          
+          // Get openers by device_id (legacy data) - exclude already migrated records
+          const { data: deviceOpeners, error: deviceOpenerError } = await supabase
+            .from('openers')
+            .select('opener_date')
+            .eq('device_id', deviceId)
+            .is('user_id', null)
+            .eq('opener_was_used', true);
+          
+          // Get challenges by user_id (new data)  
+          const { data: userChallenges, error: userChallengeError } = await supabase
             .from('daily_challenges')
             .select('challenge_date')
             .eq('user_id', user.user_id);
-            
-          if (challengeError) {
-            console.error('❌ [SUPABASE] Error getting challenge activities by user_id:', challengeError);
-            return res.status(500).json({ error: 'Database error getting challenge activities' });
-          }
           
-          openerActivities = userOpeners;
-          challengeActivities = userChallenges;
-          console.log(`✅ [SUPABASE] Found activities by user_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
+          // Get challenges by device_id (legacy data) - exclude already migrated records
+          const { data: deviceChallenges, error: deviceChallengeError } = await supabase
+            .from('daily_challenges')
+            .select('challenge_date')
+            .eq('device_id', deviceId)
+            .is('user_id', null);
+          
+          // Combine all data
+          openerActivities = [
+            ...(userOpeners || []),
+            ...(deviceOpeners || [])
+          ];
+          challengeActivities = [
+            ...(userChallenges || []),
+            ...(deviceChallenges || [])
+          ];
+          
+          console.log(`🔥 [SUPABASE] COMBINED DATA: openers(user=${userOpeners?.length || 0} + device=${deviceOpeners?.length || 0} = ${openerActivities.length}), challenges(user=${userChallenges?.length || 0} + device=${deviceChallenges?.length || 0} = ${challengeActivities.length})`);
+          
+          if (openerError || userOpenerError || deviceOpenerError) {
+            console.error('❌ [SUPABASE] Error getting opener activities:', { openerError, userOpenerError, deviceOpenerError });
+          }
+          if (challengeError || userChallengeError || deviceChallengeError) {
+            console.error('❌ [SUPABASE] Error getting challenge activities:', { challengeError, userChallengeError, deviceChallengeError });
+          }
           
           if (openerActivities?.length > 0) {
-            console.log(`🔍 [SUPABASE] Opener dates: ${openerActivities.map(o => o.opener_date).join(', ')}`);
+            console.log(`🔍 [SUPABASE] ALL Opener dates: ${openerActivities.map(o => o.opener_date).join(', ')}`);
           }
           if (challengeActivities?.length > 0) {
-            console.log(`🔍 [SUPABASE] Challenge dates: ${challengeActivities.map(c => c.challenge_date).join(', ')}`);
+            console.log(`🔍 [SUPABASE] ALL Challenge dates: ${challengeActivities.map(c => c.challenge_date).join(', ')}`);
           }
           
         } else {
