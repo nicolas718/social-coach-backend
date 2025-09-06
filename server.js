@@ -1757,10 +1757,22 @@ app.post('/api/data/opener', requireApiKeyOrAuth, async (req, res) => {
       });
     }
 
-    // Update streak if opener was used (SAME LOGIC as SQLite version)
-          if (openerWasUsed === true) {
+    // Update streak if opener was used - use correct identifier based on auth method
+    if (openerWasUsed === true) {
       try {
-        await updateUserStreakSupabase(deviceId, openerDate);
+        let streakResult;
+        if (req.authMethod === 'user_auth' && req.userId) {
+          console.log(`🚨 [SUPABASE] Updating opener streak by user_id: ${req.userId}`);
+          
+          // Ensure user record exists with user_id before updating streak
+          await ensureUserRecordWithUserId(req.userId, deviceId, openerDate);
+          
+          streakResult = await updateUserStreakSupabaseByUserId(req.userId, openerDate);
+        } else {
+          console.log(`🔑 [SUPABASE] Updating opener streak by device_id: ${deviceId}`);
+          streakResult = await updateUserStreakSupabase(deviceId, openerDate);
+        }
+        
         console.log(`✅ [SUPABASE] Opener streak updated for ${deviceId}`);
       } catch (streakErr) {
         console.error('❌ [SUPABASE] Error updating streak after opener:', streakErr);
