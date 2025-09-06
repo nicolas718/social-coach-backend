@@ -825,6 +825,58 @@ app.get('/api/test/social-zones', requireApiKey, (req, res) => {
 
 // SQLite helper function removed - using ensureUserExistsSupabase() instead
 
+// Ensure user record exists with user_id (for authenticated users)
+const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
+  try {
+    console.log(`🔧 [SUPABASE] Ensuring user record exists for user_id: ${userId}`);
+    
+    // Check if user record exists with user_id
+    const { data: existingUser, error: selectError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (existingUser) {
+      console.log(`✅ [SUPABASE] User record already exists for user_id: ${userId}`);
+      return existingUser;
+    }
+    
+    if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('❌ [SUPABASE] Error checking user record:', selectError);
+      throw selectError;
+    }
+    
+    console.log(`🔧 [SUPABASE] No user record found for user_id: ${userId}, creating new record...`);
+    
+    // Create new user record with user_id
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert({
+        user_id: userId,
+        device_id: deviceId, // Keep device_id for reference
+        current_streak: 0,
+        all_time_best_streak: 0,
+        last_completion_date: null,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (insertError) {
+      console.error('❌ [SUPABASE] Error creating user record with user_id:', insertError);
+      throw insertError;
+    }
+    
+    console.log(`✅ [SUPABASE] Created new user record for user_id: ${userId}`, newUser);
+    return newUser;
+    
+  } catch (error) {
+    console.error(`❌ [SUPABASE] Error in ensureUserRecordWithUserId for ${userId}:`, error);
+    throw error;
+  }
+};
+
 // Supabase version of streak update - 100% accurate replication of SQLite logic
 // Update user streak by user_id (for authenticated users)
 const updateUserStreakSupabaseByUserId = async (userId, actionDate) => {
@@ -1550,6 +1602,10 @@ app.post('/api/data/challenge', requireApiKeyOrAuth, async (req, res) => {
     let streakResult;
     if (req.authMethod === 'user_auth' && req.userId) {
       console.log(`🚨 [SUPABASE] Updating streak by user_id: ${req.userId}`);
+      
+      // Ensure user record exists with user_id before updating streak
+      await ensureUserRecordWithUserId(req.userId, deviceId, challengeDate);
+      
       streakResult = await updateUserStreakSupabaseByUserId(req.userId, challengeDate);
     } else {
       console.log(`🔑 [SUPABASE] Updating streak by device_id: ${deviceId}`);
