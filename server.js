@@ -2222,7 +2222,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
-            socialZoneLevel: zone.level,
+            socialZoneLevel: zone?.level || "Warming Up",
             socialConfidencePercentage: Math.round(socialConfidencePercentage),
             weeklyActivity: weeklyActivityArray,
             overallSuccessRate: Math.round(overallSuccessRate),
