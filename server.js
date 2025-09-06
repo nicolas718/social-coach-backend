@@ -1954,7 +1954,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
               return maxRun;
             };
     const derivedBestStreak = computeMaxConsecutiveStreak(allActivityDates);
-            const allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
+            let allTimeMaxStreak = Math.max(user?.all_time_best_streak || 0, derivedBestStreak);
 
     // Calculate lastAchievedLevel (same logic as other endpoints)  
             const toISO = (d) => d.toISOString().split('T')[0];
