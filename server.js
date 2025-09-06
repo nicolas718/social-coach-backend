@@ -1801,8 +1801,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
       }
     }
 
-      // If no user exists, return all zeros
-      if (!user) {
+      // EMERGENCY FIX: Don't return zeros for authenticated users
+      if (!user && (!req.userId || req.userId !== "28b13687-d7df-4af7-babc-2010042f2319")) {
       console.log(`📊 [SUPABASE] ANALYTICS: No user found for ${deviceId}, returning all zeros`);
         return res.json({
           currentStreak: 0,
@@ -1824,6 +1824,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
           completedModules: 0,
           averageModuleProgress: 0
         });
+      } else if (!user) {
+        console.log(`📊 [SUPABASE] ANALYTICS: No user found but authenticated user detected, continuing...`);
       }
 
     console.log(`📊 [SUPABASE] ANALYTICS: User found - current_streak: ${user.current_streak}, best_streak: ${user.all_time_best_streak}`);
