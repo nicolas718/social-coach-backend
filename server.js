@@ -3881,6 +3881,64 @@ app.get('/api/data/development-progress/:deviceId', async (req, res) => {
   }
 });
 
+// EMERGENCY FIX: Manual data sync for user account
+app.post('/api/emergency/sync-user-data', requireApiKeyOrAuth, async (req, res) => {
+  try {
+    const { phoneDeviceId, simulatorDeviceId } = req.body;
+    
+    if (!phoneDeviceId || !simulatorDeviceId) {
+      return res.status(400).json({ error: 'Both phoneDeviceId and simulatorDeviceId required' });
+    }
+    
+    console.log(`🚨 EMERGENCY SYNC: Phone=${phoneDeviceId}, Simulator=${simulatorDeviceId}, User=${req.userId}`);
+    
+    if (!req.userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+    
+    // Step 1: Get ALL phone data
+    const { data: phoneOpeners } = await supabase
+      .from('openers')
+      .select('*')
+      .eq('device_id', phoneDeviceId);
+      
+    const { data: phoneChallenges } = await supabase
+      .from('daily_challenges')
+      .select('*')
+      .eq('device_id', phoneDeviceId);
+    
+    // Step 2: Update ALL phone data to user_id
+    if (phoneOpeners?.length > 0) {
+      await supabase
+        .from('openers')
+        .update({ user_id: req.userId })
+        .eq('device_id', phoneDeviceId);
+    }
+    
+    if (phoneChallenges?.length > 0) {
+      await supabase
+        .from('daily_challenges')
+        .update({ user_id: req.userId })
+        .eq('device_id', phoneDeviceId);
+    }
+    
+    console.log(`🚨 EMERGENCY SYNC COMPLETE: Updated ${phoneOpeners?.length || 0} openers, ${phoneChallenges?.length || 0} challenges`);
+    
+    res.json({
+      success: true,
+      message: 'Emergency data sync completed',
+      synced: {
+        openers: phoneOpeners?.length || 0,
+        challenges: phoneChallenges?.length || 0
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Emergency sync failed:', error);
+    res.status(500).json({ error: 'Emergency sync failed' });
+  }
+});
+
 // DEBUG: Find all device IDs with actual data
 app.get('/api/debug/find-devices', requireApiKey, async (req, res) => {
   try {
