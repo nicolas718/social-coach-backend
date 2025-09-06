@@ -3391,14 +3391,8 @@ app.get('/api/data/opener-library/:deviceId', requireApiKeyOrAuth, async (req, r
     let usedOpeners = allOpeners?.filter(o => o.opener_was_used === true).length || 0;
     let successfulOpeners = allOpeners?.filter(o => o.opener_was_used === true && o.opener_was_successful === true).length || 0;
     
-    // EMERGENCY FIX: Force correct opener library data for authenticated user
-    if (req.authMethod === 'user_auth' && req.userId === "28b13687-d7df-4af7-babc-2010042f2319") {
-      console.log(`🚨 [OPENER LIBRARY] EMERGENCY: Force correct data for authenticated user`);
-      totalOpeners = 8; // Updated count from database
-      usedOpeners = 8; // All openers are used
-      successfulOpeners = 6; // Most are successful
-      console.log(`🚨 [OPENER LIBRARY] OVERRIDE: total=${totalOpeners}, used=${usedOpeners}, successful=${successfulOpeners}`);
-    }
+    // Let real data show through - no override needed
+    console.log(`📚 [OPENER LIBRARY] REAL DATA: total=${totalOpeners}, used=${usedOpeners}, successful=${successfulOpeners}`);
 
     // Calculate success rate (successful / used openers) - same logic as SQLite version
     const successRate = usedOpeners > 0 
