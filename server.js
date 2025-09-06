@@ -2392,6 +2392,11 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         // Remove duplicates and sort (same as SQLite DISTINCT and ORDER BY)
         const activityDates = [...new Set(allActivityDates)].sort();
         
+        console.log(`🎯🎯🎯 WEEKLY SQUARES DEBUG 🎯🎯🎯`);
+        console.log(`🎯 [ACTIVITY DATES] All activity dates found: [${activityDates.join(', ')}]`);
+        console.log(`🎯 [OPENER ACTIVITIES] Count: ${openerActivities?.length || 0}`);
+        console.log(`🎯 [CHALLENGE ACTIVITIES] Count: ${challengeActivities?.length || 0}`);
+        
         // FIXED: Account creation logic for proper week bar colors - NOW USES ACTIVITY DATA
         let accountCreationDate;
         if (user && user.created_at) {
@@ -2425,6 +2430,11 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         
         // Step 3: Build week bar using SUPABASE activity data (6 previous days + today)
         const weekBar = [];
+        
+        console.log(`🎯🎯🎯 WEEK BAR DEBUG 🎯🎯🎯`);
+        console.log(`🎯 [WEEK BAR] Today: ${today.toISOString().split('T')[0]}`);
+        console.log(`🎯 [WEEK BAR] Account creation: ${accountCreationDate.toISOString().split('T')[0]}`);
+        console.log(`🎯 [WEEK BAR] Activity dates: [${activityDates.join(', ')}]`);
         
                   for (let i = 6; i >= 0; i--) {
                     const checkDate = new Date(today);
