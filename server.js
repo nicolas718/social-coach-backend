@@ -670,6 +670,7 @@ async function requireApiKeyOrAuth(req, res, next) {
   if (authHeader) {
     try {
       const token = authHeader.replace('Bearer ', '');
+      console.log(`🔍 BACKEND JWT DEBUG: Received token: ${token.substring(0, 50)}...`);
       const { data: { user }, error } = await supabase.auth.getUser(token);
       
       if (!error && user) {
@@ -678,6 +679,8 @@ async function requireApiKeyOrAuth(req, res, next) {
         req.authMethod = 'user_auth';
         console.log(`🔐 User authentication successful: ${user.id}`);
         return next();
+      } else {
+        console.log(`❌ JWT token validation failed: ${error?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('❌ User authentication failed:', error);
