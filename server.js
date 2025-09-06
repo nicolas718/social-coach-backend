@@ -847,29 +847,61 @@ const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
       throw selectError;
     }
     
-    console.log(`🔧 [SUPABASE] No user record found for user_id: ${userId}, creating new record...`);
+    console.log(`🔧 [SUPABASE] No user record found for user_id: ${userId}, checking for device_id record...`);
     
-    // Create new user record with user_id
-    const { data: newUser, error: insertError } = await supabase
+    // Check if there's an existing record with this device_id that needs user_id added
+    const { data: deviceUser, error: deviceError } = await supabase
       .from('users')
-      .insert({
-        user_id: userId,
-        device_id: deviceId, // Keep device_id for reference
-        current_streak: 0,
-        all_time_best_streak: 0,
-        last_completion_date: null,
-        created_at: new Date().toISOString()
-      })
-      .select()
+      .select('*')
+      .eq('device_id', deviceId)
       .single();
     
-    if (insertError) {
-      console.error('❌ [SUPABASE] Error creating user record with user_id:', insertError);
-      throw insertError;
+    if (deviceUser && !deviceUser.user_id) {
+      console.log(`🔧 [SUPABASE] Found existing device record, updating with user_id: ${userId}`);
+      
+      // Update existing device record with user_id
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({ user_id: userId })
+        .eq('device_id', deviceId)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error('❌ [SUPABASE] Error updating device record with user_id:', updateError);
+        throw updateError;
+      }
+      
+      console.log(`✅ [SUPABASE] Updated existing device record with user_id: ${userId}`, updatedUser);
+      return updatedUser;
+    } else if (deviceError && deviceError.code !== 'PGRST116') {
+      console.error('❌ [SUPABASE] Error checking device record:', deviceError);
+      throw deviceError;
+    } else {
+      console.log(`🔧 [SUPABASE] No device record found, creating new user record...`);
+      
+      // Create new user record with user_id
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert({
+          user_id: userId,
+          device_id: deviceId, // Keep device_id for reference
+          current_streak: 0,
+          all_time_best_streak: 0,
+          last_completion_date: null,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('❌ [SUPABASE] Error creating user record with user_id:', insertError);
+        throw insertError;
+      }
+      
+      console.log(`✅ [SUPABASE] Created new user record for user_id: ${userId}`, newUser);
+      return newUser;
     }
-    
-    console.log(`✅ [SUPABASE] Created new user record for user_id: ${userId}`, newUser);
-    return newUser;
     
   } catch (error) {
     console.error(`❌ [SUPABASE] Error in ensureUserRecordWithUserId for ${userId}:`, error);
