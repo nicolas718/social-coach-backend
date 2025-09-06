@@ -930,16 +930,22 @@ const updateUserStreakSupabaseByUserId = async (userId, actionDate) => {
   
   try {
     // Get user data from Supabase by user_id
-    const { data: user, error: selectError } = await supabase
+    const { data: users, error: selectError } = await supabase
       .from('users')
       .select('current_streak, all_time_best_streak, last_completion_date')
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
     
     if (selectError) {
       console.error('❌ [SUPABASE] Error getting user by user_id for streak update:', selectError);
       throw selectError;
     }
+    
+    if (!users || users.length === 0) {
+      console.error('❌ [SUPABASE] No user found with user_id for streak update:', userId);
+      throw new Error(`No user found with user_id: ${userId}`);
+    }
+    
+    const user = users[0]; // Get the first user record
 
     console.log('[SUPABASE] Current user data (by user_id):', {
       current_streak: user.current_streak,
