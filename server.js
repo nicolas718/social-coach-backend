@@ -2156,6 +2156,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
           // Return complete analytics data
           res.json({
             _DEBUG_NEW_VERSION: 'v8.2.0-GRACE-RECOVERY-PROGRESSIVE',
+            _DEBUG_NUCLEAR_FIX_DEPLOYED: 'YES-NUCLEAR-FIX-ACTIVE',
             _DEBUG_GRACE_WORKING: zoneInfo,
             currentStreak: finalCurrentStreak,
             allTimeBestStreak: finalAllTimeMaxStreak,
