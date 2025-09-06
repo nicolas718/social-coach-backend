@@ -2117,6 +2117,9 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
         user = authUser;
         userError = authUserError;
         console.log(`🎯 [SUPABASE] Auth user lookup result: ${user ? 'Found user' : 'No user'} (error: ${userError?.code || 'none'})`);
+        if (user) {
+          console.log(`🎯 [SUPABASE] User details: device_id=${user.device_id}, user_id=${user.user_id}, created=${user.created_at}`);
+        }
       } else {
         // API key authentication - use device_id lookup (legacy)
         console.log(`🔑 [SUPABASE] Using API key auth, device lookup: ${deviceId}`);
@@ -2181,6 +2184,13 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           openerActivities = userOpeners;
           challengeActivities = userChallenges;
           console.log(`✅ [SUPABASE] Found activities by user_id: openers=${openerActivities?.length || 0}, challenges=${challengeActivities?.length || 0}`);
+          
+          if (openerActivities?.length > 0) {
+            console.log(`🔍 [SUPABASE] Opener dates: ${openerActivities.map(o => o.opener_date).join(', ')}`);
+          }
+          if (challengeActivities?.length > 0) {
+            console.log(`🔍 [SUPABASE] Challenge dates: ${challengeActivities.map(c => c.challenge_date).join(', ')}`);
+          }
           
         } else {
           // API key authentication - if user has user_id (migrated), query by BOTH user_id AND device_id to find all activity
