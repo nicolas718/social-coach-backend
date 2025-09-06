@@ -2219,10 +2219,10 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
           res.json({
             _DEBUG_NEW_VERSION: 'v8.2.0-GRACE-RECOVERY-PROGRESSIVE',
             _DEBUG_NUCLEAR_FIX_DEPLOYED: 'DISABLED-FOR-RESET-TESTING',
-            _DEBUG_GRACE_WORKING: zoneInfo,
+            _DEBUG_GRACE_WORKING: zoneInfo || { level: "Warming Up", isInGracePeriod: false },
             currentStreak: currentStreak,
             allTimeBestStreak: allTimeMaxStreak,
-            socialZoneLevel: zone?.level || "Warming Up",
+            socialZoneLevel: zoneInfo?.level || "Warming Up",
             socialConfidencePercentage: Math.round(socialConfidencePercentage),
             weeklyActivity: weeklyActivityArray,
             overallSuccessRate: Math.round(overallSuccessRate),
