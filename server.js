@@ -1798,15 +1798,29 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
     // Get ALL data from SUPABASE for analytics calculations
     console.log(`📊 [SUPABASE] ANALYTICS: Fetching all data for comprehensive calculations`);
 
-    // Get all challenges from Supabase
-    const { data: allChallenges, error: challengesError } = await supabase
-      .from('daily_challenges')
-      .select('*')
-      .eq('device_id', deviceId);
-
-    if (challengesError) {
-      console.error('❌ [SUPABASE] Error getting challenges for analytics:', challengesError);
-      return res.status(500).json({ error: 'Database error getting challenges' });
+    // Get all challenges from Supabase - use same auth logic as activity queries
+    let allChallenges = [];
+    if (req.authMethod === 'user_auth' && req.userId) {
+      console.log(`🚨 [ANALYTICS] Using user_id for challenge analytics: ${req.userId}`);
+      const { data: userChallenges, error: challengesError } = await supabase
+        .from('daily_challenges')
+        .select('*')
+        .eq('user_id', req.userId);
+      allChallenges = userChallenges || [];
+      if (challengesError) {
+        console.error('❌ [SUPABASE] Error getting challenges for analytics:', challengesError);
+        return res.status(500).json({ error: 'Database error getting challenges' });
+      }
+    } else {
+      const { data: deviceChallenges, error: challengesError } = await supabase
+        .from('daily_challenges')
+        .select('*')
+        .eq('device_id', deviceId);
+      allChallenges = deviceChallenges || [];
+      if (challengesError) {
+        console.error('❌ [SUPABASE] Error getting challenges for analytics:', challengesError);
+        return res.status(500).json({ error: 'Database error getting challenges' });
+      }
     }
 
     // Get all openers from Supabase
@@ -2524,14 +2538,23 @@ app.get('/api/data/analytics/:deviceId', async (req, res) => {
           zoneFromFunction: zone
         });
 
-        // Get total challenges count for reset dialog
-        const { data: allChallenges, error: challengeCountError } = await supabase
-          .from('daily_challenges')
-          .select('id')
-          .eq('device_id', deviceId);
-        
-        const totalChallenges = allChallenges?.length || 0;
-        console.log(`🎯 [SUPABASE] HOME: Total challenges for device: ${totalChallenges}`);
+        // Get total challenges count for reset dialog - use same auth logic
+        let totalChallenges = 0;
+        if (req.authMethod === 'user_auth' && req.userId) {
+          console.log(`🚨 [HOME] Using user_id for challenge count: ${req.userId}`);
+          const { data: userChallenges, error: challengeCountError } = await supabase
+            .from('daily_challenges')
+            .select('id')
+            .eq('user_id', req.userId);
+          totalChallenges = userChallenges?.length || 0;
+        } else {
+          const { data: deviceChallenges, error: challengeCountError } = await supabase
+            .from('daily_challenges')
+            .select('id')
+            .eq('device_id', deviceId);
+          totalChallenges = deviceChallenges?.length || 0;
+        }
+        console.log(`🎯 [SUPABASE] HOME: Total challenges: ${totalChallenges}`);
 
         // Return complete home screen data (enhanced with challenge count for reset dialog)
         const homeResponse = {
