@@ -3835,6 +3835,73 @@ app.get('/api/data/development-progress/:deviceId', async (req, res) => {
   }
 });
 
+// DEBUG: Find all device IDs with actual data
+app.get('/api/debug/find-devices', requireApiKey, async (req, res) => {
+  try {
+    console.log('🔍 Searching for all devices with activity data...');
+    
+    // Get all challenge activities with device IDs and dates
+    const { data: challenges, error: cError } = await supabase
+      .from('challenge_activities')
+      .select('device_id, challenge_date, created_at')
+      .order('created_at', { ascending: false });
+    
+    // Get all opener activities with device IDs and dates  
+    const { data: openers, error: oError } = await supabase
+      .from('opener_activities')
+      .select('device_id, opener_date, created_at')
+      .order('created_at', { ascending: false });
+    
+    if (cError) throw cError;
+    if (oError) throw oError;
+    
+    // Group by device ID
+    const deviceData = {};
+    
+    // Process challenges
+    challenges?.forEach(activity => {
+      if (!deviceData[activity.device_id]) {
+        deviceData[activity.device_id] = { challenges: 0, openers: 0, lastActivity: null };
+      }
+      deviceData[activity.device_id].challenges++;
+      if (!deviceData[activity.device_id].lastActivity || activity.created_at > deviceData[activity.device_id].lastActivity) {
+        deviceData[activity.device_id].lastActivity = activity.created_at;
+      }
+    });
+    
+    // Process openers
+    openers?.forEach(activity => {
+      if (!deviceData[activity.device_id]) {
+        deviceData[activity.device_id] = { challenges: 0, openers: 0, lastActivity: null };
+      }
+      deviceData[activity.device_id].openers++;
+      if (!deviceData[activity.device_id].lastActivity || activity.created_at > deviceData[activity.device_id].lastActivity) {
+        deviceData[activity.device_id].lastActivity = activity.created_at;
+      }
+    });
+    
+    // Convert to array and sort by total activity
+    const deviceList = Object.entries(deviceData).map(([deviceId, data]) => ({
+      device_id: deviceId,
+      total_challenges: data.challenges,
+      total_openers: data.openers,
+      total_activities: data.challenges + data.openers,
+      last_activity: data.lastActivity
+    })).sort((a, b) => b.total_activities - a.total_activities);
+    
+    console.log(`🔍 Found ${deviceList.length} devices with activity data`);
+    
+    res.json({
+      devices: deviceList,
+      current_simulator_device: "D9191CF1-7488-4C04-A984-E92C07744F64"
+    });
+    
+  } catch (error) {
+    console.error('❌ Error finding devices:', error);
+    res.status(500).json({ error: 'Failed to find devices' });
+  }
+});
+
 // Debug endpoint to check user data
 
 // Force fix user creation date
