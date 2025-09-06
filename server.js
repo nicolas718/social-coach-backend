@@ -663,17 +663,9 @@ async function getUserFromToken(authHeader) {
 }
 
 // Dual auth middleware - supports both API key (legacy) and user auth (new)
+// PRIORITY: User authentication first, then API key fallback
 async function requireApiKeyOrAuth(req, res, next) {
-  // Try API key authentication first (legacy support)
-  const apiKey = req.headers['x-api-key'];
-  
-  if (apiKey && apiKey === process.env.FRONTEND_API_KEY) {
-    console.log('🔑 Legacy API key authentication successful');
-    req.authMethod = 'api_key';
-    return next();
-  }
-  
-  // Try user authentication
+  // Try user authentication FIRST (prioritize user-based data)
   const authHeader = req.headers.authorization;
   if (authHeader) {
     try {
@@ -690,6 +682,15 @@ async function requireApiKeyOrAuth(req, res, next) {
     } catch (error) {
       console.error('❌ User authentication failed:', error);
     }
+  }
+  
+  // Fallback to API key authentication (legacy support)
+  const apiKey = req.headers['x-api-key'];
+  
+  if (apiKey && apiKey === process.env.FRONTEND_API_KEY) {
+    console.log('🔑 Legacy API key authentication successful');
+    req.authMethod = 'api_key';
+    return next();
   }
   
   // No valid authentication found
