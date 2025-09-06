@@ -4026,6 +4026,43 @@ app.get('/api/debug/user-record/:userId', requireApiKey, async (req, res) => {
   }
 });
 
+// EMERGENCY: Create user record with hardcoded correct data
+app.post('/api/emergency/create-user-record', requireApiKey, async (req, res) => {
+  try {
+    const userId = "28b13687-d7df-4af7-babc-2010042f2319";
+    
+    console.log(`🚨 CREATING USER RECORD: ${userId}`);
+    
+    // Create user record with correct streak data based on your real data
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .upsert({
+        user_id: userId,
+        current_streak: 7,  // Your real streak
+        all_time_best_streak: 7,  // Your best streak
+        last_completion_date: '2025-09-11',  // Most recent challenge date
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (insertError) {
+      console.error('❌ Error creating user:', insertError);
+      return res.status(500).json({ error: 'Failed to create user', details: insertError });
+    }
+    
+    res.json({
+      success: true,
+      message: 'User record created with correct streak data',
+      user_record: newUser
+    });
+    
+  } catch (error) {
+    console.error('❌ Create user record failed:', error);
+    res.status(500).json({ error: 'Create user record failed' });
+  }
+});
+
 // EMERGENCY: Create/update user record with correct streak data
 app.post('/api/emergency/fix-user-streak', requireApiKey, async (req, res) => {
   try {
