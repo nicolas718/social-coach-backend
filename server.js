@@ -3950,37 +3950,25 @@ app.post('/api/emergency/direct-migration', requireApiKey, async (req, res) => {
     
     console.log(`🚨 DIRECT MIGRATION: Phone=${phoneDeviceId}, User=${userId}`);
     
-    // Update openers
-    const { data: openers, error: openerError } = await supabase
-      .from('openers')
-      .update({ user_id: userId })
-      .eq('device_id', phoneDeviceId)
-      .is('user_id', null)
-      .select();
+    // Call the Supabase migration function directly
+    console.log(`🚨 Calling Supabase migration function...`);
+    const { data: migrationResult, error: migrationError } = await supabase
+      .rpc('migrate_device_data_to_user', {
+        p_device_id: phoneDeviceId,
+        p_user_id: userId
+      });
     
-    // Update challenges  
-    const { data: challenges, error: challengeError } = await supabase
-      .from('daily_challenges')
-      .update({ user_id: userId })
-      .eq('device_id', phoneDeviceId)
-      .is('user_id', null)
-      .select();
-    
-    if (openerError || challengeError) {
-      console.error('❌ Migration errors:', { openerError, challengeError });
-      return res.status(500).json({ error: 'Migration failed' });
+    if (migrationError) {
+      console.error('❌ Supabase migration error:', migrationError);
+      return res.status(500).json({ error: 'Supabase migration failed', details: migrationError });
     }
     
-    console.log(`🚨 DIRECT MIGRATION COMPLETE: ${openers?.length || 0} openers, ${challenges?.length || 0} challenges`);
+    console.log(`🚨 SUPABASE MIGRATION RESULT:`, migrationResult);
     
     res.json({
       success: true,
-      message: 'Direct migration completed',
-      migrated: {
-        openers: openers?.length || 0,
-        challenges: challenges?.length || 0,
-        total: (openers?.length || 0) + (challenges?.length || 0)
-      }
+      message: 'Supabase migration completed',
+      result: migrationResult
     });
     
   } catch (error) {
