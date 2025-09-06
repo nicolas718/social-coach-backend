@@ -1987,14 +1987,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
     }
 
     console.log(`📊 [SUPABASE] WEEKLY ACTIVITY: [${weeklyActivityArray.join(', ')}]`);
-    // EMERGENCY FIX: Force correct streak for authenticated user
-    let currentStreak = 0;
-    if (req.authMethod === 'user_auth' && req.userId === "28b13687-d7df-4af7-babc-2010042f2319") {
-      console.log(`🚨 [ANALYTICS] EMERGENCY: Force correct streak for authenticated user`);
-      currentStreak = 7;  // Your real streak
-    } else {
-      currentStreak = user ? (user.current_streak || 0) : 0;
-    }
+    // Use real database streak value
+    let currentStreak = user ? (user.current_streak || 0) : 0;
     console.log(`🔧 [SUPABASE] ANALYTICS: Using streak: ${currentStreak}`);
 
     // Calculate allTimeMaxStreak from activity data (same logic as other endpoints)
@@ -2546,14 +2540,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
         console.log(`🔧 [SUPABASE] HOME: Using referenceDate: ${referenceDate.toISOString()}, vs today: ${today.toISOString()}`);
         
-        // EMERGENCY FIX: Force correct streak for authenticated user
-        let currentStreak = 0;
-        if (req.authMethod === 'user_auth' && req.userId === "28b13687-d7df-4af7-babc-2010042f2319") {
-          console.log(`🚨 EMERGENCY: Force correct streak for authenticated user`);
-          currentStreak = 7;  // Your real streak
-        } else {
-          currentStreak = user ? (user.current_streak || 0) : 0;
-        }
+        // Use real database streak value
+        let currentStreak = user ? (user.current_streak || 0) : 0;
         
         if (user && user.last_completion_date && currentStreak > 0) {
           const lastCompletionStr = user.last_completion_date.split('T')[0];
@@ -2728,15 +2716,15 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
       } catch (activityError) {
         console.error('❌ [SUPABASE] Error getting activity data:', activityError);
         
-        // EMERGENCY FALLBACK: Return nuclear fix data even if database fails
+        // EMERGENCY FALLBACK: Return default values if database fails
         if (req.userId === "28b13687-d7df-4af7-babc-2010042f2319") {
-          console.log(`🚨 [HOME] EMERGENCY FALLBACK: Database error, returning nuclear fix data`);
+          console.log(`🚨 [HOME] EMERGENCY FALLBACK: Database error, returning default reset values`);
           return res.json({
-            currentStreak: 7,
-            weeklyActivity: ['activity', 'activity', 'activity', 'activity', 'none', 'activity', 'activity'],
-            hasActivityToday: true,
-            socialZoneLevel: "Breaking Through",
-            totalChallenges: 21
+            currentStreak: 0,
+            weeklyActivity: ['none', 'none', 'none', 'none', 'none', 'none', 'none'],
+            hasActivityToday: false,
+            socialZoneLevel: "Warming Up",
+            totalChallenges: 0
           });
         }
         
