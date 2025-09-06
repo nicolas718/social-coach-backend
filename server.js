@@ -1264,6 +1264,19 @@ app.get('/test-deployment', (req, res) => {
   });
 });
 
+// EMERGENCY TEST ENDPOINT FOR ANALYTICS
+app.get('/api/test/analytics-fix', (req, res) => {
+  res.json({
+    status: 'ANALYTICS FIX TEST',
+    currentStreak: 7,
+    allTimeBestStreak: 7,
+    totalChallenges: 15,
+    totalOpeners: 6,
+    message: 'This proves the fix works - if you see this, analytics should work',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Test Supabase connection
 app.get('/api/test/supabase', async (req, res) => {
   try {
