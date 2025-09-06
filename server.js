@@ -780,7 +780,7 @@ function getChallengeTemplateForSocialZone(socialZoneLevel) {
 }
 
 // Test endpoint to verify all Social Zone templates
-app.get('/api/test/social-zones', (req, res) => {
+app.get('/api/test/social-zones', requireApiKey, (req, res) => {
   try {
     console.log('🧪 TESTING ALL SOCIAL ZONE TEMPLATES:');
     
@@ -1265,7 +1265,7 @@ app.get('/test-deployment', (req, res) => {
 });
 
 // EMERGENCY TEST ENDPOINT FOR ANALYTICS
-app.get('/api/test/analytics-fix', (req, res) => {
+app.get('/api/test/analytics-fix', requireApiKey, (req, res) => {
   res.json({
     status: 'ANALYTICS FIX TEST',
     currentStreak: 7,
@@ -1353,7 +1353,7 @@ app.post('/api/test/user-create', requireApiKey, async (req, res) => {
 });
 
 // Test endpoint for API key authentication
-app.get('/api/test/auth', (req, res) => {
+app.get('/api/test/auth', requireApiKey, (req, res) => {
     res.json({
     status: 'authenticated', 
     message: 'API key is valid',
