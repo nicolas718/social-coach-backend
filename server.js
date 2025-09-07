@@ -1850,19 +1850,21 @@ app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    console.log('[SUPABASE] Development data received:', {
+    console.log('[DEVELOPMENT] Development data received:', {
       deviceId, developmentModuleId, developmentScreenReached, 
       developmentIsCompleted, developmentProgressPercentage
     });
 
-    // Ensure user exists (Supabase version)
-    await ensureUserExistsSupabase(deviceId);
+    // Get user info using standardized authentication pattern
+    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
+    
+    console.log(`📊 [DEVELOPMENT] Storing data using ${queryMethod}: ${queryValue}`);
 
-      // Check if module progress already exists for this user and module
+    // Check if module progress already exists for this user and module using standardized query method
     const { data: existingRecord, error: selectError } = await supabase
       .from('development_modules')
       .select('*')
-      .eq('device_id', deviceId)
+      .eq(queryMethod, queryValue)
       .eq('development_module_id', developmentModuleId)
       .single();
 
@@ -1887,7 +1889,7 @@ app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
             development_progress_percentage: developmentProgressPercentage,
             development_date: developmentDate
           })
-          .eq('device_id', deviceId)
+          .eq(queryMethod, queryValue)
           .eq('development_module_id', developmentModuleId)
           .select()
           .single();
@@ -1918,16 +1920,26 @@ app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
             }
           } else {
       // Insert new record (SAME LOGIC)
+      // Create insert data with proper authentication field
+      const insertData = {
+        development_module_id: developmentModuleId,
+        development_screen_reached: developmentScreenReached,
+        development_is_completed: developmentIsCompleted,
+        development_progress_percentage: developmentProgressPercentage,
+        development_date: developmentDate
+      };
+      
+      // Add the appropriate ID field based on authentication method
+      if (queryMethod === 'user_id') {
+        insertData.user_id = queryValue;
+        insertData.device_id = deviceId; // Keep device_id for reference
+      } else {
+        insertData.device_id = queryValue;
+      }
+      
       const { data: newRecord, error: insertError } = await supabase
         .from('development_modules')
-        .insert({
-          device_id: deviceId,
-          development_module_id: developmentModuleId,
-          development_screen_reached: developmentScreenReached,
-          development_is_completed: developmentIsCompleted,
-          development_progress_percentage: developmentProgressPercentage,
-          development_date: developmentDate
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -3876,19 +3888,24 @@ app.get('/api/conversation-practice/:deviceId', requireApiKeyOrAuth, async (req,
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Device ${deviceId}, Current Date: ${currentDate}`);
+    console.log(`🎭 [CONVERSATION] Device ${deviceId}, Current Date: ${currentDate}`);
+    
+    // Get user info using standardized authentication pattern
+    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
+    
+    console.log(`🎭 [CONVERSATION] Getting data using ${queryMethod}: ${queryValue}`);
     
     // Use current date or simulated date (SAME LOGIC)
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
-    // Check if we already have scenarios for this date (Supabase version)
-    console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE: Querying database for device_id='${deviceId}' AND practice_date='${dateKey}'`);
+    // Check if we already have scenarios for this date using standardized query method
+    console.log(`🎭 [CONVERSATION] Querying database for ${queryMethod}='${queryValue}' AND practice_date='${dateKey}'`);
     
     const { data: existing, error: selectError } = await supabase
       .from('conversation_practice_scenarios')
       .select('*')
-      .eq('device_id', deviceId)
+      .eq(queryMethod, queryValue)
       .eq('practice_date', dateKey)
       .single();
     
@@ -4165,13 +4182,18 @@ app.post('/api/conversation-practice/:deviceId/complete', requireApiKeyOrAuth, a
       return res.status(400).json({ error: 'deviceId is required' });
     }
     
-    console.log(`🎭 [SUPABASE] CONVERSATION PRACTICE COMPLETE: Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
+    console.log(`🎭 [CONVERSATION COMPLETE] Device ${deviceId}, Date: ${currentDate}, Score: ${score}%`);
+    
+    // Get user info using standardized authentication pattern
+    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
+    
+    console.log(`🎭 [CONVERSATION COMPLETE] Updating data using ${queryMethod}: ${queryValue}`);
     
     // Use current date or simulated date (SAME LOGIC)
     const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
     const dateKey = today.toISOString().split('T')[0];
     
-    // Mark as completed in Supabase and store score and user answers
+    // Mark as completed in Supabase and store score and user answers using standardized query method
     const userAnswersJson = userAnswers ? JSON.stringify(userAnswers) : null;
     
     const { data: updatedRecord, error: updateError } = await supabase
@@ -4182,7 +4204,7 @@ app.post('/api/conversation-practice/:deviceId/complete', requireApiKeyOrAuth, a
         score: score,
         user_answers: userAnswersJson
       })
-      .eq('device_id', deviceId)
+      .eq(queryMethod, queryValue)
       .eq('practice_date', dateKey)
       .select()
       .single();
@@ -4243,15 +4265,20 @@ server.on('connection', (socket) => {
 // Get development module progress for a device
 app.get('/api/data/development-progress/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
-  const { deviceId } = req.params;
-  
-    console.log(`📊 [SUPABASE] Fetching development progress for device: ${deviceId}`);
+    const { deviceId } = req.params;
     
-    // Get all development modules from Supabase with proper field mapping
+    console.log(`📊 [DEVELOPMENT] Fetching development progress for device: ${deviceId}`);
+    
+    // Get user info using standardized authentication pattern
+    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
+    
+    console.log(`📊 [DEVELOPMENT] Getting data using ${queryMethod}: ${queryValue}`);
+    
+    // Get all development modules using standardized query method
     const { data: modules, error: modulesError } = await supabase
       .from('development_modules')
       .select('development_module_id, development_screen_reached, development_is_completed, development_progress_percentage, development_date')
-      .eq('device_id', deviceId);
+      .eq(queryMethod, queryValue);
 
     if (modulesError) {
       console.error('❌ [SUPABASE] Error fetching development progress:', modulesError);
