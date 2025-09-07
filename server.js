@@ -3642,28 +3642,59 @@ app.post('/api/ai-coach/chat', requireApiKeyOrAuth, aiRateLimit, async (req, res
       });
     }
 
-    const prompt = `You are the Opner Coach, the supportive AI assistant within the "Opner: Social Coach" app. A user says: "${message}"
+    const prompt = `You are the Opener Coach, a supportive AI assistant helping users build social confidence. The user just said: "${message}"
 
-Provide a supportive coaching response that:
-- Is 2-4 sentences maximum for chat-friendly conversation
-- Asks a follow-up question to continue the conversation
-- Provides actionable next steps for social confidence
-- Uses a warm, encouraging but realistic tone
-- Sounds like a conversational mentor, not clinical
-- When relevant, you can reference being their Opner Coach in the Social Coach app
+Respond naturally like a helpful friend and coach:
+
+CONVERSATION RULES:
+- Keep responses conversational and natural (2-3 sentences)
+- Give practical, actionable advice
+- Ask a relevant follow-up question to continue the conversation
+- Use an encouraging but realistic tone
+- Respond directly to what they said
+- Don't be repetitive or overly formal
+- Focus on building their confidence
+
+IMPORTANT: Respond like you're having a normal conversation. Don't introduce yourself repeatedly or ask "what kind of social situation" every time. Just give helpful advice and continue the conversation naturally.
 
 Return ONLY a plain text response, no JSON formatting.`;
 
-    const aiMessage = await callBedrockAPI(
-      [
-        {
-          role: "user",
-          content: prompt
+    // Retry logic for connection issues
+    let aiMessage;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        aiMessage = await callBedrockAPI(
+          [
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          150,
+          "You are the Opener Coach. Respond naturally and helpfully to build their social confidence. Keep responses conversational (2-3 sentences) and continue the conversation flow."
+        );
+        break; // Success, exit retry loop
+      } catch (apiError) {
+        retryCount++;
+        console.error(`❌ AI Coach API Error (attempt ${retryCount}/${maxRetries}):`, apiError.message);
+        
+        if (retryCount >= maxRetries) {
+          // Return proper error after all retries exhausted
+          return res.status(503).json({
+            error: 'Service temporarily unavailable',
+            details: 'Please try again in a moment. The AI coach is experiencing connection issues.',
+            retryAfter: 5000 // Suggest retry after 5 seconds
+          });
         }
-      ],
-      150,
-      "You are the Opner Coach, the supportive AI assistant in the Social Coach app. Keep responses conversational, brief (2-4 sentences), and always ask a follow-up question."
-    );
+        
+        // Wait 1 second before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log(`🔄 Retrying AI Coach API call (attempt ${retryCount + 1}/${maxRetries})...`);
+      }
+    }
 
     // Handle AWS Bedrock response format
     let response;
