@@ -826,8 +826,8 @@ app.get('/api/test/social-zones', requireApiKey, (req, res) => {
 // SQLite helper function removed - using ensureUserExistsSupabase() instead
 
 // PRODUCTION-READY DATE SYNCHRONIZATION SYSTEM
-// Ensures all devices use the same simulated date for consistency
-const getOrCreateUserSimulatedDate = async (req, deviceId, providedDate = null) => {
+// Automatically handles date synchronization across all devices and endpoints
+const getUnifiedDateForUser = async (req, deviceId, providedDate = null) => {
   try {
     let user = null;
     let queryMethod = 'device_id';
@@ -857,32 +857,58 @@ const getOrCreateUserSimulatedDate = async (req, deviceId, providedDate = null) 
       }
     }
     
-    // If user exists and has a simulated date, use it (unless overridden)
-    let synchronizedDate = null;
-    if (user && user.simulated_date && !providedDate) {
-      synchronizedDate = user.simulated_date;
-      console.log(`📅 [DATE SYNC] Using stored simulated date: ${synchronizedDate}`);
-    } else if (providedDate) {
-      // Update the stored simulated date for sync across devices
-      synchronizedDate = providedDate;
-      console.log(`📅 [DATE SYNC] Updating simulated date to: ${synchronizedDate}`);
+    // PRODUCTION-READY DATE LOGIC:
+    // 1. If providedDate is given (from frontend), store and use it
+    // 2. If user has stored simulated_date, use it
+    // 3. Otherwise, use real current date
+    
+    let unifiedDate = null;
+    let dateSource = 'real';
+    
+    if (providedDate) {
+      // Frontend provided a date (debug button or manual override)
+      unifiedDate = providedDate;
+      dateSource = 'provided';
+      console.log(`📅 [UNIFIED DATE] Using provided date: ${unifiedDate}`);
       
+      // Store this date for synchronization across devices
       if (user) {
         await supabase
           .from('users')
-          .update({ simulated_date: synchronizedDate })
+          .update({ simulated_date: unifiedDate })
           .eq(queryMethod, queryValue);
+        console.log(`📅 [UNIFIED DATE] Stored date for sync: ${unifiedDate}`);
       }
+    } else if (user && user.simulated_date) {
+      // User has a stored simulated date - use it for consistency
+      unifiedDate = user.simulated_date;
+      dateSource = 'synchronized';
+      console.log(`📅 [UNIFIED DATE] Using synchronized date: ${unifiedDate}`);
     } else {
-      // No simulated date - use real date
-      synchronizedDate = new Date().toISOString().split('T')[0];
-      console.log(`📅 [DATE SYNC] Using real date: ${synchronizedDate}`);
+      // No simulated date - use real current date
+      unifiedDate = new Date().toISOString().split('T')[0];
+      dateSource = 'real';
+      console.log(`📅 [UNIFIED DATE] Using real date: ${unifiedDate}`);
     }
     
-    return { user, queryMethod, queryValue, synchronizedDate };
+    return { 
+      user, 
+      queryMethod, 
+      queryValue, 
+      unifiedDate, 
+      dateSource,
+      isSimulated: dateSource !== 'real'
+    };
   } catch (error) {
-    console.error('❌ [DATE SYNC] Error in date synchronization:', error);
-    return { user: null, queryMethod: 'device_id', queryValue: deviceId, synchronizedDate: new Date().toISOString().split('T')[0] };
+    console.error('❌ [UNIFIED DATE] Error in date synchronization:', error);
+    return { 
+      user: null, 
+      queryMethod: 'device_id', 
+      queryValue: deviceId, 
+      unifiedDate: new Date().toISOString().split('T')[0],
+      dateSource: 'error_fallback',
+      isSimulated: false
+    };
   }
 };
 
@@ -2578,21 +2604,23 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
     
       console.log(`🎯 [SUPABASE] CLEAN SYSTEM: Device ${deviceId}, Current Date: ${currentDate}`);
       
-      // Step 1: Get user info using standardized authentication pattern
-      const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
+      // Step 1: Get unified date and user info using production-ready system
+      const { user, queryMethod, queryValue, unifiedDate, dateSource, isSimulated } = await getUnifiedDateForUser(req, deviceId, currentDate);
       
       if (!user) {
         console.log(`⚠️ [HOME] No user record found, will use defaults`);
       }
 
+      console.log(`📅 [HOME] Using ${dateSource} date: ${unifiedDate} (simulated: ${isSimulated})`);
       console.log(`🎯 [SUPABASE] HOME: User data:`, user ? {
         device_id: user.device_id,
         current_streak: user.current_streak,
         all_time_best_streak: user.all_time_best_streak,
-        last_completion_date: user.last_completion_date
+        last_completion_date: user.last_completion_date,
+        simulated_date: user.simulated_date
       } : 'No user found');
 
-      const today = currentDate ? new Date(currentDate + 'T00:00:00Z') : new Date();
+      const today = new Date(unifiedDate + 'T00:00:00Z');
       
       // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges) - MOVED BEFORE ACCOUNT CREATION
       try {
@@ -4248,14 +4276,16 @@ app.post('/api/sync/simulated-date', requireApiKeyOrAuth, async (req, res) => {
     
     console.log(`📅 [DATE SYNC ENDPOINT] Syncing date for ${deviceId}: ${simulatedDate}`);
     
-    // Get or update the synchronized date
-    const { user, queryMethod, queryValue, synchronizedDate } = await getOrCreateUserSimulatedDate(req, deviceId, simulatedDate);
+    // Set the unified date using production-ready system
+    const { user, queryMethod, queryValue, unifiedDate, dateSource, isSimulated } = await getUnifiedDateForUser(req, deviceId, simulatedDate);
     
-    console.log(`📅 [DATE SYNC ENDPOINT] Final synchronized date: ${synchronizedDate}`);
+    console.log(`📅 [DATE SYNC ENDPOINT] Final unified date: ${unifiedDate} (source: ${dateSource})`);
     
     res.json({ 
       success: true, 
-      synchronizedDate: synchronizedDate,
+      synchronizedDate: unifiedDate,
+      dateSource: dateSource,
+      isSimulated: isSimulated,
       message: 'Date synchronized successfully across devices'
     });
     
@@ -4268,6 +4298,92 @@ app.post('/api/sync/simulated-date', requireApiKeyOrAuth, async (req, res) => {
   }
 });
 
+// PRODUCTION-READY DEBUG BUTTON INTEGRATION
+app.post('/api/debug/skip-day', requireApiKeyOrAuth, async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`🧪 [DEBUG SKIP DAY] Processing skip day for ${deviceId}`);
+    
+    // Get current unified date
+    const { unifiedDate: currentDate } = await getUnifiedDateForUser(req, deviceId);
+    
+    // Calculate next day
+    const currentDateObj = new Date(currentDate + 'T00:00:00Z');
+    const nextDay = new Date(currentDateObj);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDayString = nextDay.toISOString().split('T')[0];
+    
+    // Set the new date using unified system
+    const { unifiedDate, dateSource, isSimulated } = await getUnifiedDateForUser(req, deviceId, nextDayString);
+    
+    console.log(`🧪 [DEBUG SKIP DAY] Advanced from ${currentDate} to ${unifiedDate}`);
+    
+    res.json({
+      success: true,
+      previousDate: currentDate,
+      newDate: unifiedDate,
+      dateSource: dateSource,
+      isSimulated: isSimulated,
+      message: 'Day skipped successfully across all devices'
+    });
+    
+  } catch (error) {
+    console.error('❌ [DEBUG SKIP DAY] Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to skip day',
+      details: error.message 
+    });
+  }
+});
+
+// PRODUCTION-READY DEBUG RESET INTEGRATION
+app.post('/api/debug/reset-date', requireApiKeyOrAuth, async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`🧪 [DEBUG RESET DATE] Processing date reset for ${deviceId}`);
+    
+    // Clear the simulated date (will fall back to real date)
+    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
+    
+    if (user) {
+      await supabase
+        .from('users')
+        .update({ simulated_date: null })
+        .eq(queryMethod, queryValue);
+    }
+    
+    // Get the new unified date (should be real date now)
+    const { unifiedDate, dateSource, isSimulated } = await getUnifiedDateForUser(req, deviceId);
+    
+    console.log(`🧪 [DEBUG RESET DATE] Reset to real date: ${unifiedDate}`);
+    
+    res.json({
+      success: true,
+      newDate: unifiedDate,
+      dateSource: dateSource,
+      isSimulated: isSimulated,
+      message: 'Date reset to current date across all devices'
+    });
+    
+  } catch (error) {
+    console.error('❌ [DEBUG RESET DATE] Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to reset date',
+      details: error.message 
+    });
+  }
+});
+
 // GET SYNCHRONIZED DATE ENDPOINT
 app.get('/api/sync/simulated-date/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
@@ -4275,14 +4391,16 @@ app.get('/api/sync/simulated-date/:deviceId', requireApiKeyOrAuth, async (req, r
     
     console.log(`📅 [GET DATE SYNC] Getting synchronized date for ${deviceId}`);
     
-    // Get the current synchronized date
-    const { user, queryMethod, queryValue, synchronizedDate } = await getOrCreateUserSimulatedDate(req, deviceId);
+    // Get the current unified date
+    const { user, queryMethod, queryValue, unifiedDate, dateSource, isSimulated } = await getUnifiedDateForUser(req, deviceId);
     
-    console.log(`📅 [GET DATE SYNC] Current synchronized date: ${synchronizedDate}`);
+    console.log(`📅 [GET DATE SYNC] Current unified date: ${unifiedDate} (source: ${dateSource})`);
     
     res.json({ 
       success: true, 
-      synchronizedDate: synchronizedDate,
+      synchronizedDate: unifiedDate,
+      dateSource: dateSource,
+      isSimulated: isSimulated,
       hasStoredDate: !!(user && user.simulated_date),
       message: 'Date retrieved successfully'
     });
