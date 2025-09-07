@@ -4040,37 +4040,38 @@ Each scenario should include:
   - rating: "best", "good", or "poor" (use each rating exactly once)
   - feedback: Detailed explanation of why this choice works or doesn't work
 
-CRITICAL: Randomize the position of the "best" answer across all scenarios. Do NOT always put the best answer first. Vary it - sometimes first, sometimes second, sometimes third option. This is essential for realistic practice.
+CRITICAL REQUIREMENTS:
+- Use completely different and unexpected settings each time
+- Create unique social situations that feel authentic and varied
+- Randomize the position of the "best" answer across all scenarios
+- Each scenario should teach different social skills (active listening, empathy, humor, common interests, etc.)
+- Vary conversation contexts: strangers, acquaintances, group settings, one-on-one, formal, casual
+- Include diverse age groups, backgrounds, and social contexts
+- Make situations feel natural and relatable
 
-Make scenarios realistic, diverse (different settings like coffee shops, bookstore, gym, dog park, grocery store, etc.), and focus on everyday social interactions. Each scenario should teach something valuable about starting conversations.
-
-Examples of proper randomization:
-- Scenario 1: best=option 2, good=option 1, poor=option 3
-- Scenario 2: best=option 3, good=option 2, poor=option 1  
-- Scenario 3: best=option 1, good=option 3, poor=option 2
-- Continue varying positions randomly
+ANSWER POSITIONING: Randomly distribute the best answer across positions 1, 2, and 3. Never put all best answers in the same position.
 
 Return ONLY valid JSON in this exact format:
 {
   "scenarios": [
     {
-      "setting": "Bookstore fiction section",
-      "situation": "Someone is browsing the same shelf as you and picks up a book you've read",
+      "setting": "[Unique location]",
+      "situation": "[Natural conversation opportunity]",
       "options": [
         {
-          "text": "I haven't read that one yet, any good?",
-          "rating": "good",
-          "feedback": "Shows interest but could be more engaging with specific knowledge."
+          "text": "[Response option]",
+          "rating": "[best/good/poor]",
+          "feedback": "[Educational explanation]"
         },
         {
-          "text": "Oh, that's a fantastic book! I loved the plot twist about halfway through - no spoilers though!",
-          "rating": "best",
-          "feedback": "Perfect! Shows you've read it, creates intrigue, and demonstrates consideration by avoiding spoilers."
+          "text": "[Response option]",
+          "rating": "[best/good/poor]",
+          "feedback": "[Educational explanation]"
         },
         {
-          "text": "That book is terrible, don't waste your time",
-          "rating": "poor",
-          "feedback": "Negative and dismissive. Shuts down conversation and shows poor social judgment."
+          "text": "[Response option]",
+          "rating": "[best/good/poor]",
+          "feedback": "[Educational explanation]"
         }
       ]
     }
