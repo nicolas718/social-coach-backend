@@ -858,37 +858,27 @@ const getUnifiedDateForUser = async (req, deviceId, providedDate = null) => {
     }
     
     // PRODUCTION-READY DATE LOGIC:
-    // 1. If providedDate is given (from frontend), store and use it
-    // 2. If user has stored simulated_date, use it
-    // 3. Otherwise, use real current date
+    // ALWAYS use real current date - sim date system intact but acts as real dates
+    // This ensures users always load on current date even when logging in/out
     
-    let unifiedDate = null;
-    let dateSource = 'real';
+    let unifiedDate = new Date().toISOString().split('T')[0]; // ALWAYS real current date
+    let dateSource = 'real_forced'; // Indicates we're forcing real dates
     
+    console.log(`📅 [UNIFIED DATE] ALWAYS using real current date: ${unifiedDate} (sim system intact)`);
+    
+    // IMPORTANT: Don't store simulated dates anymore - keep system clean
+    // If there was a providedDate, we acknowledge it but still use real date
     if (providedDate) {
-      // Frontend provided a date (debug button or manual override)
-      unifiedDate = providedDate;
-      dateSource = 'provided';
-      console.log(`📅 [UNIFIED DATE] Using provided date: ${unifiedDate}`);
-      
-      // Store this date for synchronization across devices
-      if (user) {
-        await supabase
-          .from('users')
-          .update({ simulated_date: unifiedDate })
-          .eq(queryMethod, queryValue);
-        console.log(`📅 [UNIFIED DATE] Stored date for sync: ${unifiedDate}`);
-      }
-    } else if (user && user.simulated_date) {
-      // User has a stored simulated date - use it for consistency
-      unifiedDate = user.simulated_date;
-      dateSource = 'synchronized';
-      console.log(`📅 [UNIFIED DATE] Using synchronized date: ${unifiedDate}`);
-    } else {
-      // No simulated date - use real current date
-      unifiedDate = new Date().toISOString().split('T')[0];
-      dateSource = 'real';
-      console.log(`📅 [UNIFIED DATE] Using real date: ${unifiedDate}`);
+      console.log(`📅 [UNIFIED DATE] Ignored provided date ${providedDate}, using real date ${unifiedDate}`);
+    }
+    
+    // Clear any existing simulated_date to keep database clean
+    if (user && user.simulated_date) {
+      console.log(`📅 [UNIFIED DATE] Clearing stored simulated_date: ${user.simulated_date}`);
+      await supabase
+        .from('users')
+        .update({ simulated_date: null })
+        .eq(queryMethod, queryValue);
     }
     
     return { 
@@ -897,7 +887,7 @@ const getUnifiedDateForUser = async (req, deviceId, providedDate = null) => {
       queryValue, 
       unifiedDate, 
       dateSource,
-      isSimulated: dateSource !== 'real'
+      isSimulated: false // Always false since we always use real dates
     };
   } catch (error) {
     console.error('❌ [UNIFIED DATE] Error in date synchronization:', error);
