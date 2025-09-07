@@ -3632,8 +3632,8 @@ No markdown formatting, no extra text, just the JSON object.`;
 
 app.post('/api/ai-coach/chat', requireApiKeyOrAuth, aiRateLimit, async (req, res) => {
   try {
-    const { message, context = {} } = req.body;
-    console.log('Received AI coach chat request:', { message, context });
+    const { message, recentMessages = [] } = req.body;
+    console.log('Received AI coach chat request:', { message, recentMessagesCount: recentMessages.length });
     
     if (!message || !message.trim()) {
       return res.status(400).json({ 
@@ -3642,7 +3642,18 @@ app.post('/api/ai-coach/chat', requireApiKeyOrAuth, aiRateLimit, async (req, res
       });
     }
 
-    const prompt = `You are the Opener Coach, a supportive AI assistant helping users build social confidence. The user just said: "${message}"
+    // Build context from recent messages (last 3 chat bubbles for continuity)
+    let contextString = '';
+    if (recentMessages && recentMessages.length > 0) {
+      contextString = '\n\nRECENT CONVERSATION CONTEXT:\n';
+      recentMessages.slice(-6).forEach((msg) => { // Last 6 messages (3 pairs)
+        const speaker = msg.isUser ? 'User' : 'You (Coach)';
+        contextString += `${speaker}: ${msg.content}\n`;
+      });
+      contextString += '\nCurrent message to respond to: ';
+    }
+
+    const prompt = `You are the Opener Coach, a supportive AI assistant helping users build social confidence.${contextString}"${message}"
 
 Respond naturally like a helpful friend and coach:
 
@@ -3654,6 +3665,7 @@ CONVERSATION RULES:
 - Don't be repetitive or overly formal
 - Focus on building their confidence
 - Sometimes ask follow-up questions, sometimes just give advice - be natural
+- Use the conversation context to provide relevant, flowing responses
 
 IMPORTANT: Respond like you're having a normal conversation. Don't introduce yourself repeatedly. Not every response needs to end with a question - sometimes just give helpful advice and let the user continue the conversation naturally.
 
