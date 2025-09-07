@@ -4036,18 +4036,24 @@ Each scenario should include:
 - setting: A brief description of the location/environment
 - situation: What's happening in that moment that creates a conversation opportunity
 - options: Exactly 3 multiple choice responses with:
-  - text: The response option
+  - text: The response option (keep all responses similar in length - approximately 8-15 words)
   - rating: "best", "good", or "poor" (use each rating exactly once)
   - feedback: Detailed explanation of why this choice works or doesn't work
 
 CRITICAL REQUIREMENTS:
-- Use completely different and unexpected settings each time
-- Create unique social situations that feel authentic and varied
+- Focus exclusively on social and everyday settings where people naturally gather and interact
+- Create authentic situations that happen in daily social life
 - Randomize the position of the "best" answer across all scenarios
-- Each scenario should teach different social skills (active listening, empathy, humor, common interests, etc.)
-- Vary conversation contexts: strangers, acquaintances, group settings, one-on-one, formal, casual
-- Include diverse age groups, backgrounds, and social contexts
-- Make situations feel natural and relatable
+- Each scenario should teach different social skills
+- Vary social contexts: meeting new people, casual interactions, social events, community spaces
+- Make all response options similar in length and conversational tone
+- Ensure situations feel natural and commonly experienced
+
+RESPONSE GUIDELINES:
+- All three response options must be approximately the same length
+- Use conversational, natural language that real people would say
+- Avoid overly formal or awkward phrasing
+- Make responses feel authentic to the social context
 
 ANSWER POSITIONING: Randomly distribute the best answer across positions 1, 2, and 3. Never put all best answers in the same position.
 
@@ -4055,21 +4061,21 @@ Return ONLY valid JSON in this exact format:
 {
   "scenarios": [
     {
-      "setting": "[Unique location]",
-      "situation": "[Natural conversation opportunity]",
+      "setting": "[Social/everyday location]",
+      "situation": "[Natural social opportunity]",
       "options": [
         {
-          "text": "[Response option]",
+          "text": "[8-15 word response]",
           "rating": "[best/good/poor]",
           "feedback": "[Educational explanation]"
         },
         {
-          "text": "[Response option]",
+          "text": "[8-15 word response]",
           "rating": "[best/good/poor]",
           "feedback": "[Educational explanation]"
         },
         {
-          "text": "[Response option]",
+          "text": "[8-15 word response]",
           "rating": "[best/good/poor]",
           "feedback": "[Educational explanation]"
         }
