@@ -2058,14 +2058,17 @@ app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
 });
 
 // Clear all user data (authenticated endpoint - production ready)
-app.delete('/api/data/clear', requireAuthentication, async (req, res) => {
+app.delete('/api/data/clear', requireApiKeyOrAuth, async (req, res) => {
   try {
-    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, null);
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Authentication required' });
+    // This endpoint requires user authentication for production safety
+    if (req.authMethod !== 'user_auth' || !req.userId) {
+      return res.status(401).json({ 
+        error: 'User authentication required', 
+        message: 'Delete account requires being logged into an account' 
+      });
     }
-
+    
+    const user = { id: req.userId };
     console.log(`🗑️ [CLEAR] Authenticated user clearing all data: ${user.id}`);
     
     // Delete all data for this authenticated user from SUPABASE
