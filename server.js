@@ -825,6 +825,65 @@ app.get('/api/test/social-zones', requireApiKey, (req, res) => {
 
 // SQLite helper function removed - using ensureUserExistsSupabase() instead
 
+// STANDARDIZED AUTHENTICATION PATTERN FOR ALL ENDPOINTS
+// This function should be used by ALL endpoints that handle user data
+const getAuthenticatedUserInfo = async (req, deviceId) => {
+  let user = null;
+  let queryMethod = 'device_id';
+  let queryValue = deviceId;
+  
+  if (req.authMethod === 'user_auth' && req.userId) {
+    console.log(`🔐 [AUTH] Using authenticated user: ${req.userId}`);
+    queryMethod = 'user_id';
+    queryValue = req.userId;
+    
+    // Ensure user record exists with user_id before any operations
+    await ensureUserRecordWithUserId(req.userId, deviceId, new Date().toISOString());
+    
+    const { data: authUsers, error: authUserError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', req.userId);
+    
+    if (authUserError) {
+      console.error('❌ [AUTH] Error getting authenticated user:', authUserError);
+      throw authUserError;
+    } else if (authUsers && authUsers.length > 0) {
+      user = authUsers[0];
+      console.log(`✅ [AUTH] Found authenticated user record`);
+    }
+  } else {
+    console.log(`🔑 [AUTH] Using device lookup: ${deviceId}`);
+    
+    const { data: deviceUsers, error: deviceUserError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('device_id', deviceId);
+    
+    if (deviceUserError) {
+      console.error('❌ [AUTH] Error getting device user:', deviceUserError);
+      throw deviceUserError;
+    } else if (deviceUsers && deviceUsers.length > 0) {
+      user = deviceUsers[0];
+      console.log(`✅ [AUTH] Found device user record`);
+    }
+  }
+  
+  return { user, queryMethod, queryValue };
+};
+
+// STANDARDIZED STREAK UPDATE PATTERN
+const updateStreakForUser = async (req, deviceId, actionDate) => {
+  if (req.authMethod === 'user_auth' && req.userId) {
+    console.log(`🚨 [STREAK] Updating streak by user_id: ${req.userId}`);
+    await ensureUserRecordWithUserId(req.userId, deviceId, actionDate);
+    return await updateUserStreakSupabaseByUserId(req.userId, actionDate);
+  } else {
+    console.log(`🔑 [STREAK] Updating streak by device_id: ${deviceId}`);
+    return await updateUserStreakSupabase(deviceId, actionDate);
+  }
+};
+
 // Ensure user record exists with user_id (for authenticated users)
 const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
   try {
@@ -1650,19 +1709,8 @@ app.post('/api/data/challenge', requireApiKeyOrAuth, async (req, res) => {
 
     console.log(`✅ [SUPABASE] Challenge saved successfully for ${deviceId}, now updating streak...`);
 
-    // Update streak using Supabase version - use correct identifier based on auth method
-    let streakResult;
-    if (req.authMethod === 'user_auth' && req.userId) {
-      console.log(`🚨 [SUPABASE] Updating streak by user_id: ${req.userId}`);
-      
-      // Ensure user record exists with user_id before updating streak
-      await ensureUserRecordWithUserId(req.userId, deviceId, challengeDate);
-      
-      streakResult = await updateUserStreakSupabaseByUserId(req.userId, challengeDate);
-    } else {
-      console.log(`🔑 [SUPABASE] Updating streak by device_id: ${deviceId}`);
-      streakResult = await updateUserStreakSupabase(deviceId, challengeDate);
-    }
+    // Update streak using standardized pattern
+    const streakResult = await updateStreakForUser(req, deviceId, challengeDate);
     
     console.log(`✅ [SUPABASE] Challenge and streak update completed for ${deviceId}: Success=${challengeWasSuccessful}`);
 
@@ -1757,22 +1805,10 @@ app.post('/api/data/opener', requireApiKeyOrAuth, async (req, res) => {
       });
     }
 
-    // Update streak if opener was used - use correct identifier based on auth method
+    // Update streak if opener was used - use standardized pattern
     if (openerWasUsed === true) {
       try {
-        let streakResult;
-        if (req.authMethod === 'user_auth' && req.userId) {
-          console.log(`🚨 [SUPABASE] Updating opener streak by user_id: ${req.userId}`);
-          
-          // Ensure user record exists with user_id before updating streak
-          await ensureUserRecordWithUserId(req.userId, deviceId, openerDate);
-          
-          streakResult = await updateUserStreakSupabaseByUserId(req.userId, openerDate);
-        } else {
-          console.log(`🔑 [SUPABASE] Updating opener streak by device_id: ${deviceId}`);
-          streakResult = await updateUserStreakSupabase(deviceId, openerDate);
-        }
-        
+        const streakResult = await updateStreakForUser(req, deviceId, openerDate);
         console.log(`✅ [SUPABASE] Opener streak updated for ${deviceId}`);
       } catch (streakErr) {
         console.error('❌ [SUPABASE] Error updating streak after opener:', streakErr);
@@ -2065,45 +2101,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
     
     console.log(`📊 [SUPABASE] ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
-    // Get user info from SUPABASE - use same auth logic as home endpoint
-    let user = null;
-    if (req.authMethod === 'user_auth' && req.userId) {
-      console.log(`🚨 [ANALYTICS] Using authenticated user: ${req.userId}`);
-      const { data: authUsers, error: authUserError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('user_id', req.userId);
-      
-      if (authUserError) {
-        console.error('❌ [ANALYTICS] Error getting authenticated user:', authUserError);
-      } else if (authUsers && authUsers.length > 0) {
-        user = authUsers[0];
-        console.log(`✅ [ANALYTICS] Found authenticated user record:`, {
-          user_id: user.user_id,
-          device_id: user.device_id,
-          current_streak: user.current_streak,
-          last_completion_date: user.last_completion_date
-        });
-      }
-    } else {
-      console.log(`🔑 [ANALYTICS] Using device lookup: ${deviceId}`);
-      const { data: deviceUsers, error: deviceUserError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('device_id', deviceId);
-      
-      if (deviceUserError) {
-        console.error('❌ [ANALYTICS] Error getting device user:', deviceUserError);
-      } else if (deviceUsers && deviceUsers.length > 0) {
-        user = deviceUsers[0];
-        console.log(`✅ [ANALYTICS] Found device user record:`, {
-          user_id: user.user_id,
-          device_id: user.device_id,
-          current_streak: user.current_streak,
-          last_completion_date: user.last_completion_date
-        });
-      }
-    }
+    // Get user info using standardized authentication pattern
+    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
 
       // EMERGENCY FIX: Don't return zeros for authenticated users
       if (!user && (!req.userId || req.userId !== "28b13687-d7df-4af7-babc-2010042f2319")) {
@@ -2138,46 +2137,36 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
     console.log(`📊 [SUPABASE] ANALYTICS: Fetching all data for comprehensive calculations`);
 
     // Get all challenges from Supabase - use same auth logic as activity queries
-    let allChallenges = [];
-    if (req.authMethod === 'user_auth' && req.userId) {
-      console.log(`🚨 [ANALYTICS] Using user_id for challenge analytics: ${req.userId}`);
-      const { data: userChallenges, error: challengesError } = await supabase
-        .from('daily_challenges')
-        .select('*')
-        .eq('user_id', req.userId);
-      allChallenges = userChallenges || [];
-      if (challengesError) {
-        console.error('❌ [SUPABASE] Error getting challenges for analytics:', challengesError);
-        return res.status(500).json({ error: 'Database error getting challenges' });
-      }
-    } else {
-      const { data: deviceChallenges, error: challengesError } = await supabase
-        .from('daily_challenges')
-        .select('*')
-        .eq('device_id', deviceId);
-      allChallenges = deviceChallenges || [];
-      if (challengesError) {
-        console.error('❌ [SUPABASE] Error getting challenges for analytics:', challengesError);
-        return res.status(500).json({ error: 'Database error getting challenges' });
-      }
+    // Get all user data using standardized query method
+    console.log(`📊 [ANALYTICS] Getting data using ${queryMethod}: ${queryValue}`);
+    
+    // Get challenges data
+    const { data: allChallenges, error: challengesError } = await supabase
+      .from('daily_challenges')
+      .select('*')
+      .eq(queryMethod, queryValue);
+
+    if (challengesError) {
+      console.error('❌ [SUPABASE] Error getting challenges for analytics:', challengesError);
+      return res.status(500).json({ error: 'Database error getting challenges' });
     }
 
-    // Get all openers from Supabase
+    // Get openers data
     const { data: allOpeners, error: openersError } = await supabase
       .from('openers')
       .select('*')
-      .eq('device_id', deviceId);
+      .eq(queryMethod, queryValue);
 
     if (openersError) {
       console.error('❌ [SUPABASE] Error getting openers for analytics:', openersError);
       return res.status(500).json({ error: 'Database error getting openers' });
     }
 
-    // Get all development modules from Supabase
+    // Get development modules data
     const { data: allModules, error: modulesError } = await supabase
       .from('development_modules')
       .select('*')
-      .eq('device_id', deviceId);
+      .eq(queryMethod, queryValue);
 
     if (modulesError) {
       console.error('❌ [SUPABASE] Error getting development modules for analytics:', modulesError);
