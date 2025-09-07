@@ -3681,20 +3681,15 @@ app.get('/api/data/opener-library/:deviceId', requireApiKeyOrAuth, async (req, r
       req.userId = "28b13687-d7df-4af7-babc-2010042f2319";
     }
 
-    // Get all opener statistics from Supabase - use user_id if authenticated, else device_id
-    console.log(`📚 [SUPABASE] OPENER LIBRARY AUTH: userId=${req.userId}, authMethod=${req.authMethod}`);
+    // Get opener library data using standardized authentication pattern
+    const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
     
-    let openersQuery = supabase.from('openers').select('*');
+    console.log(`📚 [OPENER LIBRARY] Getting data using ${queryMethod}: ${queryValue}`);
     
-    if (req.authMethod === 'user_auth' && req.userId) {
-      console.log(`📚 [SUPABASE] OPENER LIBRARY: Querying by user_id: ${req.userId}`);
-      openersQuery = openersQuery.eq('user_id', req.userId);
-    } else {
-      console.log(`📚 [SUPABASE] OPENER LIBRARY: Querying by device_id: ${deviceId}`);
-      openersQuery = openersQuery.eq('device_id', deviceId);
-    }
-    
-    const { data: allOpeners, error: openersError } = await openersQuery;
+    const { data: allOpeners, error: openersError } = await supabase
+      .from('openers')
+      .select('*')
+      .eq(queryMethod, queryValue);
 
     if (openersError) {
       console.error('❌ [SUPABASE] Error getting opener data:', openersError);
