@@ -825,6 +825,67 @@ app.get('/api/test/social-zones', requireApiKey, (req, res) => {
 
 // SQLite helper function removed - using ensureUserExistsSupabase() instead
 
+// PRODUCTION-READY DATE SYNCHRONIZATION SYSTEM
+// Ensures all devices use the same simulated date for consistency
+const getOrCreateUserSimulatedDate = async (req, deviceId, providedDate = null) => {
+  try {
+    let user = null;
+    let queryMethod = 'device_id';
+    let queryValue = deviceId;
+    
+    // Get user info first
+    if (req.authMethod === 'user_auth' && req.userId) {
+      queryMethod = 'user_id';
+      queryValue = req.userId;
+      
+      const { data: authUsers, error: authUserError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('user_id', req.userId);
+      
+      if (!authUserError && authUsers && authUsers.length > 0) {
+        user = authUsers[0];
+      }
+    } else {
+      const { data: deviceUsers, error: deviceUserError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('device_id', deviceId);
+      
+      if (!deviceUserError && deviceUsers && deviceUsers.length > 0) {
+        user = deviceUsers[0];
+      }
+    }
+    
+    // If user exists and has a simulated date, use it (unless overridden)
+    let synchronizedDate = null;
+    if (user && user.simulated_date && !providedDate) {
+      synchronizedDate = user.simulated_date;
+      console.log(`📅 [DATE SYNC] Using stored simulated date: ${synchronizedDate}`);
+    } else if (providedDate) {
+      // Update the stored simulated date for sync across devices
+      synchronizedDate = providedDate;
+      console.log(`📅 [DATE SYNC] Updating simulated date to: ${synchronizedDate}`);
+      
+      if (user) {
+        await supabase
+          .from('users')
+          .update({ simulated_date: synchronizedDate })
+          .eq(queryMethod, queryValue);
+      }
+    } else {
+      // No simulated date - use real date
+      synchronizedDate = new Date().toISOString().split('T')[0];
+      console.log(`📅 [DATE SYNC] Using real date: ${synchronizedDate}`);
+    }
+    
+    return { user, queryMethod, queryValue, synchronizedDate };
+  } catch (error) {
+    console.error('❌ [DATE SYNC] Error in date synchronization:', error);
+    return { user: null, queryMethod: 'device_id', queryValue: deviceId, synchronizedDate: new Date().toISOString().split('T')[0] };
+  }
+};
+
 // STANDARDIZED AUTHENTICATION PATTERN FOR ALL ENDPOINTS
 // This function should be used by ALL endpoints that handle user data
 const getAuthenticatedUserInfo = async (req, deviceId) => {
@@ -955,9 +1016,10 @@ const ensureUserRecordWithUserId = async (userId, deviceId, actionDate) => {
         .upsert({
           device_id: deviceId, // Primary key
           user_id: userId,
-          current_streak: 0,
-          all_time_best_streak: 0,
-          last_completion_date: null,
+        current_streak: 0,
+        all_time_best_streak: 0,
+        last_completion_date: null,
+        simulated_date: null,
           created_at: new Date().toISOString()
         }, {
           onConflict: 'device_id'
@@ -2011,18 +2073,20 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
       const { error: userResetError } = await supabase
         .from('users')
         .update({
-          current_streak: 0,
-          all_time_best_streak: 0,
-          last_completion_date: null
+        current_streak: 0,
+        all_time_best_streak: 0,
+        last_completion_date: null,
+        simulated_date: null
         })
         .eq('user_id', req.userId);
 
       const { error: deviceResetError } = await supabase
         .from('users')
         .update({
-          current_streak: 0,
-          all_time_best_streak: 0,
-          last_completion_date: null
+        current_streak: 0,
+        all_time_best_streak: 0,
+        last_completion_date: null,
+        simulated_date: null
         })
         .eq('device_id', deviceId);
 
@@ -2060,9 +2124,10 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
       const { error: userResetError } = await supabase
         .from('users')
         .update({
-          current_streak: 0,
-          all_time_best_streak: 0,
-          last_completion_date: null
+        current_streak: 0,
+        all_time_best_streak: 0,
+        last_completion_date: null,
+        simulated_date: null
         })
         .eq('device_id', deviceId);
 
@@ -4167,6 +4232,65 @@ Return ONLY valid JSON in this exact format:
     console.error('❌ [SUPABASE] Error in conversation practice endpoint:', error);
     res.status(500).json({ 
       error: 'Server error',
+      details: error.message 
+    });
+  }
+});
+
+// DATE SYNCHRONIZATION ENDPOINT - PRODUCTION READY!
+app.post('/api/sync/simulated-date', requireApiKeyOrAuth, async (req, res) => {
+  try {
+    const { deviceId, simulatedDate } = req.body;
+    
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+    
+    console.log(`📅 [DATE SYNC ENDPOINT] Syncing date for ${deviceId}: ${simulatedDate}`);
+    
+    // Get or update the synchronized date
+    const { user, queryMethod, queryValue, synchronizedDate } = await getOrCreateUserSimulatedDate(req, deviceId, simulatedDate);
+    
+    console.log(`📅 [DATE SYNC ENDPOINT] Final synchronized date: ${synchronizedDate}`);
+    
+    res.json({ 
+      success: true, 
+      synchronizedDate: synchronizedDate,
+      message: 'Date synchronized successfully across devices'
+    });
+    
+  } catch (error) {
+    console.error('❌ [DATE SYNC ENDPOINT] Error syncing date:', error);
+    res.status(500).json({ 
+      error: 'Failed to sync simulated date',
+      details: error.message 
+    });
+  }
+});
+
+// GET SYNCHRONIZED DATE ENDPOINT
+app.get('/api/sync/simulated-date/:deviceId', requireApiKeyOrAuth, async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    
+    console.log(`📅 [GET DATE SYNC] Getting synchronized date for ${deviceId}`);
+    
+    // Get the current synchronized date
+    const { user, queryMethod, queryValue, synchronizedDate } = await getOrCreateUserSimulatedDate(req, deviceId);
+    
+    console.log(`📅 [GET DATE SYNC] Current synchronized date: ${synchronizedDate}`);
+    
+    res.json({ 
+      success: true, 
+      synchronizedDate: synchronizedDate,
+      hasStoredDate: !!(user && user.simulated_date),
+      message: 'Date retrieved successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ [GET DATE SYNC] Error getting date:', error);
+    res.status(500).json({ 
+      error: 'Failed to get simulated date',
       details: error.message 
     });
   }
