@@ -2057,74 +2057,7 @@ app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
   }
 });
 
-// Clear all user data (authenticated endpoint - production ready)
-app.delete('/api/data/clear', requireApiKeyOrAuth, async (req, res) => {
-  try {
-    // This endpoint requires user authentication for production safety
-    if (req.authMethod !== 'user_auth' || !req.userId) {
-      return res.status(401).json({ 
-        error: 'User authentication required', 
-        message: 'Delete account requires being logged into an account' 
-      });
-    }
-    
-    const user = { id: req.userId };
-    console.log(`🗑️ [CLEAR] Authenticated user clearing all data: ${user.id}`);
-    
-    // Delete all data for this authenticated user from SUPABASE
-    const deletePromises = [
-      supabase.from('daily_challenges').delete().eq('user_id', user.id),
-      supabase.from('openers').delete().eq('user_id', user.id),
-      supabase.from('development_modules').delete().eq('user_id', user.id),
-      supabase.from('conversation_practice_scenarios').delete().eq('user_id', user.id)
-    ];
-
-    const deleteResults = await Promise.all(deletePromises);
-    
-    // Check for errors
-    const errors = deleteResults.filter(result => result.error);
-    if (errors.length > 0) {
-      console.error('❌ [CLEAR] Error deleting user data:', errors);
-      return res.status(500).json({ error: 'Failed to clear some data tables' });
-    }
-
-    console.log('✅ [CLEAR] Deleted all data for authenticated user');
-
-    // Reset user streaks and stats in Supabase  
-    const { error: userResetError } = await supabase
-      .from('users')
-      .update({
-        current_streak: 0,
-        all_time_best_streak: 0,
-        last_completion_date: null,
-        simulated_date: null
-      })
-      .eq('id', user.id);
-
-    if (userResetError) {
-      console.error('❌ [CLEAR] Error resetting user stats:', userResetError);
-      return res.status(500).json({ error: 'Failed to reset user stats' });
-    }
-
-    console.log('✅ [CLEAR] Reset user stats for authenticated user');
-
-    // Send success response
-    res.json({ 
-      success: true, 
-      message: 'All user data cleared successfully',
-      clearedTables: ['daily_challenges', 'openers', 'development_modules', 'conversation_practice_scenarios', 'users']
-    });
-
-  } catch (error) {
-    console.error('❌ [CLEAR] Error clearing user data:', error);
-    res.status(500).json({ 
-      error: 'Failed to clear user data', 
-      details: error.message 
-    });
-  }
-});
-
-// LEGACY: Clear all data for a device (for testing) - NOW CLEARS SUPABASE!
+// Clear all data for a device (for testing) - NOW CLEARS SUPABASE!
 app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
     const { deviceId } = req.params;
