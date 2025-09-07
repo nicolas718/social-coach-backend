@@ -3649,13 +3649,13 @@ Respond naturally like a helpful friend and coach:
 CONVERSATION RULES:
 - Keep responses conversational and natural (2-3 sentences)
 - Give practical, actionable advice
-- Ask a relevant follow-up question to continue the conversation
 - Use an encouraging but realistic tone
 - Respond directly to what they said
 - Don't be repetitive or overly formal
 - Focus on building their confidence
+- Sometimes ask follow-up questions, sometimes just give advice - be natural
 
-IMPORTANT: Respond like you're having a normal conversation. Don't introduce yourself repeatedly or ask "what kind of social situation" every time. Just give helpful advice and continue the conversation naturally.
+IMPORTANT: Respond like you're having a normal conversation. Don't introduce yourself repeatedly. Not every response needs to end with a question - sometimes just give helpful advice and let the user continue the conversation naturally.
 
 Return ONLY a plain text response, no JSON formatting.`;
 
@@ -3674,7 +3674,7 @@ Return ONLY a plain text response, no JSON formatting.`;
             }
           ],
           150,
-          "You are the Opener Coach. Respond naturally and helpfully to build their social confidence. Keep responses conversational (2-3 sentences) and continue the conversation flow."
+          "You are the Opener Coach. Respond naturally and helpfully to build their social confidence. Keep responses conversational (2-3 sentences). Sometimes ask follow-up questions, sometimes just give advice - be natural like a real conversation."
         );
         break; // Success, exit retry loop
       } catch (apiError) {
