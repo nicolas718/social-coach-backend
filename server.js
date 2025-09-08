@@ -2977,6 +2977,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         // FIX: hasActivityToday should check if the last day in weekBar (client's today) has activity
         const hasActivityToday = weekBar[6] === 'activity';
         
+        console.log('🚨 TIMEZONE FIX DEPLOYED: hasActivityToday=' + hasActivityToday + ' (weekBar[6]=' + weekBar[6] + ')');
         console.log('!!!!! HOME RESPONSE BEING SENT:', {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
