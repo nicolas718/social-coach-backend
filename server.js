@@ -861,8 +861,9 @@ const getUnifiedDateForUser = async (req, deviceId, providedDate = null) => {
     // ALWAYS use real current date - sim date system intact but acts as real dates
     // This ensures users always load on current date even when logging in/out
     
-    let unifiedDate = new Date().toISOString().split('T')[0]; // ALWAYS real current date
-    let dateSource = 'real_forced'; // Indicates we're forcing real dates
+    // FIX: If client provides currentDate, use it; otherwise use server's current date
+    let unifiedDate = req.query.currentDate || new Date().toISOString().split('T')[0]; // Accept client date
+    let dateSource = req.query.currentDate ? 'client_provided' : 'real_forced'; // Track date source
     
     console.log(`📅 [UNIFIED DATE] ALWAYS using real current date: ${unifiedDate} (sim system intact)`);
     
@@ -2610,7 +2611,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         simulated_date: user.simulated_date
       } : 'No user found');
 
-      const today = new Date(unifiedDate + 'T00:00:00Z');
+      // FIX: Don't force UTC timezone - use the date as-is from client
+      const today = new Date(unifiedDate + 'T00:00:00');
       
       // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges) - MOVED BEFORE ACCOUNT CREATION
       try {
@@ -2972,10 +2974,13 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         //   weekBar = ['activity', 'activity', 'activity', 'activity', 'none', 'activity', 'activity'];
         // }
 
+        // FIX: hasActivityToday should check if the last day in weekBar (client's today) has activity
+        const hasActivityToday = weekBar[6] === 'activity';
+        
         console.log('!!!!! HOME RESPONSE BEING SENT:', {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
-          hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
+          hasActivityToday: hasActivityToday,
           socialZoneLevel: softenedLevel,
           zoneFromFunction: zone
         });
@@ -3002,7 +3007,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         const homeResponse = {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
-          hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
+          hasActivityToday: hasActivityToday,  // FIX: Use the calculated value from weekBar
           socialZoneLevel: zone.level,
           totalChallenges: totalChallenges  // NEW: For accurate reset dialog data
         };
