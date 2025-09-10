@@ -2622,7 +2622,18 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         simulated_date: user.simulated_date
       } : 'No user found');
 
-      // PRODUCTION FIX: Use referenceDate (noon UTC) instead of midnight UTC
+      // PRODUCTION FIX: Handle timezone-aware date parsing for Home
+      let referenceDate;
+      if (currentDate) {
+          // Parse the date string properly - use noon UTC to avoid timezone edge cases
+          referenceDate = new Date(currentDate + 'T12:00:00.000Z');
+          console.log(`🏠 [TIMEZONE FIX] HOME: Received date: ${currentDate}, interpreted as: ${referenceDate.toISOString()}`);
+      } else {
+          referenceDate = new Date();
+          console.log(`🏠 [TIMEZONE FIX] HOME: Using current date: ${referenceDate.toISOString()}`);
+      }
+
+      // Use referenceDate (noon UTC) for today variable
       const today = referenceDate;
       
       // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges) - MOVED BEFORE ACCOUNT CREATION
