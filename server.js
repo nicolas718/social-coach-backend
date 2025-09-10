@@ -2622,7 +2622,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         simulated_date: user.simulated_date
       } : 'No user found');
 
-      const today = new Date(unifiedDate + 'T00:00:00Z');
+      // PRODUCTION FIX: Use referenceDate (noon UTC) instead of midnight UTC
+      const today = referenceDate;
       
       // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges) - MOVED BEFORE ACCOUNT CREATION
       try {
@@ -2785,8 +2786,8 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         if (user && user.created_at) {
           // For migrated users with activity, set account creation to earliest activity date
           if (user.user_id && activityDates.length > 0) {
-            // Use earliest activity date as account creation for migrated users
-            const earliestActivity = new Date(activityDates[0] + 'T00:00:00Z');
+            // Use earliest activity date as account creation for migrated users - PRODUCTION FIX: Use noon UTC
+            const earliestActivity = new Date(activityDates[0] + 'T12:00:00.000Z');
             accountCreationDate = earliestActivity;
             console.log(`🔧 [SUPABASE] MIGRATED USER: Setting account creation to earliest activity: ${accountCreationDate.toISOString().split('T')[0]}`);
           } else {
@@ -2820,9 +2821,10 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         console.log(`🎯 [WEEK BAR] Activity dates: [${activityDates.join(', ')}]`);
         
                   for (let i = 6; i >= 0; i--) {
-                    const checkDate = new Date(today);
-                    checkDate.setDate(today.getDate() - i);
+                    // PRODUCTION FIX: Use UTC date calculation to avoid timezone shifts (same fix as analytics)
+                    const checkDate = new Date(today.getTime() - (i * 24 * 60 * 60 * 1000));
                     const dateString = checkDate.toISOString().split('T')[0];
+                    console.log(`🎯 [WEEK BAR FIX] Day ${6-i}: Checking ${dateString} (offset ${i} days from ${today.toISOString().split('T')[0]})`);
           
           let color = 'none';
           
