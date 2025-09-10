@@ -3924,7 +3924,7 @@ app.get('/api/data/opener-library/:deviceId', requireApiKeyOrAuth, async (req, r
         rating: opener.opener_rating,
         confidence: opener.opener_confidence_level,
         wasUsed: opener.opener_was_used,
-        wasSuccessful: opener.opener_was_successful
+        isSuccess: opener.opener_was_successful  // BUGFIX: Frontend expects 'isSuccess', not 'wasSuccessful'
       }));
 
     console.log(`📚 [SUPABASE] Found ${recentHistoryData.length} recent openers in history`);
