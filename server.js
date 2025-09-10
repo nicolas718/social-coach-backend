@@ -2308,18 +2308,21 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
 
     console.log(`📊 [SUPABASE] ACTIVITY DATES: ${allActivityDates.length} unique dates: [${allActivityDates.join(', ')}]`);
 
-    // Build weekly activity array (last 7 days)
+    // Build weekly activity array (last 7 days) - PRODUCTION FIX for timezone issues
     const weeklyActivityArray = [];
     for (let i = 6; i >= 0; i--) {
-      const checkDate = new Date(referenceDate);
-      checkDate.setDate(referenceDate.getDate() - i);
+      // PRODUCTION FIX: Use UTC date calculation to avoid timezone shifts
+      const checkDate = new Date(referenceDate.getTime() - (i * 24 * 60 * 60 * 1000));
       const dateString = checkDate.toISOString().split('T')[0];
+      
+      console.log(`📊 [ANALYTICS WEEK FIX] Day ${6-i}: Checking ${dateString} (offset ${i} days from ${referenceDate.toISOString().split('T')[0]})`);
       
       // Count activities on this date
       const dayActivityCount = 
         (allChallenges || []).filter(c => c.challenge_date?.split('T')[0] === dateString).length +
         usedOpeners.filter(o => o.opener_date?.split('T')[0] === dateString).length;
       
+      console.log(`📊 [ANALYTICS WEEK FIX] Day ${6-i} (${dateString}): ${dayActivityCount} activities`);
       weeklyActivityArray.push(dayActivityCount);
     }
 
