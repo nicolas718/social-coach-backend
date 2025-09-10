@@ -861,9 +861,8 @@ const getUnifiedDateForUser = async (req, deviceId, providedDate = null) => {
     // ALWAYS use real current date - sim date system intact but acts as real dates
     // This ensures users always load on current date even when logging in/out
     
-    // FIX: If client provides currentDate, use it; otherwise use server's current date
-    let unifiedDate = req.query.currentDate || new Date().toISOString().split('T')[0]; // Accept client date
-    let dateSource = req.query.currentDate ? 'client_provided' : 'real_forced'; // Track date source
+    let unifiedDate = new Date().toISOString().split('T')[0]; // ALWAYS real current date
+    let dateSource = 'real_forced'; // Indicates we're forcing real dates
     
     console.log(`📅 [UNIFIED DATE] ALWAYS using real current date: ${unifiedDate} (sim system intact)`);
     
@@ -1752,13 +1751,13 @@ app.post('/api/data/challenge', requireApiKeyOrAuth, async (req, res) => {
 
     // Determine data storage method based on authentication
     let insertData = {
-      challenge_completed: challengeCompleted,
-      challenge_was_successful: challengeWasSuccessful,
-      challenge_rating: challengeRating,
-      challenge_confidence_level: challengeConfidenceLevel,
-      challenge_notes: challengeNotes,
-      challenge_date: challengeDate,
-      challenge_type: challengeType
+        challenge_completed: challengeCompleted,
+        challenge_was_successful: challengeWasSuccessful,
+        challenge_rating: challengeRating,
+        challenge_confidence_level: challengeConfidenceLevel,
+        challenge_notes: challengeNotes,
+        challenge_date: challengeDate,
+        challenge_type: challengeType
     };
 
     if (req.authMethod === 'user_auth' && req.userId) {
@@ -1848,15 +1847,15 @@ app.post('/api/data/opener', requireApiKeyOrAuth, async (req, res) => {
 
     // Determine data storage method based on authentication
     let insertData = {
-      opener_text: openerText,
-      opener_setting: openerSetting,
-      opener_purpose: openerPurpose,
-      opener_was_used: openerWasUsed,
-      opener_was_successful: openerWasSuccessful,
-      opener_rating: openerRating,
-      opener_confidence_level: openerConfidenceLevel,
-      opener_notes: openerNotes,
-      opener_date: openerDate
+        opener_text: openerText,
+        opener_setting: openerSetting,
+        opener_purpose: openerPurpose,
+        opener_was_used: openerWasUsed,
+        opener_was_successful: openerWasSuccessful,
+        opener_rating: openerRating,
+        opener_confidence_level: openerConfidenceLevel,
+        opener_notes: openerNotes,
+        opener_date: openerDate
     };
 
     if (req.authMethod === 'user_auth' && req.userId) {
@@ -1885,7 +1884,7 @@ app.post('/api/data/opener', requireApiKeyOrAuth, async (req, res) => {
     }
 
     // Update streak if opener was used - use standardized pattern
-    if (openerWasUsed === true) {
+          if (openerWasUsed === true) {
       try {
         const streakResult = await updateStreakForUser(req, deviceId, openerDate);
         console.log(`✅ [SUPABASE] Opener streak updated for ${deviceId}`);
@@ -1936,7 +1935,7 @@ app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
 
     // Get user info using standardized authentication pattern
     const { user, queryMethod, queryValue } = await getAuthenticatedUserInfo(req, deviceId);
-    
+
     console.log(`📊 [DEVELOPMENT] Storing data using ${queryMethod}: ${queryValue}`);
 
     // Check if module progress already exists for this user and module using standardized query method
@@ -2001,11 +2000,11 @@ app.post('/api/data/development', requireApiKeyOrAuth, async (req, res) => {
       // Insert new record (SAME LOGIC)
       // Create insert data with proper authentication field
       const insertData = {
-        development_module_id: developmentModuleId,
-        development_screen_reached: developmentScreenReached,
-        development_is_completed: developmentIsCompleted,
-        development_progress_percentage: developmentProgressPercentage,
-        development_date: developmentDate
+          development_module_id: developmentModuleId,
+          development_screen_reached: developmentScreenReached,
+          development_is_completed: developmentIsCompleted,
+          development_progress_percentage: developmentProgressPercentage,
+          development_date: developmentDate
       };
       
       // Add the appropriate ID field based on authentication method
@@ -2058,38 +2057,38 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
     }
 
     console.log(`🗑️ [SUPABASE] CLEARING ALL DATA for device: ${deviceId}`);
-    
+
     // CRITICAL FIX: Clear data by BOTH user_id AND device_id for authenticated users
     if (req.authMethod === 'user_auth' && req.userId) {
       console.log(`🚨 [CLEAR] Authenticated user - clearing by user_id: ${req.userId}`);
       
       // Delete all data for this user from SUPABASE (both user_id and device_id)
-      const deletePromises = [
+    const deletePromises = [
         supabase.from('daily_challenges').delete().eq('user_id', req.userId),
-        supabase.from('daily_challenges').delete().eq('device_id', deviceId),
+      supabase.from('daily_challenges').delete().eq('device_id', deviceId),
         supabase.from('openers').delete().eq('user_id', req.userId),
-        supabase.from('openers').delete().eq('device_id', deviceId),
+      supabase.from('openers').delete().eq('device_id', deviceId), 
         supabase.from('development_modules').delete().eq('user_id', req.userId),
-        supabase.from('development_modules').delete().eq('device_id', deviceId),
+      supabase.from('development_modules').delete().eq('device_id', deviceId),
         supabase.from('conversation_practice_scenarios').delete().eq('user_id', req.userId),
-        supabase.from('conversation_practice_scenarios').delete().eq('device_id', deviceId)
-      ];
+      supabase.from('conversation_practice_scenarios').delete().eq('device_id', deviceId)
+    ];
 
-      const deleteResults = await Promise.all(deletePromises);
-      
-      // Check for errors
-      const errors = deleteResults.filter(result => result.error);
-      if (errors.length > 0) {
+    const deleteResults = await Promise.all(deletePromises);
+    
+    // Check for errors
+    const errors = deleteResults.filter(result => result.error);
+    if (errors.length > 0) {
         console.error('❌ [SUPABASE] Error deleting user data:', errors);
         return res.status(500).json({ error: 'Failed to clear some user data tables' });
-      }
+    }
 
       console.log('✅ [SUPABASE] Deleted all user data (challenges, openers, development modules, conversation practice)');
 
       // Reset user streaks to 0 in Supabase - handle both user_id and device_id records
-      const { error: userResetError } = await supabase
-        .from('users')
-        .update({
+    const { error: userResetError } = await supabase
+      .from('users')
+      .update({
         current_streak: 0,
         all_time_best_streak: 0,
         last_completion_date: null,
@@ -2145,13 +2144,13 @@ app.delete('/api/data/clear/:deviceId', requireApiKeyOrAuth, async (req, res) =>
         all_time_best_streak: 0,
         last_completion_date: null,
         simulated_date: null
-        })
-        .eq('device_id', deviceId);
+      })
+      .eq('device_id', deviceId);
 
-      if (userResetError) {
+    if (userResetError) {
         console.error('❌ [SUPABASE] Error resetting device user streak:', userResetError);
         return res.status(500).json({ error: 'Failed to reset device user streak' });
-      }
+    }
 
       console.log('✅ [SUPABASE] Reset device user streak to 0');
     }
@@ -2190,8 +2189,17 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use simulated date if provided, otherwise use current date
-    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+    // PRODUCTION FIX: Handle timezone-aware date parsing for Analytics
+    let referenceDate;
+    if (currentDate) {
+        // Parse the date string properly - don't force UTC midnight
+        // Use noon UTC to avoid timezone edge cases while maintaining day accuracy
+        referenceDate = new Date(currentDate + 'T12:00:00.000Z');
+        console.log(`📊 [TIMEZONE FIX] ANALYTICS: Received date: ${currentDate}, interpreted as: ${referenceDate.toISOString()}`);
+    } else {
+        referenceDate = new Date();
+        console.log(`📊 [TIMEZONE FIX] ANALYTICS: Using current date: ${referenceDate.toISOString()}`);
+    }
     
     console.log(`📊 [SUPABASE] ANALYTICS: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
@@ -2611,8 +2619,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         simulated_date: user.simulated_date
       } : 'No user found');
 
-      // FIX: Don't force UTC timezone - use the date as-is from client
-      const today = new Date(unifiedDate + 'T00:00:00');
+      const today = new Date(unifiedDate + 'T00:00:00Z');
       
       // Step 2: Get all activity dates from SUPABASE (used openers + completed challenges) - MOVED BEFORE ACCOUNT CREATION
       try {
@@ -2625,7 +2632,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
           req.authMethod = 'user_auth';
           req.userId = "28b13687-d7df-4af7-babc-2010042f2319";
         }
-
+        
         // Handle activity queries based on authentication method
         let openerActivities = null;
         let challengeActivities = null;
@@ -2836,8 +2843,16 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
           console.log(`🎯 [SUPABASE] Day ${i}: ${dateString} → ${color} (activity: ${activityDates.includes(dateString)}, comparison: "${dateString}" vs account "${accountDateStr}", is before: ${dateString < accountDateStr})`);
         }
         
-        // Step 4: Check if streak is broken due to missed days
-        const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+        // Step 4: Check if streak is broken due to missed days - TIMEZONE FIX
+        let referenceDate;
+        if (currentDate) {
+            // Use noon UTC to avoid timezone edge cases while maintaining day accuracy
+            referenceDate = new Date(currentDate + 'T12:00:00.000Z');
+            console.log(`🔧 [TIMEZONE FIX] HOME: Received date: ${currentDate}, interpreted as: ${referenceDate.toISOString()}`);
+        } else {
+            referenceDate = new Date();
+            console.log(`🔧 [TIMEZONE FIX] HOME: Using current date: ${referenceDate.toISOString()}`);
+        }
         console.log(`🔧 [SUPABASE] HOME: Using referenceDate: ${referenceDate.toISOString()}, vs today: ${today.toISOString()}`);
         
         // Use real database streak value
@@ -2974,14 +2989,10 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         //   weekBar = ['activity', 'activity', 'activity', 'activity', 'none', 'activity', 'activity'];
         // }
 
-        // FIX: hasActivityToday should check if the last day in weekBar (client's today) has activity
-        const hasActivityToday = weekBar[6] === 'activity';
-        
-        console.log('🚨 TIMEZONE FIX DEPLOYED: hasActivityToday=' + hasActivityToday + ' (weekBar[6]=' + weekBar[6] + ')');
         console.log('!!!!! HOME RESPONSE BEING SENT:', {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
-          hasActivityToday: hasActivityToday,
+          hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: softenedLevel,
           zoneFromFunction: zone
         });
@@ -2997,9 +3008,9 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
           totalChallenges = userChallenges?.length || 0;
         } else {
           const { data: deviceChallenges, error: challengeCountError } = await supabase
-            .from('daily_challenges')
-            .select('id')
-            .eq('device_id', deviceId);
+          .from('daily_challenges')
+          .select('id')
+          .eq('device_id', deviceId);
           totalChallenges = deviceChallenges?.length || 0;
         }
         console.log(`🎯 [SUPABASE] HOME: Total challenges: ${totalChallenges}`);
@@ -3008,7 +3019,7 @@ app.get('/api/data/analytics/:deviceId', requireApiKeyOrAuth, async (req, res) =
         const homeResponse = {
           currentStreak: currentStreak,
           weeklyActivity: weekBar,
-          hasActivityToday: hasActivityToday,  // FIX: Use the calculated value from weekBar
+          hasActivityToday: activityDates.includes(today.toISOString().split('T')[0]),
           socialZoneLevel: zone.level,
           totalChallenges: totalChallenges  // NEW: For accurate reset dialog data
         };
@@ -3675,13 +3686,13 @@ Return ONLY a plain text response, no JSON formatting.`;
     while (retryCount < maxRetries) {
       try {
         aiMessage = await callBedrockAPI(
-          [
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          150,
+      [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      150,
           "You are the Opener Coach. Respond naturally and helpfully to build their social confidence. Keep responses conversational (2-3 sentences). Sometimes ask follow-up questions, sometimes just give advice - be natural like a real conversation."
         );
         break; // Success, exit retry loop
@@ -3812,8 +3823,17 @@ app.get('/api/data/opener-library/:deviceId', requireApiKeyOrAuth, async (req, r
       return res.status(400).json({ error: 'deviceId is required' });
     }
 
-    // Use simulated date if provided, otherwise use current date
-    const referenceDate = currentDate ? new Date(currentDate + 'T00:00:00.000Z') : new Date();
+    // PRODUCTION FIX: Handle timezone-aware date parsing for Opener Library
+    let referenceDate;
+    if (currentDate) {
+        // Parse the date string properly - don't force UTC midnight
+        // Use noon UTC to avoid timezone edge cases while maintaining day accuracy
+        referenceDate = new Date(currentDate + 'T12:00:00.000Z');
+        console.log(`📚 [TIMEZONE FIX] OPENER LIBRARY: Received date: ${currentDate}, interpreted as: ${referenceDate.toISOString()}`);
+    } else {
+        referenceDate = new Date();
+        console.log(`📚 [TIMEZONE FIX] OPENER LIBRARY: Using current date: ${referenceDate.toISOString()}`);
+    }
     
     console.log(`📚 [SUPABASE] OPENER LIBRARY: Device ${deviceId}, Reference Date: ${referenceDate.toISOString()}`);
 
@@ -4553,8 +4573,8 @@ server.on('connection', (socket) => {
 // Get development module progress for a device
 app.get('/api/data/development-progress/:deviceId', requireApiKeyOrAuth, async (req, res) => {
   try {
-    const { deviceId } = req.params;
-    
+  const { deviceId } = req.params;
+  
     console.log(`📊 [DEVELOPMENT] Fetching development progress for device: ${deviceId}`);
     
     // Get user info using standardized authentication pattern
